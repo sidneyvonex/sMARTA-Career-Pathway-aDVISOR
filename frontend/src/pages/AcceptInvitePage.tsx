@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
 
@@ -29,8 +30,8 @@ export default function AcceptInvitePage() {
     try {
       const res = await authApi.acceptInvite({ ...form, token })
       setUser(res.data.data.user)
-      navigate('/')
       toast.success('Welcome to CBC Guidance!')
+      navigate('/')
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'Could not activate account. The link may have expired.')
     } finally {
@@ -38,39 +39,50 @@ export default function AcceptInvitePage() {
     }
   }
 
-  if (!token) return <p style={{ padding: '2rem' }}>Invalid invite link.</p>
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.75rem', border: '1px solid #E0E0E0',
-    borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box',
+  if (!token) {
+    return (
+      <AuthLayout heading="Invalid invite">
+        <div className="auth-status error">
+          This invite link is invalid or has expired. Ask for a new one to be sent.
+        </div>
+      </AuthLayout>
+    )
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: '3rem auto', padding: '0 1rem' }}>
-      <h1 style={{ color: '#006B3F', marginBottom: '1.5rem' }}>Set up your account</h1>
-      <form onSubmit={handleSubmit}>
-        {[
-          { id: 'first_name', label: 'First name', type: 'text' },
-          { id: 'last_name', label: 'Last name', type: 'text' },
-          { id: 'password', label: 'Password (min 8 characters)', type: 'password' },
-        ].map(({ id, label, type }) => (
-          <div key={id} style={{ marginBottom: '1rem' }}>
-            <label htmlFor={id} style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{label}</label>
-            <input id={id} type={type} required value={form[id as keyof typeof form]} onChange={set(id)} style={inputStyle} />
+    <AuthLayout heading="Set up your account" subheading="You've been invited to CBC Guidance">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="form-row">
+          <div className="form-field">
+            <label htmlFor="first_name">First name</label>
+            <input id="first_name" type="text" required autoComplete="given-name"
+              placeholder="Jane" value={form.first_name} onChange={set('first_name')} />
           </div>
-        ))}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="county" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>County</label>
-          <select id="county" required value={form.county} onChange={set('county')} style={{ ...inputStyle, background: '#fff' }}>
+          <div className="form-field">
+            <label htmlFor="last_name">Last name</label>
+            <input id="last_name" type="text" required autoComplete="family-name"
+              placeholder="Doe" value={form.last_name} onChange={set('last_name')} />
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="county">County</label>
+          <select id="county" required value={form.county} onChange={set('county')}>
             <option value="">Select your county</option>
             {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
-        <button type="submit" disabled={loading}
-          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff', border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', minHeight: 44 }}>
+
+        <div className="form-field">
+          <label htmlFor="password">Create a password</label>
+          <input id="password" type="password" required autoComplete="new-password"
+            placeholder="At least 8 characters" value={form.password} onChange={set('password')} />
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? 'Activating…' : 'Activate account'}
         </button>
       </form>
-    </main>
+    </AuthLayout>
   )
 }

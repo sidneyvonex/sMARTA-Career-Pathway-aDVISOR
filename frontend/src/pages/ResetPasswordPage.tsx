@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
 
 export default function ResetPasswordPage() {
@@ -15,7 +16,7 @@ export default function ResetPasswordPage() {
     setLoading(true)
     try {
       await authApi.confirmPasswordReset(token, password)
-      toast.success('Password reset. Please log in.')
+      toast.success('Password updated. Please sign in.')
       navigate('/login')
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'Reset failed. The link may have expired.')
@@ -24,25 +25,37 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!token) return <p style={{ padding: '2rem' }}>Invalid reset link.</p>
+  if (!token) {
+    return (
+      <AuthLayout heading="Invalid link">
+        <div className="auth-status error">
+          This reset link is invalid or has already been used. Request a new one from the sign-in page.
+        </div>
+      </AuthLayout>
+    )
+  }
 
   return (
-    <main style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1 style={{ color: '#006B3F', marginBottom: '1.5rem' }}>Set new password</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-            New password (min 8 characters)
-          </label>
-          <input id="password" type="password" required minLength={8} value={password}
-            onChange={(e) => setPassword(e.target.value)} autoComplete="new-password"
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #E0E0E0', borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box' }} />
+    <AuthLayout heading="Set a new password" subheading="Choose something strong and memorable">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="form-field">
+          <label htmlFor="password">New password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
-        <button type="submit" disabled={loading}
-          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff', border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', minHeight: 44 }}>
-          {loading ? 'Resetting…' : 'Reset password'}
+
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Updating…' : 'Update password'}
         </button>
       </form>
-    </main>
+    </AuthLayout>
   )
 }

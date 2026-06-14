@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
 
 export default function ForgotPasswordPage() {
@@ -22,27 +24,41 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <main style={{ maxWidth: 480, margin: '4rem auto', padding: '0 1rem', textAlign: 'center' }}>
-        <h1 style={{ color: '#006B3F' }}>Check your email</h1>
-        <p>If an account with that email exists, we've sent a password reset link.</p>
-      </main>
+      <AuthLayout heading="Check your email" subheading="A reset link is on its way.">
+        <div className="auth-status success">
+          If an account with <strong>{email}</strong> exists, we've sent a password reset link. It expires in 1 hour.
+        </div>
+        <div style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
+          <Link to="/login" style={{ fontSize: 'var(--font-size-sm)' }}>← Back to sign in</Link>
+        </div>
+      </AuthLayout>
     )
   }
 
   return (
-    <main style={{ maxWidth: 400, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1 style={{ color: '#006B3F', marginBottom: '1.5rem' }}>Reset your password</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="email" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Email</label>
-          <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%', padding: '0.75rem', border: '1px solid #E0E0E0', borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box' }} />
+    <AuthLayout
+      heading="Forgot your password?"
+      subheading="Enter your email and we'll send you a reset link"
+      footer={<span><Link to="/login">← Back to sign in</Link></span>}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="form-field">
+          <label htmlFor="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
-        <button type="submit" disabled={loading}
-          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff', border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', minHeight: 44 }}>
+
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? 'Sending…' : 'Send reset link'}
         </button>
       </form>
-    </main>
+    </AuthLayout>
   )
 }

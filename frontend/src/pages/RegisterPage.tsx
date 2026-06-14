@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
 
 const COUNTIES = [
@@ -45,58 +46,67 @@ export default function RegisterPage() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.75rem', border: '1px solid #E0E0E0',
-    borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box',
-  }
-
   return (
-    <main style={{ maxWidth: 480, margin: '3rem auto', padding: '0 1rem' }}>
-      <h1 style={{ color: '#006B3F', marginBottom: '1.5rem' }}>Create your account</h1>
-      <form onSubmit={handleSubmit}>
-        {[
-          { id: 'first_name', label: 'First name', type: 'text', autoComplete: 'given-name' },
-          { id: 'last_name', label: 'Last name', type: 'text', autoComplete: 'family-name' },
-          { id: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
-          { id: 'password', label: 'Password (min 8 characters)', type: 'password', autoComplete: 'new-password' },
-        ].map(({ id, label, type, autoComplete }) => (
-          <div key={id} style={{ marginBottom: '1rem' }}>
-            <label htmlFor={id} style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{label}</label>
-            <input id={id} type={type} autoComplete={autoComplete} required
-              value={form[id as keyof typeof form]} onChange={set(id)} style={inputStyle} />
+    <AuthLayout
+      heading="Create your account"
+      subheading="Join CBC Guidance — free for all students"
+      footer={<span>Already have an account? <Link to="/login">Sign in</Link></span>}
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="form-row">
+          <div className="form-field">
+            <label htmlFor="first_name">First name</label>
+            <input id="first_name" type="text" autoComplete="given-name" required
+              placeholder="Jane" value={form.first_name} onChange={set('first_name')} />
           </div>
-        ))}
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="county" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>County</label>
-          <select id="county" required value={form.county} onChange={set('county')}
-            style={{ ...inputStyle, background: '#fff' }}>
-            <option value="">Select your county</option>
-            {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          <div className="form-field">
+            <label htmlFor="last_name">Last name</label>
+            <input id="last_name" type="text" autoComplete="family-name" required
+              placeholder="Doe" value={form.last_name} onChange={set('last_name')} />
+          </div>
         </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="grade" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Grade</label>
-          <select id="grade" value={form.grade} onChange={set('grade')} style={{ ...inputStyle, background: '#fff' }}>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-          </select>
+
+        <div className="form-field">
+          <label htmlFor="email">Email address</label>
+          <input id="email" type="email" autoComplete="email" required
+            placeholder="you@example.com" value={form.email} onChange={set('email')} />
         </div>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label htmlFor="school_code" style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-            School code <span style={{ fontWeight: 400, color: '#666' }}>(optional — leave blank for self-guided)</span>
-          </label>
-          <input id="school_code" type="text" value={form.school_code} onChange={set('school_code')} style={inputStyle} />
+
+        <div className="form-field">
+          <label htmlFor="password">Password</label>
+          <input id="password" type="password" autoComplete="new-password" required
+            placeholder="At least 8 characters" value={form.password} onChange={set('password')} />
         </div>
-        <button type="submit" disabled={loading}
-          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff',
-            border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600,
-            cursor: loading ? 'not-allowed' : 'pointer', minHeight: 44 }}>
+
+        <div className="form-row">
+          <div className="form-field">
+            <label htmlFor="county">County</label>
+            <select id="county" required value={form.county} onChange={set('county')}>
+              <option value="">Select county</option>
+              {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor="grade">Grade</label>
+            <select id="grade" value={form.grade} onChange={set('grade')}>
+              <option value="9">Grade 9</option>
+              <option value="10">Grade 10</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="school_code">School code</label>
+          <input id="school_code" type="text"
+            placeholder="Optional — leave blank for self-guided"
+            value={form.school_code} onChange={set('school_code')} />
+          <span className="form-hint">Ask your school administrator for this code</span>
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>
-      <p style={{ textAlign: 'center', marginTop: '1rem' }}>
-        Already have an account? <Link to="/login" style={{ color: '#006B3F', fontWeight: 500 }}>Sign in</Link>
-      </p>
-    </main>
+    </AuthLayout>
   )
 }
