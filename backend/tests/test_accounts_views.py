@@ -314,7 +314,7 @@ class TestStaffInvite:
             'email': 'newcounselor@school.co.ke',
             'role': 'counselor',
         }, format='json')
-        assert response.status_code == 201
+        assert response.status_code == 200
 
     def test_system_admin_invite_sends_email(self, mailoutbox):
         from tests.factories import SystemAdminFactory
@@ -378,7 +378,7 @@ class TestParentInvite:
         response = c.post('/api/v1/auth/invite-parent/', {
             'parent_email': 'parent@test.com',
         }, format='json')
-        assert response.status_code == 201
+        assert response.status_code == 200
 
     def test_parent_invite_sends_email(self, mailoutbox):
         c, student = self._auth_student()
@@ -395,7 +395,6 @@ class TestParentInvite:
             'first_name': 'Mary',
             'last_name': 'W',
             'county': 'kiambu',
-            'invite_type': 'parent',
         }, format='json')
         assert response.status_code == 201
         from django.contrib.auth import get_user_model

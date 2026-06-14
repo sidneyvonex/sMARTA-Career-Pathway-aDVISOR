@@ -235,10 +235,7 @@ class InviteStaffView(APIView):
         if User.objects.filter(email=email).exists():
             return _error('An account with this email already exists.')
         send_staff_invite_email.delay(invitee_email=email, role=role)
-        return _success(
-            message=f'Invite sent to {email}.',
-            status_code=status.HTTP_201_CREATED,
-        )
+        return _success(message=f'Invite sent to {email}.')
 
 
 class InviteParentView(APIView):
@@ -255,10 +252,7 @@ class InviteParentView(APIView):
             parent_email=parent_email,
             student_name=student_name,
         )
-        return _success(
-            message=f'Invite sent to {parent_email}.',
-            status_code=status.HTTP_201_CREATED,
-        )
+        return _success(message=f'Invite sent to {parent_email}.')
 
 
 class AcceptInviteView(APIView):
@@ -267,29 +261,34 @@ class AcceptInviteView(APIView):
     def post(self, request):
         token = request.data.get('token', '')
         password = request.data.get('password', '')
-        first_name = request.data.get('first_name', '')
-        last_name = request.data.get('last_name', '')
+        first_name = request.data.get('first_name', '').strip()
+        last_name = request.data.get('last_name', '').strip()
         county = request.data.get('county', '')
-        invite_type = request.data.get('invite_type', 'staff')
 
         if not password:
             return _error('Password is required.')
+        if not first_name:
+            return _error('First name is required.')
+        if not last_name:
+            return _error('Last name is required.')
 
         User = get_user_model()
 
+        # Try staff invite token first; fall back to parent invite token.
+        # The token's cryptographic salt determines type — no client input needed.
         try:
-            if invite_type == 'parent':
+            payload = load_invite_token(token)
+            email = payload['email']
+            role = payload['role']
+            student_id = None
+        except (TokenExpiredError, TokenInvalidError):
+            try:
                 payload = load_parent_invite_token(token)
                 email = payload['email']
                 student_id = payload['student_id']
                 role = 'parent'
-            else:
-                payload = load_invite_token(token)
-                email = payload['email']
-                role = payload['role']
-                student_id = None
-        except (TokenExpiredError, TokenInvalidError):
-            return _error('Invalid or expired invite link.')
+            except (TokenExpiredError, TokenInvalidError):
+                return _error('Invalid or expired invite link.')
 
         if User.objects.filter(email=email).exists():
             return _error('An account with this email already exists.')
