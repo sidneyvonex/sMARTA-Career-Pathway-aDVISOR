@@ -14,7 +14,9 @@ class UserAdmin(BaseUserAdmin):
         ('Personal info', {'fields': ('first_name', 'last_name', 'role', 'county')}),
         ('Status', {'fields': ('is_email_verified', 'is_active', 'is_staff', 'is_superuser')}),
         ('Permissions', {'fields': ('groups', 'user_permissions')}),
+        ('Important dates', {'fields': ('last_login', 'created_at')}),
     )
+    readonly_fields = ('last_login', 'created_at', 'updated_at')
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
