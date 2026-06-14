@@ -8,8 +8,8 @@ describe('App', () => {
     expect(document.body).toBeInTheDocument()
   })
 
-  it('renders the home route content', () => {
+  it('shows loading state on home route while auth resolves', () => {
     render(<App />)
-    expect(screen.getByText(/CBC Career Guidance/i)).toBeInTheDocument()
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
   })
 })
