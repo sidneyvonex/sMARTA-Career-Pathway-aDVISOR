@@ -124,3 +124,17 @@ class TestStudentRegistration:
             'grade': 9,
         }, format='json')
         assert response.status_code == 400
+
+    def test_school_county_mismatch_returns_400(self, client):
+        School.objects.create(name='Nyeri High', county='nyeri', school_code='NYE-001')
+        response = client.post('/api/v1/auth/register/', {
+            'email': 'mismatch@test.com',
+            'password': 'TestPass123!',
+            'first_name': 'A',
+            'last_name': 'B',
+            'role': 'student',
+            'county': 'kiambu',
+            'grade': 9,
+            'school_code': 'NYE-001',
+        }, format='json')
+        assert response.status_code == 400
