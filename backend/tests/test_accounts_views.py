@@ -225,3 +225,70 @@ class TestMeView:
     def test_me_unauthenticated_returns_401(self, client):
         response = client.get('/api/v1/auth/me/')
         assert response.status_code == 401
+
+
+from accounts.tokens import make_email_verify_token, make_password_reset_token
+
+
+@pytest.mark.django_db
+class TestEmailVerification:
+    def test_valid_token_verifies_email(self, client):
+        from tests.factories import UserFactory
+        user = UserFactory(email='unverified@test.com', is_email_verified=False)
+        token = make_email_verify_token(user.id)
+        response = client.get(f'/api/v1/auth/verify-email/?token={token}')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.is_email_verified is True
+
+    def test_invalid_token_returns_400(self, client):
+        response = client.get('/api/v1/auth/verify-email/?token=invalidtoken')
+        assert response.status_code == 400
+
+    def test_resend_verification_sends_email(self, client, mailoutbox):
+        from tests.factories import UserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = UserFactory(email='resend@test.com', is_email_verified=False)
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.post('/api/v1/auth/resend-verification/')
+        assert response.status_code == 200
+        assert len(mailoutbox) == 1
+
+
+@pytest.mark.django_db
+class TestPasswordReset:
+    def test_password_reset_request_returns_200(self, client):
+        from tests.factories import UserFactory
+        UserFactory(email='reset@test.com')
+        response = client.post('/api/v1/auth/password-reset/', {'email': 'reset@test.com'}, format='json')
+        assert response.status_code == 200
+
+    def test_password_reset_nonexistent_email_still_returns_200(self, client):
+        response = client.post('/api/v1/auth/password-reset/', {'email': 'nobody@test.com'}, format='json')
+        assert response.status_code == 200
+
+    def test_password_reset_sends_email(self, client, mailoutbox):
+        from tests.factories import UserFactory
+        UserFactory(email='resetmail@test.com')
+        client.post('/api/v1/auth/password-reset/', {'email': 'resetmail@test.com'}, format='json')
+        assert len(mailoutbox) == 1
+
+    def test_password_reset_confirm_updates_password(self, client):
+        from tests.factories import UserFactory
+        user = UserFactory(email='newpass@test.com')
+        token = make_password_reset_token(user.id)
+        response = client.post('/api/v1/auth/password-reset/confirm/', {
+            'token': token,
+            'password': 'NewSecurePass456!',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.check_password('NewSecurePass456!')
+
+    def test_password_reset_confirm_invalid_token_returns_400(self, client):
+        response = client.post('/api/v1/auth/password-reset/confirm/', {
+            'token': 'badtoken',
+            'password': 'NewSecurePass456!',
+        }, format='json')
+        assert response.status_code == 400

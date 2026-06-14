@@ -7,4 +7,8 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='auth-logout'),
     path('token/refresh/', views.TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('me/', views.MeView.as_view(), name='auth-me'),
+    path('verify-email/', views.VerifyEmailView.as_view(), name='auth-verify-email'),
+    path('resend-verification/', views.ResendVerificationView.as_view(), name='auth-resend-verification'),
+    path('password-reset/', views.PasswordResetView.as_view(), name='auth-password-reset'),
+    path('password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
 ]
