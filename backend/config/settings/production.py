@@ -6,6 +6,7 @@ ALLOWED_HOSTS = [os.environ['ALLOWED_HOST']]
 
 _frontend_url = os.environ.get('FRONTEND_URL', '')
 CORS_ALLOWED_ORIGINS = [_frontend_url] if _frontend_url else []
+CORS_ALLOW_CREDENTIALS = True
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

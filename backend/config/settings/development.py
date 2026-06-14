@@ -7,10 +7,16 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
-# Use in-memory email in dev — no real emails sent
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
-# Use local filesystem for media in dev — no Azure needed
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
+
+SIMPLE_JWT = {
+    **SIMPLE_JWT,
+    'AUTH_COOKIE_SECURE': False,
+}
+
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

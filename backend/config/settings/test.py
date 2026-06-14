@@ -1,16 +1,10 @@
 """
-Test settings — uses SQLite in-memory so no MySQL or env vars are required.
-Used by pytest via pytest.ini: DJANGO_SETTINGS_MODULE = config.settings.test
+Test settings — SQLite in-memory, no external services required.
 """
-import os
-from pathlib import Path
+from datetime import timedelta
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-SECRET_KEY = 'test-secret-key-scaffold-sprint-zero-only'
-
+SECRET_KEY = 'test-secret-key-not-for-production'
 DEBUG = True
-
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -22,7 +16,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -38,6 +34,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
+
+AUTH_USER_MODEL = 'accounts.User'
 
 TEMPLATES = [
     {
@@ -55,7 +53,6 @@ TEMPLATES = [
     },
 ]
 
-# SQLite in-memory — no MySQL needed
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -63,19 +60,18 @@ DATABASES = {
     }
 }
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Nairobi'
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'accounts.authentication.CookieJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -85,9 +81,25 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'config.exceptions.custom_exception_handler',
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_COOKIE': 'access_token',
+    'AUTH_COOKIE_REFRESH': 'refresh_token',
+    'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_SAMESITE': 'Lax',
+}
+
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@cbcguidance.co.ke'
 
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = '/tmp/cbc-test-media'
 MEDIA_URL = '/media/'
+
+FRONTEND_URL = 'http://localhost:5173'
+
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
