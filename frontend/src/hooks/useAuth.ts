@@ -16,8 +16,7 @@ export function useAuth() {
         if (!cancelled) clearUser()
       })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [setUser, clearUser])
 
   return { user, isAuthenticated, isLoading }
 }

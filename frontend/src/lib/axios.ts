@@ -1,4 +1,8 @@
-import axios from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
+
+interface RetryConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean
+}
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
@@ -32,7 +36,7 @@ const processQueue = (error: unknown) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config as any
+    const originalRequest = error.config as RetryConfig
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
