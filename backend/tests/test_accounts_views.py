@@ -138,3 +138,90 @@ class TestStudentRegistration:
             'school_code': 'NYE-001',
         }, format='json')
         assert response.status_code == 400
+
+
+@pytest.mark.django_db
+class TestLogin:
+    def test_login_returns_200_and_sets_cookies(self, client):
+        from tests.factories import UserFactory
+        user = UserFactory(email='login@test.com', is_email_verified=True)
+        response = client.post('/api/v1/auth/login/', {
+            'email': 'login@test.com',
+            'password': 'TestPass123!',
+        }, format='json')
+        assert response.status_code == 200
+        assert 'access_token' in response.cookies
+        assert 'refresh_token' in response.cookies
+        assert response.cookies['access_token']['httponly'] is True
+
+    def test_login_returns_user_data(self, client):
+        from tests.factories import UserFactory
+        UserFactory(email='me@test.com', role='student', is_email_verified=True)
+        response = client.post('/api/v1/auth/login/', {
+            'email': 'me@test.com', 'password': 'TestPass123!',
+        }, format='json')
+        assert response.data['data']['user']['role'] == 'student'
+
+    def test_login_wrong_password_returns_401(self, client):
+        from tests.factories import UserFactory
+        UserFactory(email='wrong@test.com')
+        response = client.post('/api/v1/auth/login/', {
+            'email': 'wrong@test.com', 'password': 'WrongPass!',
+        }, format='json')
+        assert response.status_code == 401
+
+    def test_login_nonexistent_email_returns_401(self, client):
+        response = client.post('/api/v1/auth/login/', {
+            'email': 'nobody@test.com', 'password': 'TestPass123!',
+        }, format='json')
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestLogout:
+    def test_logout_clears_cookies(self, client):
+        from tests.factories import UserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = UserFactory(email='logout@test.com')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        client.cookies['refresh_token'] = str(refresh)
+        response = client.post('/api/v1/auth/logout/')
+        assert response.status_code == 200
+        assert response.cookies['access_token'].value == ''
+        assert response.cookies['refresh_token'].value == ''
+
+
+@pytest.mark.django_db
+class TestTokenRefresh:
+    def test_refresh_sets_new_access_cookie(self, client):
+        from tests.factories import UserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = UserFactory(email='refresh@test.com')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['refresh_token'] = str(refresh)
+        response = client.post('/api/v1/auth/token/refresh/')
+        assert response.status_code == 200
+        assert 'access_token' in response.cookies
+
+    def test_refresh_without_cookie_returns_401(self, client):
+        response = client.post('/api/v1/auth/token/refresh/')
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestMeView:
+    def test_me_returns_user_data(self, client):
+        from tests.factories import UserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = UserFactory(email='me2@test.com', role='counselor', is_email_verified=True)
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.get('/api/v1/auth/me/')
+        assert response.status_code == 200
+        assert response.data['data']['user']['email'] == 'me2@test.com'
+        assert response.data['data']['user']['role'] == 'counselor'
+
+    def test_me_unauthenticated_returns_401(self, client):
+        response = client.get('/api/v1/auth/me/')
+        assert response.status_code == 401
