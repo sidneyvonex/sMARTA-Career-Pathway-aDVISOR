@@ -157,7 +157,7 @@ class VerifyEmailView(APIView):
             payload = load_email_verify_token(token)
             user = User.objects.get(pk=payload['user_id'])
             user.is_email_verified = True
-            user.save(update_fields=['is_email_verified', 'updated_at'])
+            user.save(update_fields=['is_email_verified'])
             return _success(message='Email verified successfully.')
         except (TokenExpiredError, TokenInvalidError):
             return _error('Invalid or expired verification link.')
@@ -199,6 +199,8 @@ class PasswordResetConfirmView(APIView):
     def post(self, request):
         token = request.data.get('token', '')
         password = request.data.get('password', '')
+        if not password:
+            return _error('Password is required.')
         User = get_user_model()
         try:
             payload = load_password_reset_token(token)
@@ -212,5 +214,5 @@ class PasswordResetConfirmView(APIView):
         except DjangoValidationError as e:
             return _error(e.messages, status.HTTP_400_BAD_REQUEST)
         user.set_password(password)
-        user.save(update_fields=['password', 'updated_at'])
+        user.save(update_fields=['password'])
         return _success(message='Password reset successfully.')
