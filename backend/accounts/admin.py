@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User
+from .models import User, School, StudentProfile
 
 
 @admin.register(User)
@@ -23,3 +23,16 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('email', 'password1', 'password2', 'role', 'county', 'first_name', 'last_name'),
         }),
     )
+
+
+@admin.register(School)
+class SchoolAdmin(admin.ModelAdmin):
+    list_display = ('name', 'county', 'school_code', 'created_at')
+    search_fields = ('name', 'school_code')
+    list_filter = ('county',)
+
+
+@admin.register(StudentProfile)
+class StudentProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'mode', 'school', 'grade')
+    list_filter = ('mode', 'grade')

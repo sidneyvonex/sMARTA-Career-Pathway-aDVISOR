@@ -64,3 +64,44 @@ class TestUserModel:
             county=None,
         )
         assert admin.county is None
+
+
+from accounts.models import School, StudentProfile
+
+
+@pytest.mark.django_db
+class TestSchoolModel:
+    def test_create_school(self):
+        school = School.objects.create(
+            name='Kiambu High School',
+            county='kiambu',
+            school_code='KIA-001',
+        )
+        assert school.school_code == 'KIA-001'
+        assert str(school) == 'Kiambu High School (KIA-001)'
+
+    def test_school_code_is_unique(self):
+        School.objects.create(name='School A', county='kiambu', school_code='KIA-001')
+        with pytest.raises(Exception):
+            School.objects.create(name='School B', county='kiambu', school_code='KIA-001')
+
+
+@pytest.mark.django_db
+class TestStudentProfile:
+    def test_create_self_guided_profile(self):
+        user = User.objects.create_user(
+            email='s@test.com', password='Pass123!', role='student', county='nyeri'
+        )
+        profile = StudentProfile.objects.create(user=user, mode='self_guided', grade=9)
+        assert profile.mode == 'self_guided'
+        assert profile.school is None
+        assert str(profile) == 's@test.com - Grade 9'
+
+    def test_create_school_linked_profile(self):
+        user = User.objects.create_user(
+            email='s2@test.com', password='Pass123!', role='student', county='kiambu'
+        )
+        school = School.objects.create(name='Test School', county='kiambu', school_code='KIA-002')
+        profile = StudentProfile.objects.create(user=user, mode='school_linked', grade=10, school=school)
+        assert profile.school == school
+        assert profile.mode == 'school_linked'

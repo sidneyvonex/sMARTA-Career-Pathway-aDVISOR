@@ -39,3 +39,27 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+
+class School(models.Model):
+    name = models.CharField(max_length=200)
+    county = models.CharField(max_length=20, choices=COUNTY_CHOICES)
+    school_code = models.CharField(max_length=20, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.school_code})"
+
+
+class StudentProfile(models.Model):
+    MODE_CHOICES = [('self_guided', 'Self-Guided'), ('school_linked', 'School-Linked')]
+    GRADE_CHOICES = [(9, 'Grade 9'), (10, 'Grade 10')]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES)
+    school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True)
+    grade = models.IntegerField(choices=GRADE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} - Grade {self.grade}"
