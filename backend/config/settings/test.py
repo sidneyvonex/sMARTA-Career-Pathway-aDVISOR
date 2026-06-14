@@ -2,6 +2,7 @@
 Test settings — SQLite in-memory, no external services required.
 """
 from datetime import timedelta
+import tempfile
 
 SECRET_KEY = 'test-secret-key-not-for-production'
 DEBUG = True
@@ -89,6 +90,7 @@ SIMPLE_JWT = {
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
     'AUTH_COOKIE_SECURE': False,
+    'AUTH_COOKIE_HTTPONLY': True,
     'AUTH_COOKIE_SAMESITE': 'Lax',
 }
 
@@ -96,7 +98,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@cbcguidance.co.ke'
 
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-MEDIA_ROOT = '/tmp/cbc-test-media'
+MEDIA_ROOT = tempfile.mkdtemp(prefix='cbc-test-')
 MEDIA_URL = '/media/'
 
 FRONTEND_URL = 'http://localhost:5173'

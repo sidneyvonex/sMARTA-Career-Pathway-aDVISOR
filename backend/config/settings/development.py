@@ -7,6 +7,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'

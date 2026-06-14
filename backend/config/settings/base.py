@@ -115,6 +115,7 @@ SIMPLE_JWT = {
     'AUTH_COOKIE': 'access_token',
     'AUTH_COOKIE_REFRESH': 'refresh_token',
     'AUTH_COOKIE_SECURE': True,
+    'AUTH_COOKIE_HTTPONLY': True,
     'AUTH_COOKIE_SAMESITE': 'Lax',
 }
 
@@ -130,7 +131,7 @@ AZURE_ACCOUNT_KEY = os.environ.get('AZURE_STORAGE_ACCOUNT_KEY', '')
 AZURE_CUSTOM_DOMAIN = os.environ.get('AZURE_CDN_DOMAIN', '')
 MEDIA_URL = f'https://{AZURE_CUSTOM_DOMAIN}/' if os.environ.get('AZURE_CDN_DOMAIN') else '/media/'
 
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', '')
 
 CORS_ALLOW_CREDENTIALS = True
 
