@@ -44,7 +44,7 @@ class TestSchoolFactory:
         from tests.factories import SchoolFactory
         school = SchoolFactory()
         assert school.pk is not None
-        assert school.county in ('kiambu', 'muranga', 'nyeri', 'kirinyaga', 'nyandarua')
+        assert school.county == 'kiambu'
 
     def test_school_codes_are_unique(self):
         from tests.factories import SchoolFactory

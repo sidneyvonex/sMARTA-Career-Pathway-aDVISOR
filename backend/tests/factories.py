@@ -13,9 +13,10 @@ class UserFactory(factory.django.DjangoModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     role = 'student'
+    # Automatically None for system_admin; explicit county= override takes precedence
     county = factory.LazyAttribute(lambda o: None if o.role == 'system_admin' else 'kiambu')
     is_email_verified = False
-    password = factory.PostGenerationMethodCall('set_password', 'TestPass123!')
+    password = factory.django.Password('TestPass123!')
 
 
 class VerifiedUserFactory(UserFactory):
@@ -38,4 +39,4 @@ class StudentProfileFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory, role='student')
     mode = 'self_guided'
     school = None
-    grade = 9
+    grade = factory.Iterator([9, 10])
