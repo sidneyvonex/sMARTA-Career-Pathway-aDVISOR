@@ -4,14 +4,18 @@ import { authApi } from '../api/auth'
 
 export default function VerifyEmailPage() {
   const [sent, setSent] = useState(false)
+  const [resending, setResending] = useState(false)
 
   const resend = async () => {
+    setResending(true)
     try {
       await authApi.resendVerification()
       setSent(true)
       toast.success('Verification email sent.')
     } catch {
       toast.error('Could not resend. Please try again.')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -22,8 +26,8 @@ export default function VerifyEmailPage() {
       {!sent && (
         <p>
           Didn't receive it?{' '}
-          <button onClick={resend} style={{ background: 'none', border: 'none', color: '#006B3F', cursor: 'pointer', fontWeight: 500, fontSize: '1rem', padding: 0 }}>
-            Resend verification email
+          <button onClick={resend} disabled={resending} style={{ background: 'none', border: 'none', color: '#006B3F', cursor: resending ? 'not-allowed' : 'pointer', fontWeight: 500, fontSize: '1rem', padding: 0 }}>
+            {resending ? 'Sending…' : 'Resend verification email'}
           </button>
         </p>
       )}

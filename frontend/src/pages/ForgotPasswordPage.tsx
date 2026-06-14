@@ -5,14 +5,18 @@ import { authApi } from '../api/auth'
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
     try {
       await authApi.requestPasswordReset(email)
       setSubmitted(true)
     } catch {
       toast.error('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -34,9 +38,9 @@ export default function ForgotPasswordPage() {
           <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.75rem', border: '1px solid #E0E0E0', borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box' }} />
         </div>
-        <button type="submit"
-          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff', border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>
-          Send reset link
+        <button type="submit" disabled={loading}
+          style={{ width: '100%', padding: '0.875rem', background: '#006B3F', color: '#fff', border: 'none', borderRadius: 6, fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', minHeight: 44 }}>
+          {loading ? 'Sending…' : 'Send reset link'}
         </button>
       </form>
     </main>
