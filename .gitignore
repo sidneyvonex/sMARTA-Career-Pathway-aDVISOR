@@ -14,12 +14,17 @@ build/
 .coverage
 htmlcov/
 .mypy_cache/
+*.log
+pip-log.txt
+celerybeat-schedule
+.coverage*
 
 # Django
 backend/.env
 backend/staticfiles/
 backend/media/
 *.sqlite3
+db.sqlite3
 
 # Node
 node_modules/
@@ -28,6 +33,8 @@ frontend/.env
 frontend/.env.local
 frontend/.env.production.local
 frontend/.env.development.local
+npm-debug.log*
+yarn-error.log*
 
 # IDE
 .vscode/
@@ -36,3 +43,6 @@ frontend/.env.development.local
 *.swo
 .DS_Store
 Thumbs.db
+
+# OS
+._*
