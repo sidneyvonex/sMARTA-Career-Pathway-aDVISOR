@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-cd /home/site/wwwroot/backend
-
 # Apply pending migrations
 python manage.py migrate --noinput
 
