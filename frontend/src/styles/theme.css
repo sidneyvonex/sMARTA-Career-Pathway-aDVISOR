@@ -1,0 +1,153 @@
+/* Kenyan national flag palette — adapted for a modern teen-facing UI.
+   Green and red are brand/accent only. Neutral base avoids flag-on-every-screen fatigue. */
+
+:root {
+  /* Brand */
+  --color-primary: #006B3F;
+  --color-primary-hover: #00944F;
+  --color-primary-dark: #004D2D;
+  --color-primary-surface: #E6F4EE;
+
+  /* Accent (use sparingly — CTAs, badges, errors) */
+  --color-accent: #CE1126;
+  --color-accent-hover: #E8192E;
+  --color-accent-surface: #FDE8EB;
+
+  /* Neutrals */
+  --color-text: #1A1A1A;
+  --color-text-secondary: #5A5A5A;
+  --color-text-disabled: #9E9E9E;
+  --color-background: #F8F9FA;
+  --color-surface: #FFFFFF;
+  --color-border: #E0E0E0;
+  --color-divider: #F0F0F0;
+
+  /* Semantic */
+  --color-success: #006B3F;
+  --color-success-surface: #E6F4EE;
+  --color-error: #CE1126;
+  --color-error-surface: #FDE8EB;
+  --color-warning: #D97706;
+  --color-warning-surface: #FEF3C7;
+  --color-info: #1D4ED8;
+  --color-info-surface: #EFF6FF;
+
+  /* Typography */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Touch targets — WCAG 2.5.5 minimum 44x44px */
+  --min-touch-target: 44px;
+
+  /* Z-index scale */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+button,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+label[for] {
+  min-height: var(--min-touch-target);
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+}
