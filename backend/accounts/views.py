@@ -4,6 +4,8 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -36,6 +38,7 @@ def _error(message, status_code=status.HTTP_400_BAD_REQUEST):
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='10/h', method='POST', block=True))
     def post(self, request):
         serializer = StudentRegistrationSerializer(data=request.data)
         if not serializer.is_valid():
@@ -83,6 +86,7 @@ def _clear_auth_cookies(response):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='5/15m', method='POST', block=True))
     def post(self, request):
         email = request.data.get('email', '').lower().strip()
         password = request.data.get('password', '')
@@ -171,6 +175,7 @@ class VerifyEmailView(APIView):
 class ResendVerificationView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(ratelimit(key='user', rate='3/h', method='POST', block=True))
     def post(self, request):
         if request.user.is_email_verified:
             return _error('Email is already verified.')
@@ -183,6 +188,7 @@ class ResendVerificationView(APIView):
 class PasswordResetView(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='5/h', method='POST', block=True))
     def post(self, request):
         email = request.data.get('email', '').lower().strip()
         User = get_user_model()
