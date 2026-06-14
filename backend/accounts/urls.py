@@ -11,4 +11,7 @@ urlpatterns = [
     path('resend-verification/', views.ResendVerificationView.as_view(), name='auth-resend-verification'),
     path('password-reset/', views.PasswordResetView.as_view(), name='auth-password-reset'),
     path('password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
+    path('invite/', views.InviteStaffView.as_view(), name='auth-invite-staff'),
+    path('invite-parent/', views.InviteParentView.as_view(), name='auth-invite-parent'),
+    path('accept-invite/', views.AcceptInviteView.as_view(), name='auth-accept-invite'),
 ]

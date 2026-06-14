@@ -14,10 +14,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
-from .emails import send_verification_email, send_password_reset_email
+from .emails import send_verification_email, send_password_reset_email, send_staff_invite_email, send_parent_invite_email
+from .permissions import IsStudent, IsSystemAdmin
 from .serializers import StudentRegistrationSerializer, UserSerializer
 from .tokens import (
     load_email_verify_token, make_password_reset_token, load_password_reset_token,
+    make_invite_token, load_invite_token,
+    make_parent_invite_token, load_parent_invite_token,
     TokenExpiredError, TokenInvalidError,
 )
 
@@ -216,3 +219,101 @@ class PasswordResetConfirmView(APIView):
         user.set_password(password)
         user.save(update_fields=['password'])
         return _success(message='Password reset successfully.')
+
+
+class InviteStaffView(APIView):
+    permission_classes = [IsAuthenticated, IsSystemAdmin]
+
+    def post(self, request):
+        email = request.data.get('email', '').lower().strip()
+        role = request.data.get('role', '')
+        if not email:
+            return _error('Email is required.')
+        if role not in ('counselor', 'school_admin'):
+            return _error('Role must be counselor or school_admin.')
+        User = get_user_model()
+        if User.objects.filter(email=email).exists():
+            return _error('An account with this email already exists.')
+        send_staff_invite_email.delay(invitee_email=email, role=role)
+        return _success(
+            message=f'Invite sent to {email}.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class InviteParentView(APIView):
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def post(self, request):
+        parent_email = request.data.get('parent_email', '').lower().strip()
+        if not parent_email:
+            return _error('Parent email is required.')
+        student = request.user
+        student_name = f'{student.first_name} {student.last_name}'.strip() or student.email
+        send_parent_invite_email.delay(
+            student_id=student.id,
+            parent_email=parent_email,
+            student_name=student_name,
+        )
+        return _success(
+            message=f'Invite sent to {parent_email}.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class AcceptInviteView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token', '')
+        password = request.data.get('password', '')
+        first_name = request.data.get('first_name', '')
+        last_name = request.data.get('last_name', '')
+        county = request.data.get('county', '')
+        invite_type = request.data.get('invite_type', 'staff')
+
+        if not password:
+            return _error('Password is required.')
+
+        User = get_user_model()
+
+        try:
+            if invite_type == 'parent':
+                payload = load_parent_invite_token(token)
+                email = payload['email']
+                student_id = payload['student_id']
+                role = 'parent'
+            else:
+                payload = load_invite_token(token)
+                email = payload['email']
+                role = payload['role']
+                student_id = None
+        except (TokenExpiredError, TokenInvalidError):
+            return _error('Invalid or expired invite link.')
+
+        if User.objects.filter(email=email).exists():
+            return _error('An account with this email already exists.')
+
+        try:
+            validate_password(password)
+        except DjangoValidationError as e:
+            return _error(e.messages)
+
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            county=county or None,
+            is_email_verified=True,
+        )
+
+        refresh = RefreshToken.for_user(user)
+        response = _success(
+            data={'user': UserSerializer(user).data},
+            message='Account created successfully.',
+            status_code=status.HTTP_201_CREATED,
+        )
+        _set_auth_cookies(response, str(refresh.access_token), str(refresh))
+        return response

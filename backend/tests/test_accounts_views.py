@@ -292,3 +292,113 @@ class TestPasswordReset:
             'password': 'NewSecurePass456!',
         }, format='json')
         assert response.status_code == 400
+
+
+from accounts.tokens import make_invite_token, make_parent_invite_token
+
+
+@pytest.mark.django_db
+class TestStaffInvite:
+    def _auth_client(self, user):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        c = APIClient()
+        token = RefreshToken.for_user(user)
+        c.cookies['access_token'] = str(token.access_token)
+        return c
+
+    def test_system_admin_can_invite_counselor(self):
+        from tests.factories import SystemAdminFactory
+        admin = SystemAdminFactory()
+        c = self._auth_client(admin)
+        response = c.post('/api/v1/auth/invite/', {
+            'email': 'newcounselor@school.co.ke',
+            'role': 'counselor',
+        }, format='json')
+        assert response.status_code == 201
+
+    def test_system_admin_invite_sends_email(self, mailoutbox):
+        from tests.factories import SystemAdminFactory
+        admin = SystemAdminFactory()
+        c = self._auth_client(admin)
+        c.post('/api/v1/auth/invite/', {
+            'email': 'c2@school.co.ke', 'role': 'school_admin',
+        }, format='json')
+        assert len(mailoutbox) == 1
+        assert 'c2@school.co.ke' in mailoutbox[0].to
+
+    def test_non_admin_cannot_invite(self):
+        from tests.factories import UserFactory
+        counselor = UserFactory(role='counselor', county='kiambu')
+        c = self._auth_client(counselor)
+        response = c.post('/api/v1/auth/invite/', {
+            'email': 'x@test.com', 'role': 'counselor',
+        }, format='json')
+        assert response.status_code == 403
+
+    def test_accept_staff_invite_creates_user(self, client):
+        token = make_invite_token('newstaff@school.co.ke', 'counselor')
+        response = client.post('/api/v1/auth/accept-invite/', {
+            'token': token,
+            'password': 'NewPass123!',
+            'first_name': 'Sarah',
+            'last_name': 'K',
+            'county': 'nyeri',
+        }, format='json')
+        assert response.status_code == 201
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.get(email='newstaff@school.co.ke')
+        assert user.role == 'counselor'
+        assert user.is_email_verified is True
+
+    def test_accept_invalid_invite_token_returns_400(self, client):
+        response = client.post('/api/v1/auth/accept-invite/', {
+            'token': 'badtoken',
+            'password': 'NewPass123!',
+            'first_name': 'X',
+            'last_name': 'Y',
+            'county': 'kiambu',
+        }, format='json')
+        assert response.status_code == 400
+
+
+@pytest.mark.django_db
+class TestParentInvite:
+    def _auth_student(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from tests.factories import StudentProfileFactory
+        profile = StudentProfileFactory()
+        c = APIClient()
+        token = RefreshToken.for_user(profile.user)
+        c.cookies['access_token'] = str(token.access_token)
+        return c, profile.user
+
+    def test_student_can_invite_parent(self, mailoutbox):
+        c, student = self._auth_student()
+        response = c.post('/api/v1/auth/invite-parent/', {
+            'parent_email': 'parent@test.com',
+        }, format='json')
+        assert response.status_code == 201
+
+    def test_parent_invite_sends_email(self, mailoutbox):
+        c, student = self._auth_student()
+        c.post('/api/v1/auth/invite-parent/', {'parent_email': 'p@test.com'}, format='json')
+        assert len(mailoutbox) == 1
+
+    def test_accept_parent_invite_creates_linked_parent(self, client):
+        from tests.factories import StudentProfileFactory
+        profile = StudentProfileFactory()
+        token = make_parent_invite_token(profile.user.id, 'parent@test.com')
+        response = client.post('/api/v1/auth/accept-invite/', {
+            'token': token,
+            'password': 'ParentPass123!',
+            'first_name': 'Mary',
+            'last_name': 'W',
+            'county': 'kiambu',
+            'invite_type': 'parent',
+        }, format='json')
+        assert response.status_code == 201
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        parent = User.objects.get(email='parent@test.com')
+        assert parent.role == 'parent'

@@ -32,6 +32,12 @@ class SchoolFactory(factory.django.DjangoModelFactory):
     school_code = factory.Sequence(lambda n: f'SCH{n:04d}')
 
 
+class SystemAdminFactory(UserFactory):
+    role = 'system_admin'
+    county = None
+    is_email_verified = True
+
+
 class StudentProfileFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = StudentProfile
