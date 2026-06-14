@@ -49,7 +49,4 @@ def _load(token, salt, max_age):
     except signing.BadSignature:
         raise TokenInvalidError('Token is invalid or tampered.')
     except Exception as exc:
-        msg = str(exc)
-        if 'age' in msg and 'seconds' in msg:
-            raise TokenExpiredError('Token has expired.')
-        raise TokenInvalidError('Token could not be decoded.')
+        raise TokenInvalidError('Token could not be decoded.') from exc

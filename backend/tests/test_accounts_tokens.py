@@ -18,7 +18,8 @@ class TestEmailVerifyToken:
         assert payload['user_id'] == 42
 
     def test_expired_token_raises(self):
-        with patch('accounts.tokens.signing.loads', side_effect=Exception('Signature age 99999 > 86400 seconds')):
+        from django.core import signing as django_signing
+        with patch('accounts.tokens.signing.loads', side_effect=django_signing.SignatureExpired('expired')):
             with pytest.raises(TokenExpiredError):
                 load_email_verify_token('any-token')
 
