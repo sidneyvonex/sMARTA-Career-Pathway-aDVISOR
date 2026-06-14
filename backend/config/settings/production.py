@@ -4,9 +4,8 @@ import os
 DEBUG = False
 ALLOWED_HOSTS = [os.environ['ALLOWED_HOST']]
 
-CORS_ALLOWED_ORIGINS = [
-    os.environ['FRONTEND_URL'],
-]
+_frontend_url = os.environ.get('FRONTEND_URL', '')
+CORS_ALLOWED_ORIGINS = [_frontend_url] if _frontend_url else []
 
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
