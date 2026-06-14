@@ -1,10 +1,16 @@
+import logging
+
 from django.contrib.auth import authenticate
 from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
 
 from .emails import send_verification_email
 from .serializers import StudentRegistrationSerializer, UserSerializer
@@ -60,8 +66,9 @@ def _set_auth_cookies(response, access_token: str, refresh_token: str):
 
 
 def _clear_auth_cookies(response):
-    response.delete_cookie('access_token')
-    response.delete_cookie('refresh_token', path='/api/v1/auth/token/refresh/')
+    samesite = settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax')
+    response.delete_cookie('access_token', samesite=samesite)
+    response.delete_cookie('refresh_token', path='/api/v1/auth/token/refresh/', samesite=samesite)
 
 
 class LoginView(APIView):
@@ -93,8 +100,10 @@ class LogoutView(APIView):
             try:
                 token = RefreshToken(refresh_token)
                 token.blacklist()
-            except Exception:
+            except TokenError:
                 pass
+            except Exception:
+                logger.exception('Unexpected error during token blacklisting on logout')
         response = _success(message='Logged out successfully.')
         _clear_auth_cookies(response)
         return response
@@ -109,14 +118,19 @@ class TokenRefreshView(APIView):
         )
         if not refresh_cookie:
             return _error('Refresh token not found.', status.HTTP_401_UNAUTHORIZED)
+        serializer = TokenRefreshSerializer(data={'refresh': refresh_cookie})
         try:
-            refresh = RefreshToken(refresh_cookie)
-            access_token = str(refresh.access_token)
-            new_refresh = str(refresh)
+            serializer.is_valid(raise_exception=True)
+        except TokenError as e:
+            return _error(str(e), status.HTTP_401_UNAUTHORIZED)
         except Exception:
             return _error('Invalid or expired refresh token.', status.HTTP_401_UNAUTHORIZED)
         response = _success(message='Token refreshed.')
-        _set_auth_cookies(response, access_token, new_refresh)
+        _set_auth_cookies(
+            response,
+            access_token=serializer.validated_data['access'],
+            refresh_token=serializer.validated_data.get('refresh', refresh_cookie),
+        )
         return response
 
 
