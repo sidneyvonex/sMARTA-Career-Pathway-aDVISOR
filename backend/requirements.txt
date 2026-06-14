@@ -11,3 +11,4 @@ reportlab==4.2.2
 celery==5.4.0
 gunicorn==23.0.0
 django-ratelimit==4.1.0
+factory-boy==3.3.3
