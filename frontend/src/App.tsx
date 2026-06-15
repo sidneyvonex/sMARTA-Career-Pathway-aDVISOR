@@ -31,8 +31,9 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={
           <main style={{ padding: '2rem', textAlign: 'center' }}>
-            <h1>Smarta Shauri</h1>
-            <p>Helping Kenyan students find their path.</p>
+            <img src="/logo.png" alt="Smarta Shauri" style={{ width: '80px', margin: '0 auto 1rem' }} />
+            <h1 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Smarta Shauri</h1>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Discover. Plan. Choose. Succeed.</p>
           </main>
         } />
       </Route>
@@ -54,8 +55,8 @@ export default function App() {
           position="top-right"
           toastOptions={{
             style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
-            success: { iconTheme: { primary: '#006B3F', secondary: '#fff' } },
-            error: { iconTheme: { primary: '#CE1126', secondary: '#fff' } },
+            success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
+            error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
           }}
         />
       </BrowserRouter>
