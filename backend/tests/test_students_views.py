@@ -1,7 +1,10 @@
+import io
 import pytest
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import VerifiedUserFactory, UserFactory, StudentProfileFactory
+from PIL import Image
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 
 @pytest.fixture
@@ -70,5 +73,64 @@ class TestStudentProfileView:
         verified_profile.save()
         c = make_auth_client(verified_profile.user)
         c.patch('/api/v1/students/profile/', {'photo_url': 'https://evil.com/photo.jpg'}, format='json')
+        verified_profile.refresh_from_db()
+        assert verified_profile.photo_url is None
+
+
+def _make_image_bytes(fmt='JPEG', width=50, height=50):
+    img = Image.new('RGB', (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format=fmt)
+    return buf.getvalue()
+
+
+@pytest.mark.django_db
+class TestPhotoUploadView:
+    def test_upload_valid_jpeg_returns_200(self, verified_profile):
+        c = make_auth_client(verified_profile.user)
+        image_bytes = _make_image_bytes('JPEG')
+        photo = SimpleUploadedFile('photo.jpg', image_bytes, content_type='image/jpeg')
+        response = c.post('/api/v1/students/profile/photo/', {'photo': photo}, format='multipart')
+        assert response.status_code == 200
+        assert 'photo_url' in response.data['data']
+        verified_profile.refresh_from_db()
+        assert verified_profile.photo_url is not None
+
+    def test_upload_valid_png_returns_200(self, verified_profile):
+        c = make_auth_client(verified_profile.user)
+        image_bytes = _make_image_bytes('PNG')
+        photo = SimpleUploadedFile('photo.png', image_bytes, content_type='image/png')
+        response = c.post('/api/v1/students/profile/photo/', {'photo': photo}, format='multipart')
+        assert response.status_code == 200
+
+    def test_upload_non_image_rejected(self, verified_profile):
+        c = make_auth_client(verified_profile.user)
+        fake = SimpleUploadedFile('file.txt', b'not an image', content_type='text/plain')
+        response = c.post('/api/v1/students/profile/photo/', {'photo': fake}, format='multipart')
+        assert response.status_code == 400
+        assert (
+            'JPEG' in response.data['message']
+            or 'PNG' in response.data['message']
+            or 'Invalid image file' in response.data['message']
+        )
+
+    def test_upload_oversized_file_rejected(self, verified_profile):
+        c = make_auth_client(verified_profile.user)
+        big = SimpleUploadedFile('big.jpg', b'x' * (5 * 1024 * 1024 + 1), content_type='image/jpeg')
+        response = c.post('/api/v1/students/profile/photo/', {'photo': big}, format='multipart')
+        assert response.status_code == 400
+        assert '5MB' in response.data['message']
+
+    def test_no_file_returns_400(self, verified_profile):
+        c = make_auth_client(verified_profile.user)
+        response = c.post('/api/v1/students/profile/photo/', {}, format='multipart')
+        assert response.status_code == 400
+
+    def test_delete_photo_clears_photo_url(self, verified_profile):
+        verified_profile.photo_url = 'https://example.com/photo.jpg'
+        verified_profile.save()
+        c = make_auth_client(verified_profile.user)
+        response = c.delete('/api/v1/students/profile/photo/')
+        assert response.status_code == 200
         verified_profile.refresh_from_db()
         assert verified_profile.photo_url is None
