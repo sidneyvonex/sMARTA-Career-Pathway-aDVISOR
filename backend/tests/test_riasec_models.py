@@ -1,4 +1,5 @@
 import pytest
+from django.db import IntegrityError
 
 
 @pytest.mark.django_db
@@ -45,3 +46,49 @@ class TestPathwayModel:
                 pathway.weight_s + pathway.weight_e + pathway.weight_c, 10
             )
             assert total == 1.0, f'{pathway.name} weights sum to {total}, expected 1.0'
+
+
+@pytest.mark.django_db
+class TestRIASECAssessmentConstraints:
+    def test_duplicate_response_raises_integrity_error(self):
+        from riasec.models import RIASECQuestion, RIASECAssessment, RIASECResponse
+        from tests.factories import StudentProfileFactory, VerifiedUserFactory
+        user = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=user, grade=9)
+        assessment = RIASECAssessment.objects.create(student_profile=profile)
+        question = RIASECQuestion.objects.first()
+        RIASECResponse.objects.create(assessment=assessment, question=question, score=3)
+        with pytest.raises(IntegrityError):
+            RIASECResponse.objects.create(assessment=assessment, question=question, score=4)
+
+    def test_duplicate_score_raises_integrity_error(self):
+        from riasec.models import RIASECAssessment, RIASECScore
+        from tests.factories import StudentProfileFactory, VerifiedUserFactory
+        user = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=user, grade=9)
+        assessment = RIASECAssessment.objects.create(student_profile=profile)
+        RIASECScore.objects.create(assessment=assessment, dimension='R', raw_score=18)
+        with pytest.raises(IntegrityError):
+            RIASECScore.objects.create(assessment=assessment, dimension='R', raw_score=20)
+
+    def test_deleting_assessment_cascades_to_responses_scores_recommendations(self):
+        from riasec.models import (
+            RIASECAssessment, RIASECResponse, RIASECScore, Recommendation, Pathway,
+            RIASECQuestion,
+        )
+        from tests.factories import StudentProfileFactory, VerifiedUserFactory
+        user = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=user, grade=9)
+        assessment = RIASECAssessment.objects.create(student_profile=profile)
+        question = RIASECQuestion.objects.first()
+        pathway = Pathway.objects.first()
+        RIASECResponse.objects.create(assessment=assessment, question=question, score=3)
+        RIASECScore.objects.create(assessment=assessment, dimension='R', raw_score=15)
+        Recommendation.objects.create(
+            assessment=assessment, pathway=pathway, rank=1, fit_score=18.25, fit_pct=73
+        )
+        aid = assessment.pk
+        assessment.delete()
+        assert RIASECResponse.objects.filter(assessment_id=aid).count() == 0
+        assert RIASECScore.objects.filter(assessment_id=aid).count() == 0
+        assert Recommendation.objects.filter(assessment_id=aid).count() == 0

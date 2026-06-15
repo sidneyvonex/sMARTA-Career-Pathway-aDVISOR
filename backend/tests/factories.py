@@ -2,6 +2,7 @@ import factory
 from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
 from students.models import Subject, StudentSubject, CBCGrade
+from riasec.models import RIASECAssessment
 
 User = get_user_model()
 
@@ -76,3 +77,10 @@ class CBCGradeFactory(factory.django.DjangoModelFactory):
     term = 1
     year = 2026
     level = 'ME1'
+
+
+class RIASECAssessmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RIASECAssessment
+
+    student_profile = factory.SubFactory(StudentProfileFactory, grade=9)
