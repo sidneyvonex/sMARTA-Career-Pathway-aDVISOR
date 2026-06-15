@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'storages',
     'anymail',
     'accounts',
+    'students',
 ]
 
 MIDDLEWARE = [
