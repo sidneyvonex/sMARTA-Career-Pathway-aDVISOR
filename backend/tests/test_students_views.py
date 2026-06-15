@@ -209,3 +209,79 @@ class TestMySubjectListView:
         response = c.post(f'/api/v1/students/my-subjects/{ss.pk}/remove/', {'confirm': True}, format='json')
         assert response.status_code == 200
         assert not StudentSubject.objects.filter(pk=ss.pk).exists()
+
+
+from tests.factories import StudentSubjectFactory, CBCGradeFactory
+
+
+@pytest.fixture
+def enrolled_subject(verified_profile):
+    subject = Subject.objects.get(code='MTH9')
+    return StudentSubjectFactory(student_profile=verified_profile, subject=subject)
+
+
+@pytest.mark.django_db
+class TestCBCGradeViews:
+    def test_add_grade_returns_201(self, verified_profile, enrolled_subject):
+        c = make_auth_client(verified_profile.user)
+        response = c.post(
+            f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/',
+            {'term': 1, 'year': 2026, 'level': 'ME1'},
+            format='json',
+        )
+        assert response.status_code == 201
+        assert response.data['data']['level'] == 'ME1'
+
+    def test_list_grades_returns_200(self, verified_profile, enrolled_subject):
+        CBCGradeFactory(student_subject=enrolled_subject, term=1, year=2026, level='EE1')
+        c = make_auth_client(verified_profile.user)
+        response = c.get(f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/')
+        assert response.status_code == 200
+        assert len(response.data['data']) == 1
+
+    def test_duplicate_term_year_returns_400(self, verified_profile, enrolled_subject):
+        CBCGradeFactory(student_subject=enrolled_subject, term=2, year=2026, level='ME2')
+        c = make_auth_client(verified_profile.user)
+        response = c.post(
+            f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/',
+            {'term': 2, 'year': 2026, 'level': 'AE1'},
+            format='json',
+        )
+        assert response.status_code == 400
+
+    def test_invalid_year_returns_400(self, verified_profile, enrolled_subject):
+        c = make_auth_client(verified_profile.user)
+        response = c.post(
+            f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/',
+            {'term': 1, 'year': 1990, 'level': 'ME1'},
+            format='json',
+        )
+        assert response.status_code == 400
+
+    def test_update_grade_returns_200(self, verified_profile, enrolled_subject):
+        grade = CBCGradeFactory(student_subject=enrolled_subject, term=3, year=2026, level='AE1')
+        c = make_auth_client(verified_profile.user)
+        response = c.put(
+            f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/{grade.pk}/',
+            {'term': 3, 'year': 2026, 'level': 'ME1'},
+            format='json',
+        )
+        assert response.status_code == 200
+        assert response.data['data']['level'] == 'ME1'
+
+    def test_delete_grade_returns_200(self, verified_profile, enrolled_subject):
+        from students.models import CBCGrade
+        grade = CBCGradeFactory(student_subject=enrolled_subject, term=1, year=2025, level='BE1')
+        c = make_auth_client(verified_profile.user)
+        response = c.delete(
+            f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/{grade.pk}/'
+        )
+        assert response.status_code == 200
+        assert not CBCGrade.objects.filter(pk=grade.pk).exists()
+
+    def test_cannot_access_other_students_grades(self, db, enrolled_subject):
+        other_user = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=other_user, grade=9)
+        c = make_auth_client(other_user)
+        response = c.get(f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/')
+        assert response.status_code == 404

@@ -155,11 +155,70 @@ class MySubjectRemoveView(APIView):
 
 class CBCGradeListView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
-    def get(self, request, subject_pk): return _success()
-    def post(self, request, subject_pk): return _success()
+
+    def _get_student_subject(self, pk, user):
+        profile = StudentProfile.objects.get(user=user)
+        return StudentSubject.objects.get(pk=pk, student_profile=profile)
+
+    def get(self, request, subject_pk):
+        try:
+            ss = self._get_student_subject(subject_pk, request.user)
+        except StudentSubject.DoesNotExist:
+            return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
+        grades = CBCGrade.objects.filter(student_subject=ss)
+        return _success(data=CBCGradeSerializer(grades, many=True).data)
+
+    def post(self, request, subject_pk):
+        try:
+            ss = self._get_student_subject(subject_pk, request.user)
+        except StudentSubject.DoesNotExist:
+            return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
+        serializer = CBCGradeSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        if CBCGrade.objects.filter(
+            student_subject=ss,
+            term=serializer.validated_data['term'],
+            year=serializer.validated_data['year'],
+        ).exists():
+            return _error('A grade for this subject, term, and year already exists.')
+        grade = serializer.save(student_subject=ss)
+        return _success(
+            data=CBCGradeSerializer(grade).data,
+            message='Grade added.',
+            status_code=status.HTTP_201_CREATED,
+        )
 
 
 class CBCGradeDetailView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
-    def put(self, request, subject_pk, grade_pk): return _success()
-    def delete(self, request, subject_pk, grade_pk): return _success()
+
+    def _get_grade(self, subject_pk, grade_pk, user):
+        profile = StudentProfile.objects.get(user=user)
+        ss = StudentSubject.objects.get(pk=subject_pk, student_profile=profile)
+        return CBCGrade.objects.get(pk=grade_pk, student_subject=ss)
+
+    def put(self, request, subject_pk, grade_pk):
+        try:
+            grade = self._get_grade(subject_pk, grade_pk, request.user)
+        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+        serializer = CBCGradeSerializer(grade, data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        new_term = serializer.validated_data.get('term', grade.term)
+        new_year = serializer.validated_data.get('year', grade.year)
+        if CBCGrade.objects.filter(
+            student_subject=grade.student_subject, term=new_term, year=new_year
+        ).exclude(pk=grade.pk).exists():
+            return _error('A grade for this subject, term, and year already exists.')
+        serializer.save()
+        return _success(data=serializer.data, message='Grade updated.')
+
+    def delete(self, request, subject_pk, grade_pk):
+        try:
+            grade = self._get_grade(subject_pk, grade_pk, request.user)
+        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+        grade.delete()
+        return _success(message='Grade deleted.')
