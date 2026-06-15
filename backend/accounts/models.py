@@ -59,6 +59,10 @@ class StudentProfile(models.Model):
     mode = models.CharField(max_length=20, choices=MODE_CHOICES)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True)
     grade = models.IntegerField(choices=GRADE_CHOICES)
+    bio = models.TextField(blank=True, default='')
+    date_of_birth = models.DateField(null=True, blank=True)
+    career_interests = models.TextField(blank=True, default='')
+    photo_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
