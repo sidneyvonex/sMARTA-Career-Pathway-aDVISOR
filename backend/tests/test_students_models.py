@@ -68,3 +68,25 @@ class TestStudentSubjectConstraints:
         CBCGrade.objects.create(student_subject=ss, term=1, year=2026, level='ME1')
         with pytest.raises(IntegrityError):
             CBCGrade.objects.create(student_subject=ss, term=1, year=2026, level='EE1')
+
+
+@pytest.mark.django_db
+class TestSubjectSeed:
+    def test_grade9_subjects_seeded(self):
+        from students.models import Subject
+        assert Subject.objects.filter(grade=9).count() == 14
+
+    def test_grade10_subjects_seeded(self):
+        from students.models import Subject
+        assert Subject.objects.filter(grade=10).count() == 14
+
+    def test_math_grade9_exists(self):
+        from students.models import Subject
+        s = Subject.objects.get(code='MTH9')
+        assert s.name == 'Mathematics'
+        assert s.category == 'Core'
+
+    def test_optional_subject_exists(self):
+        from students.models import Subject
+        s = Subject.objects.get(code='FRN9')
+        assert s.category == 'Optional'
