@@ -46,3 +46,9 @@ Thumbs.db
 
 # OS
 ._*
+
+# AI assistant files — not for version control
+CLAUDE.md
+.claude/
+.superpowers/
+docs/superpowers/

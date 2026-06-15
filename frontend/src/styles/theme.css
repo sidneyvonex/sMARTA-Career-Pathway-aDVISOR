@@ -1,17 +1,21 @@
-/* Kenyan national flag palette — adapted for a modern teen-facing UI.
-   Green and red are brand/accent only. Neutral base avoids flag-on-every-screen fatigue. */
+/* Smarta Shauri brand palette — dark forest green + gold from logo.
+   Green is the primary brand. Gold accent for highlights and CTAs. */
 
 :root {
-  /* Brand */
-  --color-primary: #006B3F;
-  --color-primary-hover: #00944F;
-  --color-primary-dark: #004D2D;
-  --color-primary-surface: #E6F4EE;
+  /* Brand — dark forest green (bulb outline in logo) */
+  --color-primary: #1A5C38;
+  --color-primary-hover: #22743F;
+  --color-primary-dark: #0F3B22;
+  --color-primary-surface: #E8F5EE;
 
-  /* Accent (use sparingly — CTAs, badges, errors) */
-  --color-accent: #CE1126;
-  --color-accent-hover: #E8192E;
-  --color-accent-surface: #FDE8EB;
+  /* Brand secondary — light green (hills in logo) */
+  --color-primary-light: #6CC26A;
+  --color-primary-light-surface: #F0FAF0;
+
+  /* Accent — gold/amber (rays + graduation cap in logo) */
+  --color-accent: #D4A012;
+  --color-accent-hover: #E8B420;
+  --color-accent-surface: #FEF8E7;
 
   /* Neutrals */
   --color-text: #1A1A1A;
@@ -23,12 +27,12 @@
   --color-divider: #F0F0F0;
 
   /* Semantic */
-  --color-success: #006B3F;
-  --color-success-surface: #E6F4EE;
-  --color-error: #CE1126;
-  --color-error-surface: #FDE8EB;
-  --color-warning: #D97706;
-  --color-warning-surface: #FEF3C7;
+  --color-success: #1A5C38;
+  --color-success-surface: #E8F5EE;
+  --color-error: #B91C1C;
+  --color-error-surface: #FEE2E2;
+  --color-warning: #D4A012;
+  --color-warning-surface: #FEF8E7;
   --color-info: #1D4ED8;
   --color-info-surface: #EFF6FF;
 
