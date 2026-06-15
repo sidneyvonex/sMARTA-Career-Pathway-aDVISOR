@@ -3,6 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsStudent, IsEmailVerified
+from accounts.models import StudentProfile
+from .models import Subject, StudentSubject, CBCGrade
+from .serializers import (
+    StudentProfileSerializer, SubjectSerializer,
+    StudentSubjectSerializer, CBCGradeSerializer,
+)
 
 
 def _success(data=None, message='', status_code=status.HTTP_200_OK):
@@ -15,8 +21,18 @@ def _error(message, status_code=status.HTTP_400_BAD_REQUEST):
 
 class StudentProfileView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
-    def get(self, request): return _success()
-    def patch(self, request): return _success()
+
+    def get(self, request):
+        profile = StudentProfile.objects.select_related('user', 'school').get(user=request.user)
+        return _success(data=StudentProfileSerializer(profile).data)
+
+    def patch(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        serializer = StudentProfileSerializer(profile, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        serializer.save()
+        return _success(data=serializer.data, message='Profile updated.')
 
 
 class PhotoUploadView(APIView):
