@@ -64,3 +64,11 @@ class TestStudentProfileView:
         c = make_auth_client(user)
         response = c.get('/api/v1/students/profile/')
         assert response.status_code == 403
+
+    def test_patch_cannot_change_photo_url(self, verified_profile):
+        verified_profile.photo_url = None
+        verified_profile.save()
+        c = make_auth_client(verified_profile.user)
+        c.patch('/api/v1/students/profile/', {'photo_url': 'https://evil.com/photo.jpg'}, format='json')
+        verified_profile.refresh_from_db()
+        assert verified_profile.photo_url is None

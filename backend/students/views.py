@@ -27,7 +27,7 @@ class StudentProfileView(APIView):
         return _success(data=StudentProfileSerializer(profile).data)
 
     def patch(self, request):
-        profile = StudentProfile.objects.get(user=request.user)
+        profile = StudentProfile.objects.select_related('user').get(user=request.user)
         serializer = StudentProfileSerializer(profile, data=request.data, partial=True)
         if not serializer.is_valid():
             return _error(serializer.errors)
