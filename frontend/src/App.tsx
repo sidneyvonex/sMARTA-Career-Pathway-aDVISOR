@@ -9,6 +9,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import { useAuth } from './hooks/useAuth'
+import StudentProfilePage from './pages/StudentProfilePage'
+import GradesPage from './pages/GradesPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -29,10 +31,15 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={
           <main style={{ padding: '2rem', textAlign: 'center' }}>
-            <h1>CBC Career Guidance</h1>
+            <h1>Smarta Shauri</h1>
             <p>Helping Kenyan students find their path.</p>
           </main>
         } />
+      </Route>
+
+      <Route element={<ProtectedRoute roles={['student']} />}>
+        <Route path="/profile" element={<StudentProfilePage />} />
+        <Route path="/grades" element={<GradesPage />} />
       </Route>
     </Routes>
   )
