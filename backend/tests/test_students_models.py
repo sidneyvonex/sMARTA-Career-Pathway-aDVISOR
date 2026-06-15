@@ -90,3 +90,26 @@ class TestSubjectSeed:
         from students.models import Subject
         s = Subject.objects.get(code='FRN9')
         assert s.category == 'Optional'
+
+
+@pytest.mark.django_db
+class TestFactories:
+    def test_subject_factory_creates_subject(self):
+        from tests.factories import SubjectFactory
+        s = SubjectFactory()
+        assert s.pk is not None
+        assert s.grade == 9
+
+    def test_student_subject_factory_creates_enrollment(self):
+        from tests.factories import StudentSubjectFactory
+        ss = StudentSubjectFactory()
+        assert ss.pk is not None
+        assert ss.student_profile.grade == ss.subject.grade
+
+    def test_cbc_grade_factory_creates_grade(self):
+        from tests.factories import CBCGradeFactory
+        g = CBCGradeFactory()
+        assert g.pk is not None
+        assert g.level == 'ME1'
+        assert g.term == 1
+        assert g.year == 2026

@@ -1,6 +1,7 @@
 import factory
 from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
+from students.models import Subject, StudentSubject, CBCGrade
 
 User = get_user_model()
 
@@ -46,3 +47,32 @@ class StudentProfileFactory(factory.django.DjangoModelFactory):
     mode = 'self_guided'
     school = None
     grade = factory.Iterator([9, 10])
+
+
+class SubjectFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Subject
+        django_get_or_create = ('code',)
+
+    name = factory.Sequence(lambda n: f'Subject {n}')
+    code = factory.Sequence(lambda n: f'TST{n:04d}9')
+    grade = 9
+    category = 'Core'
+
+
+class StudentSubjectFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = StudentSubject
+
+    student_profile = factory.SubFactory(StudentProfileFactory, grade=9)
+    subject = factory.SubFactory(SubjectFactory, grade=9)
+
+
+class CBCGradeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CBCGrade
+
+    student_subject = factory.SubFactory(StudentSubjectFactory)
+    term = 1
+    year = 2026
+    level = 'ME1'
