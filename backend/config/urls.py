@@ -12,4 +12,5 @@ urlpatterns = [
     path('health/', health_check, name='health-check'),
     path('api/v1/auth/', include('accounts.urls')),
     path('api/v1/students/', include('students.urls')),
+    path('api/v1/students/assessment/', include('riasec.urls')),
 ]

@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'anymail',
     'accounts',
     'students',
+    'riasec',
 ]
 
 MIDDLEWARE = [
