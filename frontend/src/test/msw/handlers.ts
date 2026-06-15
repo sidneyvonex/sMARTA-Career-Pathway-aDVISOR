@@ -119,4 +119,55 @@ export const handlers = [
       error: null, message: 'Grade added.',
     }, { status: 201 })
   }),
+
+  // Assessment
+  http.get('/api/v1/students/assessment/questions/', () => {
+    const questions = Array.from({ length: 30 }, (_, i) => ({
+      id: i + 1,
+      dimension: (['R', 'I', 'A', 'S', 'E', 'C'] as const)[i % 6],
+      text: `Test question ${i + 1}`,
+      order: i + 1,
+    }))
+    return HttpResponse.json({ data: questions, error: null, message: '' })
+  }),
+
+  http.post('/api/v1/students/assessment/', () => {
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        submitted_at: '2026-06-15T10:30:00Z',
+        holland_code: 'IRE',
+        scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
+        recommendations: [
+          { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+        ],
+      },
+      error: null,
+      message: 'Assessment complete.',
+    }, { status: 201 })
+  }),
+
+  http.get('/api/v1/students/assessment/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
+
+  http.get('/api/v1/students/assessment/latest/', () => {
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        submitted_at: '2026-06-15T10:30:00Z',
+        holland_code: 'IRE',
+        scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
+        recommendations: [
+          { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+        ],
+      },
+      error: null,
+      message: '',
+    })
+  }),
 ]
