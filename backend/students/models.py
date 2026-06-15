@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from accounts.models import StudentProfile
 
@@ -16,7 +17,10 @@ GRADE_LEVEL_CHOICES = [
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
-    grade = models.IntegerField(choices=[(9, 'Grade 9'), (10, 'Grade 10')])
+    grade = models.IntegerField(
+        choices=[(9, 'Grade 9'), (10, 'Grade 10')],
+        validators=[MinValueValidator(9), MaxValueValidator(10)],
+    )
     category = models.CharField(max_length=50)
 
     class Meta:

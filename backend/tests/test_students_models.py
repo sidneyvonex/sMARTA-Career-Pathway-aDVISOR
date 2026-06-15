@@ -1,4 +1,5 @@
 import pytest
+from django.db import IntegrityError
 from accounts.models import StudentProfile
 
 
@@ -34,9 +35,6 @@ class TestStudentProfileBioFields:
         profile.refresh_from_db()
         assert profile.date_of_birth == datetime.date(2010, 3, 15)
         assert profile.photo_url == 'https://cdn.example.com/photo.jpg'
-
-
-from django.db import IntegrityError
 
 
 @pytest.mark.django_db
