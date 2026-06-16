@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
+import Navbar from './components/layout/Navbar'
+import NotificationDrawer from './components/notifications/NotificationDrawer'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
@@ -9,6 +11,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import { useAuth } from './hooks/useAuth'
+import { useNotificationPoll } from './hooks/useNotificationPoll'
 import StudentProfilePage from './pages/StudentProfilePage'
 import GradesPage from './pages/GradesPage'
 import AssessmentPage from './pages/AssessmentPage'
@@ -20,33 +23,38 @@ const queryClient = new QueryClient({
 
 function AppRoutes() {
   useAuth()
+  useNotificationPoll()
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/accept-invite" element={<AcceptInvitePage />} />
+    <>
+      <Navbar />
+      <NotificationDrawer />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route path="/" element={
-          <main style={{ padding: '2rem', textAlign: 'center' }}>
-            <img src="/logo.png" alt="Smarta Shauri" style={{ width: '80px', margin: '0 auto 1rem' }} />
-            <h1 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Smarta Shauri</h1>
-            <p style={{ color: 'var(--color-text-secondary)' }}>Discover. Plan. Choose. Succeed.</p>
-          </main>
-        } />
-      </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={
+            <main style={{ padding: '2rem', textAlign: 'center' }}>
+              <img src="/logo.png" alt="Smarta Shauri" style={{ width: '80px', margin: '0 auto 1rem' }} />
+              <h1 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Smarta Shauri</h1>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Discover. Plan. Choose. Succeed.</p>
+            </main>
+          } />
+        </Route>
 
-      <Route element={<ProtectedRoute roles={['student']} />}>
-        <Route path="/profile" element={<StudentProfilePage />} />
-        <Route path="/grades" element={<GradesPage />} />
-        <Route path="/assessment" element={<AssessmentPage />} />
-        <Route path="/assessment/results" element={<AssessmentResultsPage />} />
-      </Route>
-    </Routes>
+        <Route element={<ProtectedRoute roles={['student']} />}>
+          <Route path="/profile" element={<StudentProfilePage />} />
+          <Route path="/grades" element={<GradesPage />} />
+          <Route path="/assessment" element={<AssessmentPage />} />
+          <Route path="/assessment/results" element={<AssessmentResultsPage />} />
+        </Route>
+      </Routes>
+    </>
   )
 }
 

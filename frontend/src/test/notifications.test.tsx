@@ -8,6 +8,7 @@ import { useNotificationStore } from '../store/notificationStore'
 import { useAuthStore } from '../store/authStore'
 import { useNotificationPoll } from '../hooks/useNotificationPoll'
 import Navbar from '../components/layout/Navbar'
+import NotificationDrawer from '../components/notifications/NotificationDrawer'
 
 function makeWrapper(client: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -92,5 +93,66 @@ describe('Navbar', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: /notifications/i }))
     expect(useNotificationStore.getState().drawerOpen).toBe(true)
+  })
+})
+
+describe('NotificationDrawer', () => {
+  let qc: QueryClient
+
+  beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    useNotificationStore.setState({ drawerOpen: false, unreadCount: 0 })
+  })
+
+  afterEach(() => {
+    qc.clear()
+  })
+
+  function renderDrawer(open: boolean) {
+    useNotificationStore.setState({ drawerOpen: open, unreadCount: 0 })
+    return render(
+      createElement(QueryClientProvider, { client: qc },
+        createElement(NotificationDrawer)
+      )
+    )
+  }
+
+  it('is hidden when closed', () => {
+    renderDrawer(false)
+    const drawer = document.querySelector('.notification-drawer')
+    expect(drawer).not.toHaveClass('open')
+  })
+
+  it('is visible when open', () => {
+    renderDrawer(true)
+    const drawer = document.querySelector('.notification-drawer')
+    expect(drawer).toHaveClass('open')
+  })
+
+  it('shows notification messages when open', async () => {
+    renderDrawer(true)
+    expect(await screen.findByText('Your RIASEC assessment results are ready.')).toBeInTheDocument()
+  })
+
+  it('closes when close button is clicked', async () => {
+    renderDrawer(true)
+    await userEvent.click(screen.getByRole('button', { name: /close/i }))
+    expect(useNotificationStore.getState().drawerOpen).toBe(false)
+  })
+
+  it('shows "Mark all as read" button when there are unread notifications', async () => {
+    renderDrawer(true)
+    expect(await screen.findByRole('button', { name: /mark all as read/i })).toBeInTheDocument()
+  })
+
+  it('fires toast.success on mark-all success', async () => {
+    const toastMod = await import('react-hot-toast')
+    const successFn = vi.mocked(toastMod.default.success)
+    successFn.mockClear()
+    renderDrawer(true)
+    await userEvent.click(await screen.findByRole('button', { name: /mark all as read/i }))
+    await waitFor(() => {
+      expect(successFn).toHaveBeenCalledWith('All notifications marked as read.')
+    })
   })
 })
