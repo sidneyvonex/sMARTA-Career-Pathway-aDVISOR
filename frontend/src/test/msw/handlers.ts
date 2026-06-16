@@ -170,4 +170,50 @@ export const handlers = [
       message: '',
     })
   }),
+
+  // Notifications
+  http.get('/api/v1/notifications/', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 1,
+          type: 'assessment_submitted',
+          message: 'Your RIASEC assessment results are ready.',
+          read: false,
+          created_at: '2026-06-16T10:00:00Z',
+        },
+        {
+          id: 2,
+          type: 'counselor_note',
+          message: 'Your counselor left a note on your profile.',
+          read: true,
+          created_at: '2026-06-15T09:00:00Z',
+        },
+      ],
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get('/api/v1/notifications/unread-count/', () => {
+    return HttpResponse.json({ data: { count: 1 }, error: null, message: '' })
+  }),
+
+  http.patch('/api/v1/notifications/:id/read/', ({ params }) => {
+    return HttpResponse.json({
+      data: {
+        id: Number(params.id),
+        type: 'assessment_submitted',
+        message: 'Your RIASEC assessment results are ready.',
+        read: true,
+        created_at: '2026-06-16T10:00:00Z',
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.post('/api/v1/notifications/mark-all-read/', () => {
+    return HttpResponse.json({ data: null, error: null, message: 'All notifications marked as read.' })
+  }),
 ]
