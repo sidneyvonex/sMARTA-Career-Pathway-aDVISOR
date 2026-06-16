@@ -1,0 +1,19 @@
+[extend]
+# Start from the default ruleset
+useDefault = true
+
+[allowlist]
+description = "Known safe patterns in this repo"
+regexes = [
+  # factory_boy Password() helper — not a real credential
+  '''factory\.django\.Password\(''',
+  # Django test create_user calls in TestUserModel (testing the model itself, not using factories)
+  '''create_user\(.*email=.*@.*\.com.*password=.*TestPass''',
+  # Django create_superuser in tests
+  '''create_superuser\(.*password=.*Pass''',
+]
+paths = [
+  # Migrations are auto-generated and never contain real secrets
+  '''backend/accounts/migrations/''',
+  '''backend/.*/migrations/''',
+]
