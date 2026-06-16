@@ -11,7 +11,7 @@
 .assessment-card {
   width: 100%;
   max-width: 640px;
-  background: #fff;
+  background: var(--color-white, #fff);
   border-radius: var(--radius-lg, 12px);
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   padding: var(--space-6, 1.5rem);
@@ -84,7 +84,7 @@
 .likert-btn.selected {
   background: var(--color-primary, #1A5C38);
   border-color: var(--color-primary, #1A5C38);
-  color: #fff;
+  color: var(--color-white, #fff);
 }
 .likert-btn-number {
   font-size: var(--font-size-base, 1rem);
@@ -200,7 +200,7 @@
 }
 .recommendation-card.rank-1 .recommendation-rank {
   background: var(--color-primary, #1A5C38);
-  color: #fff;
+  color: var(--color-white, #fff);
 }
 .recommendation-name {
   font-weight: 700;
