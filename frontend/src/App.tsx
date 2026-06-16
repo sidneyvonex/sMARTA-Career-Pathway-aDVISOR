@@ -11,6 +11,8 @@ import AcceptInvitePage from './pages/AcceptInvitePage'
 import { useAuth } from './hooks/useAuth'
 import StudentProfilePage from './pages/StudentProfilePage'
 import GradesPage from './pages/GradesPage'
+import AssessmentPage from './pages/AssessmentPage'
+import AssessmentResultsPage from './pages/AssessmentResultsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -41,6 +43,8 @@ function AppRoutes() {
       <Route element={<ProtectedRoute roles={['student']} />}>
         <Route path="/profile" element={<StudentProfilePage />} />
         <Route path="/grades" element={<GradesPage />} />
+        <Route path="/assessment" element={<AssessmentPage />} />
+        <Route path="/assessment/results" element={<AssessmentResultsPage />} />
       </Route>
     </Routes>
   )
