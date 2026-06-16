@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
 from students.models import Subject, StudentSubject, CBCGrade
 from riasec.models import RIASECAssessment
+from notifications.models import Notification
 
 User = get_user_model()
 
@@ -84,3 +85,13 @@ class RIASECAssessmentFactory(factory.django.DjangoModelFactory):
         model = RIASECAssessment
 
     student_profile = factory.SubFactory(StudentProfileFactory, grade=9)
+
+
+class NotificationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Notification
+
+    user = factory.SubFactory(VerifiedUserFactory)
+    type = 'assessment_submitted'
+    message = 'Your RIASEC assessment results are ready.'
+    read = False
