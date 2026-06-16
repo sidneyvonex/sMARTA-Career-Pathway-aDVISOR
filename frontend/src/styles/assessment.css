@@ -91,7 +91,7 @@
   font-weight: 700;
 }
 .likert-btn-label {
-  font-size: 0.65rem;
+  font-size: var(--font-size-xs, 0.7rem);
   text-align: center;
   line-height: 1.2;
   color: inherit;

@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
 from accounts.models import StudentProfile
 from accounts.permissions import IsStudent, IsEmailVerified
 from .models import (
@@ -60,29 +61,30 @@ class AssessmentView(APIView):
         ))
         pathway_fits = compute_pathway_fits(dim_scores, pathways)
 
-        assessment = RIASECAssessment.objects.create(student_profile=profile)
+        with transaction.atomic():
+            assessment = RIASECAssessment.objects.create(student_profile=profile)
 
-        RIASECResponse.objects.bulk_create([
-            RIASECResponse(assessment=assessment, question_id=qid, score=score)
-            for qid, score in responses.items()
-        ])
+            RIASECResponse.objects.bulk_create([
+                RIASECResponse(assessment=assessment, question_id=qid, score=score)
+                for qid, score in responses.items()
+            ])
 
-        RIASECScore.objects.bulk_create([
-            RIASECScore(assessment=assessment, dimension=dim, raw_score=score)
-            for dim, score in dim_scores.items()
-        ])
+            RIASECScore.objects.bulk_create([
+                RIASECScore(assessment=assessment, dimension=dim, raw_score=score)
+                for dim, score in dim_scores.items()
+            ])
 
-        pathway_objs = {p.id: p for p in Pathway.objects.all()}
-        Recommendation.objects.bulk_create([
-            Recommendation(
-                assessment=assessment,
-                pathway=pathway_objs[fit['pathway']['id']],
-                rank=fit['rank'],
-                fit_score=fit['fit_score'],
-                fit_pct=fit['fit_pct'],
-            )
-            for fit in pathway_fits
-        ])
+            pathway_objs = {p.id: p for p in Pathway.objects.all()}
+            Recommendation.objects.bulk_create([
+                Recommendation(
+                    assessment=assessment,
+                    pathway=pathway_objs[fit['pathway']['id']],
+                    rank=fit['rank'],
+                    fit_score=fit['fit_score'],
+                    fit_pct=fit['fit_pct'],
+                )
+                for fit in pathway_fits
+            ])
 
         assessment = (
             RIASECAssessment.objects

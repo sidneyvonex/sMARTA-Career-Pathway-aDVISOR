@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import AssessmentStep from '../components/assessment/AssessmentStep'
 import { assessmentApi } from '../api/assessment'
@@ -30,6 +30,7 @@ function clearDraft() {
 
 export default function AssessmentPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [pageIndex, setPageIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>(loadDraft)
 
@@ -43,6 +44,7 @@ export default function AssessmentPage() {
     mutationFn: (responses: ResponseItem[]) => assessmentApi.submitAssessment(responses),
     onSuccess: () => {
       clearDraft()
+      queryClient.invalidateQueries({ queryKey: ['assessment-latest'] })
       toast.success('Assessment complete!')
       navigate('/assessment/results')
     },
@@ -108,7 +110,14 @@ export default function AssessmentPage() {
         <p className="assessment-progress-label">
           Page {pageIndex + 1} of {TOTAL_PAGES}
         </p>
-        <div className="assessment-progress-bar">
+        <div
+          className="assessment-progress-bar"
+          role="progressbar"
+          aria-valuenow={pageIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={TOTAL_PAGES}
+          aria-label={`Page ${pageIndex + 1} of ${TOTAL_PAGES}`}
+        >
           <div className="assessment-progress-fill" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
@@ -128,6 +137,7 @@ export default function AssessmentPage() {
               className="btn-ghost"
               onClick={handleBack}
               disabled={submitMutation.isPending}
+              style={{ minHeight: 'var(--min-touch-target, 44px)' }}
             >
               ← Back
             </button>
