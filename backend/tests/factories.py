@@ -26,6 +26,16 @@ class VerifiedUserFactory(UserFactory):
     is_email_verified = True
 
 
+class CounselorFactory(UserFactory):
+    role = 'counselor'
+    is_email_verified = True
+
+
+class ParentFactory(UserFactory):
+    role = 'parent'
+    is_email_verified = True
+
+
 class SchoolFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = School

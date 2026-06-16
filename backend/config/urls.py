@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/v1/students/', include('students.urls')),
     path('api/v1/students/assessment/', include('riasec.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
+    path('api/v1/counselors/', include('counselors.urls')),
 ]
