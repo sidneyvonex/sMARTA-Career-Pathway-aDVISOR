@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { notificationsApi } from '../api/notifications'
 import { useNotificationStore } from '../store/notificationStore'
+import { useAuthStore } from '../store/authStore'
 
 export function useNotificationPoll() {
+  const { isAuthenticated } = useAuthStore()
   const { setUnreadCount } = useNotificationStore()
   const prevCountRef = useRef<number | undefined>(undefined)
 
@@ -12,7 +14,8 @@ export function useNotificationPoll() {
     queryKey: ['notification-unread-count'],
     queryFn: () =>
       notificationsApi.getUnreadCount().then((r) => r.data.data.count),
-    refetchInterval: 60_000,
+    refetchInterval: isAuthenticated ? 60_000 : false,
+    enabled: isAuthenticated,
   })
 
   useEffect(() => {

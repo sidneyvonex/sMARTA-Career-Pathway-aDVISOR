@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from notifications.models import Notification
 from notifications.utils import create_notification
-from tests.factories import VerifiedUserFactory, NotificationFactory
+from tests.factories import UserFactory, VerifiedUserFactory, NotificationFactory
 
 User = get_user_model()
 
@@ -147,3 +147,20 @@ class TestMarkAllReadView:
         NotificationFactory(user=other, read=False)
         self.client.post('/api/v1/notifications/mark-all-read/')
         assert Notification.objects.filter(user=other, read=False).count() == 1
+
+
+@pytest.mark.django_db
+class TestNotificationPermissions:
+    def setup_method(self):
+        self.client = APIClient()
+        # Unverified user (is_email_verified=False)
+        self.user = UserFactory(role='student', county='kiambu')
+        self.client.force_authenticate(user=self.user)
+
+    def test_unverified_user_cannot_list_notifications(self):
+        res = self.client.get('/api/v1/notifications/')
+        assert res.status_code == 403
+
+    def test_unverified_user_cannot_get_unread_count(self):
+        res = self.client.get('/api/v1/notifications/unread-count/')
+        assert res.status_code == 403

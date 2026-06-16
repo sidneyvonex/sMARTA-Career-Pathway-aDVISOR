@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from accounts.permissions import IsEmailVerified
 from .models import Notification
 from .serializers import NotificationSerializer
 
@@ -15,7 +16,7 @@ def _error(message, status_code=status.HTTP_400_BAD_REQUEST):
 
 
 class NotificationListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request):
         notifications = (
@@ -27,7 +28,7 @@ class NotificationListView(APIView):
 
 
 class UnreadCountView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request):
         count = Notification.objects.filter(user=request.user, read=False).count()
@@ -35,7 +36,7 @@ class UnreadCountView(APIView):
 
 
 class NotificationReadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def patch(self, request, pk):
         try:
@@ -48,7 +49,7 @@ class NotificationReadView(APIView):
 
 
 class MarkAllReadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def post(self, request):
         Notification.objects.filter(user=request.user, read=False).update(read=True)

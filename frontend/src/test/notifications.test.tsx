@@ -26,6 +26,7 @@ describe('useNotificationPoll', () => {
   beforeEach(() => {
     qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     useNotificationStore.setState({ unreadCount: 0, drawerOpen: false })
+    useAuthStore.setState({ isAuthenticated: true, user: null, isEmailVerified: false, isLoading: false })
   })
 
   afterEach(() => {

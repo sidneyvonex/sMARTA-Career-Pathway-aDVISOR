@@ -127,7 +127,6 @@ export default function NotificationDrawer() {
               <button
                 className="notification-item__btn"
                 onClick={() => handleItemClick(notif)}
-                style={{ all: 'unset', display: 'flex', width: '100%', gap: 'var(--space-2, 0.5rem)', alignItems: 'flex-start', cursor: notif.read ? 'default' : 'pointer' }}
                 aria-label={notif.read ? undefined : `Mark as read: ${notif.message}`}
               >
                 {!notif.read && <span className="notification-item__dot" aria-hidden="true" />}

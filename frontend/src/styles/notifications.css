@@ -260,3 +260,23 @@
   color: var(--color-text-secondary, #5a5a5a);
   font-size: 0.875rem;
 }
+
+.notification-item__btn {
+  all: unset;
+  display: flex;
+  width: 100%;
+  gap: var(--space-2, 0.5rem);
+  align-items: flex-start;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.notification-item__btn:focus-visible {
+  outline: 2px solid var(--color-accent, #D4A012);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.notification-item:not(.unread) .notification-item__btn {
+  cursor: default;
+}
