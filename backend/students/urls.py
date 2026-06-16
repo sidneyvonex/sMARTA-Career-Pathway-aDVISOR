@@ -3,6 +3,7 @@ from .views import (
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
+    StudentCounselorView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
         CBCGradeDetailView.as_view(),
         name='cbc-grade-detail',
     ),
+    path('counselor/', StudentCounselorView.as_view(), name='student-counselor'),
 ]

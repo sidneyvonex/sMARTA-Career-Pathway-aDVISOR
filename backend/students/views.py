@@ -222,3 +222,10 @@ class CBCGradeDetailView(APIView):
             return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
         grade.delete()
         return _success(message='Grade deleted.')
+
+
+class StudentCounselorView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        return _success(data=None)

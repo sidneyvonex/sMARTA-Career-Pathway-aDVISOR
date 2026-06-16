@@ -2,7 +2,7 @@ import io
 import pytest
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
-from tests.factories import VerifiedUserFactory, UserFactory, StudentProfileFactory
+from tests.factories import VerifiedUserFactory, UserFactory, StudentProfileFactory, CounselorFactory
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -285,3 +285,20 @@ class TestCBCGradeViews:
         c = make_auth_client(other_user)
         response = c.get(f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/')
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestStudentCounselorView:
+    def test_returns_null_when_no_counselor_assigned(self, db):
+        user = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=user, grade=9)
+        c = make_auth_client(user)
+        response = c.get('/api/v1/students/counselor/')
+        assert response.status_code == 200
+        assert response.json()['data'] is None
+
+    def test_requires_student_role(self, db):
+        counselor = CounselorFactory()
+        c = make_auth_client(counselor)
+        response = c.get('/api/v1/students/counselor/')
+        assert response.status_code == 403
