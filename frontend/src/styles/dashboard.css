@@ -27,7 +27,7 @@
 
 /* ── Skeleton loading ─────────────────────────────── */
 .skeleton {
-  background: linear-gradient(90deg, var(--color-divider) 25%, #f0f0f0 50%, var(--color-divider) 75%);
+  background: linear-gradient(90deg, var(--color-divider) 25%, var(--color-surface) 50%, var(--color-divider) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s infinite;
   border-radius: var(--radius-md);
@@ -227,6 +227,58 @@
   flex-wrap: wrap;
 }
 
+.quick-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-5);
+  min-height: var(--min-touch-target);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.quick-actions a:active {
+  transform: scale(0.98);
+}
+
+.quick-actions a.btn-primary {
+  width: auto;
+  height: auto;
+  margin-top: 0;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.quick-actions a.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.quick-actions a.btn-ghost {
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.quick-actions a.btn-ghost:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.quick-actions a.btn-accent {
+  background: var(--color-accent-surface);
+  color: var(--color-accent);
+}
+
+.quick-actions a.btn-accent:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
 /* ── Stat cards ───────────────────────────────────── */
 .stat-cards {
   display: grid;
@@ -423,7 +475,7 @@
 
 /* ── Counselor card ───────────────────────────────── */
 .counselor-card {
-  background: #FEF8E7;
+  background: var(--color-accent-surface);
   border: 1px solid var(--color-accent-surface);
   border-radius: 13px;
   padding: var(--space-5);
@@ -640,4 +692,120 @@
   align-items: center;
   gap: var(--space-5);
   margin-bottom: var(--space-5);
+}
+
+/* ── Responsive: tablet (≤ 900px) ─────────────────── */
+@media (max-width: 900px) {
+  .greeting-strip {
+    flex-wrap: wrap;
+  }
+
+  .greeting-strip__tiles {
+    flex-direction: row;
+    width: 100%;
+    text-align: center;
+    gap: var(--space-3);
+  }
+
+  .greeting-tile {
+    flex: 1;
+  }
+
+  .child-header-card {
+    flex-wrap: wrap;
+    padding: var(--space-5);
+  }
+}
+
+/* ── Responsive: mobile (≤ 600px) ─────────────────── */
+@media (max-width: 600px) {
+  .greeting-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .greeting-strip__avatar {
+    width: 48px;
+    height: 48px;
+    font-size: var(--font-size-base);
+  }
+
+  .greeting-strip__name {
+    font-size: var(--font-size-xl);
+  }
+
+  .greeting-strip__tiles {
+    flex-direction: row;
+    width: 100%;
+    text-align: center;
+    gap: var(--space-2);
+  }
+
+  .greeting-tile {
+    flex: 1;
+    padding: var(--space-2);
+  }
+
+  .greeting-tile__value {
+    font-size: var(--font-size-base);
+  }
+
+  .journey-strip {
+    padding: var(--space-4);
+  }
+
+  .journey-strip__steps {
+    min-width: 420px;
+  }
+
+  .journey-dot {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
+  }
+
+  .journey-step::before {
+    top: 12px;
+    left: calc(-50% + 12px);
+    right: calc(50% + 12px);
+  }
+
+  .stat-cards {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .stat-card {
+    padding: var(--space-4);
+  }
+
+  .quick-actions {
+    flex-direction: column;
+  }
+
+  .quick-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dashboard-card {
+    padding: var(--space-4);
+  }
+
+  .dashboard-card__title {
+    font-size: var(--font-size-sm);
+  }
+
+  .child-header-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .counselor-card {
+    padding: var(--space-4);
+  }
 }

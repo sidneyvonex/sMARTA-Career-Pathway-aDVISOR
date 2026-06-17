@@ -353,4 +353,29 @@
   .shell__mobile-overlay--open {
     display: block;
   }
+
+  .shell__content {
+    padding: var(--space-4);
+  }
+
+  .topbar {
+    padding: 0 var(--space-4);
+    gap: var(--space-3);
+  }
+}
+
+/* ── Small mobile (≤ 400px) ──────────────────────── */
+@media (max-width: 400px) {
+  .shell__content {
+    padding: var(--space-3);
+  }
+
+  .topbar {
+    padding: 0 var(--space-3);
+    height: 48px;
+  }
+
+  .topbar__greeting-main {
+    font-size: var(--font-size-sm);
+  }
 }

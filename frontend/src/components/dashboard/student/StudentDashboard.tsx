@@ -99,10 +99,7 @@ export default function StudentDashboard() {
         <Link to="/grades" className="btn-ghost">
           Update grades
         </Link>
-        <Link
-          to="/profile"
-          style={{ display: 'inline-flex', alignItems: 'center', padding: '0 var(--space-5)', borderRadius: 'var(--radius-md)', background: 'var(--color-accent-surface)', color: 'var(--color-accent)', fontWeight: 600, fontSize: 'var(--font-size-sm)', textDecoration: 'none', minHeight: 'var(--min-touch-target)' }}
-        >
+        <Link to="/profile" className="btn-accent">
           Edit profile
         </Link>
       </div>
