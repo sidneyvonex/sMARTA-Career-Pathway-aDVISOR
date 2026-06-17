@@ -46,6 +46,13 @@ function AppRoutes() {
             <Route path="/assessment" element={<AssessmentPage />} />
             <Route path="/assessment/results" element={<AssessmentResultsPage />} />
           </Route>
+
+          <Route path="*" element={
+            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              <h2 style={{ color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Page not found</h2>
+              <p>This page doesn't exist or is coming soon.</p>
+            </div>
+          } />
         </Route>
       </Route>
     </Routes>

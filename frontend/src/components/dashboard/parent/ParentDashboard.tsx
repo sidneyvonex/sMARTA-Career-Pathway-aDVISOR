@@ -1,15 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../../store/authStore'
 import { dashboardApi } from '../../../api/dashboard'
+import { greeting } from '../../../lib/greeting'
+import { initials } from '../../../lib/format'
 import ChildHeader from './ChildHeader'
 import '../../../styles/dashboard.css'
-
-function greeting(name: string) {
-  const h = new Date().getHours()
-  if (h < 12) return `Good morning, ${name}`
-  if (h < 17) return `Good afternoon, ${name}`
-  return `Good evening, ${name}`
-}
 
 export default function ParentDashboard() {
   const { user } = useAuthStore()
@@ -22,11 +17,20 @@ export default function ParentDashboard() {
   const children = childrenQ.data ?? []
   const child = children[0] ?? null
 
+  if (childrenQ.isLoading) {
+    return (
+      <div>
+        <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
+        <div className="skeleton" style={{ height: 200, borderRadius: 13 }} />
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="greeting-strip" style={{ marginBottom: 'var(--space-5)' }} role="region" aria-label="Welcome banner">
         <div className="greeting-strip__avatar" aria-hidden="true">
-          {user ? `${user.first_name[0]}${user.last_name[0]}`.toUpperCase() : '?'}
+          {user ? initials(user.first_name, user.last_name) : '?'}
         </div>
         <div className="greeting-strip__body">
           <div className="greeting-strip__hello">{user ? greeting(user.first_name) : ''}</div>
@@ -99,7 +103,7 @@ export default function ParentDashboard() {
             No child linked to your account yet.
           </p>
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-            Parent–student links are set up in Sprint 7.
+            Contact your school to link your child's account.
           </p>
         </div>
       )}

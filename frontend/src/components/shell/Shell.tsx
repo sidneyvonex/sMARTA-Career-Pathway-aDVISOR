@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -7,6 +8,15 @@ import '../../styles/shell.css'
 
 export default function Shell() {
   const { sidebarCollapsed, mobileSidebarOpen, setMobileSidebarOpen } = useLayoutStore()
+
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileSidebarOpen])
 
   return (
     <div className={`shell${sidebarCollapsed ? ' shell--collapsed' : ''}`}>

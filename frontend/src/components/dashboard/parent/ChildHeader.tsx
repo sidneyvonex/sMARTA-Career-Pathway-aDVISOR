@@ -1,11 +1,8 @@
 import type { LinkedChild } from '../../../api/dashboard'
+import { initials } from '../../../lib/format'
 
 interface Props {
   child: LinkedChild
-}
-
-function initials(c: LinkedChild) {
-  return `${c.first_name[0] ?? ''}${c.last_name[0] ?? ''}`.toUpperCase()
 }
 
 function formatDate(iso: string | null) {
@@ -17,7 +14,7 @@ export default function ChildHeader({ child }: Props) {
   return (
     <div className="child-header-card" role="region" aria-label="Your child's overview">
       <div className="greeting-strip__avatar" style={{ width: 72, height: 72, fontSize: 'var(--font-size-xl)' }} aria-hidden="true">
-        {initials(child)}
+        {initials(child.first_name, child.last_name)}
       </div>
       <div className="greeting-strip__body">
         <div className="greeting-strip__name">{child.first_name} {child.last_name}</div>

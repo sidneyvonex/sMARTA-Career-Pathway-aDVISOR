@@ -4,22 +4,13 @@ import toast from 'react-hot-toast'
 import { notificationsApi, type Notification } from '../../api/notifications'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useAuthStore } from '../../store/authStore'
+import { formatRelativeTime } from '../../lib/format'
 
 const CHIP_LABELS: Record<string, string> = {
   counselor_note: 'From counselor',
   assessment_submitted: 'Results',
   account: 'Account',
   system: 'System',
-}
-
-function formatTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return new Date(iso).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
 }
 
 function avatarInitials(message: string) {
@@ -86,6 +77,15 @@ export default function NotificationPanel() {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen, setDrawerOpen])
 
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [drawerOpen])
+
   const all = data ?? []
   const unread = all.filter((n) => !n.read)
   const roleLabel = roleTabLabel(user?.role)
@@ -105,7 +105,6 @@ export default function NotificationPanel() {
       <aside
         className={`notification-drawer${drawerOpen ? ' open' : ''}`}
         role="dialog"
-        aria-modal="true"
         aria-label="Notifications"
       >
         {/* Header */}
@@ -124,10 +123,8 @@ export default function NotificationPanel() {
         </div>
 
         {/* Tabs */}
-        <div className="notification-panel__tabs" role="tablist">
+        <div className="notification-panel__tabs">
           <button
-            role="tab"
-            aria-selected={activeTab === 'all'}
             className={`notification-panel__tab${activeTab === 'all' ? ' notification-panel__tab--active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
@@ -137,8 +134,6 @@ export default function NotificationPanel() {
             )}
           </button>
           <button
-            role="tab"
-            aria-selected={activeTab === 'unread'}
             className={`notification-panel__tab${activeTab === 'unread' ? ' notification-panel__tab--active' : ''}`}
             onClick={() => setActiveTab('unread')}
           >
@@ -149,8 +144,6 @@ export default function NotificationPanel() {
           </button>
           {roleLabel && (
             <button
-              role="tab"
-              aria-selected={activeTab === 'role'}
               className={`notification-panel__tab${activeTab === 'role' ? ' notification-panel__tab--active' : ''}`}
               onClick={() => setActiveTab('role')}
             >
@@ -204,7 +197,7 @@ export default function NotificationPanel() {
                   >
                     {CHIP_LABELS[notif.type] ?? notif.type}
                   </span>
-                  <span className="notification-item__time">{formatTime(notif.created_at)}</span>
+                  <span className="notification-item__time">{formatRelativeTime(notif.created_at)}</span>
                 </div>
               </button>
             </li>

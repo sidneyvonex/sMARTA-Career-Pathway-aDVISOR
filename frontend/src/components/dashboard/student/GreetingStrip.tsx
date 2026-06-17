@@ -1,21 +1,12 @@
 import type { StudentProfile } from '../../../api/students'
 import type { AssessmentResult } from '../../../api/assessment'
+import { greeting } from '../../../lib/greeting'
+import { initials } from '../../../lib/format'
 
 interface Props {
   profile: StudentProfile
   latestResult: AssessmentResult | null
   subjectCount: number
-}
-
-function greeting(name: string) {
-  const h = new Date().getHours()
-  if (h < 12) return `Good morning, ${name}`
-  if (h < 17) return `Good afternoon, ${name}`
-  return `Good evening, ${name}`
-}
-
-function initials(p: StudentProfile) {
-  return `${p.first_name[0] ?? ''}${p.last_name[0] ?? ''}`.toUpperCase()
 }
 
 export default function GreetingStrip({ profile, latestResult, subjectCount }: Props) {
@@ -25,7 +16,7 @@ export default function GreetingStrip({ profile, latestResult, subjectCount }: P
   return (
     <div className="greeting-strip" role="region" aria-label="Welcome banner">
       <div className="greeting-strip__avatar" aria-hidden="true">
-        {initials(profile)}
+        {initials(profile.first_name, profile.last_name)}
       </div>
 
       <div className="greeting-strip__body">

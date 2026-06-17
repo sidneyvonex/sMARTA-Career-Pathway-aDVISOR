@@ -1,12 +1,9 @@
 import type { CounselorInfo } from '../../../api/dashboard'
 import { useNotificationStore } from '../../../store/notificationStore'
+import { initials } from '../../../lib/format'
 
 interface Props {
   counselor: CounselorInfo | null
-}
-
-function initials(c: CounselorInfo) {
-  return `${c.first_name[0] ?? ''}${c.last_name[0] ?? ''}`.toUpperCase()
 }
 
 export default function CounselorCard({ counselor }: Props) {
@@ -17,7 +14,7 @@ export default function CounselorCard({ counselor }: Props) {
       {counselor ? (
         <>
           <div className="counselor-card__header">
-            <div className="counselor-card__avatar" aria-hidden="true">{initials(counselor)}</div>
+            <div className="counselor-card__avatar" aria-hidden="true">{initials(counselor.first_name, counselor.last_name)}</div>
             <div className="counselor-card__meta">
               <div className="counselor-card__name">{counselor.first_name} {counselor.last_name}</div>
               <div className="counselor-card__role">Career Counselor</div>

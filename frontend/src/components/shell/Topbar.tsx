@@ -1,6 +1,8 @@
 import { useAuthStore } from '../../store/authStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useLayoutStore } from '../../store/layoutStore'
+import { greeting, todayLabel } from '../../lib/greeting'
+import { initials } from '../../lib/format'
 
 const BELL_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -14,29 +16,12 @@ const HAMBURGER_ICON = (
   </svg>
 )
 
-function greeting(firstName: string) {
-  const hour = new Date().getHours()
-  if (hour < 12) return `Good morning, ${firstName}`
-  if (hour < 17) return `Good afternoon, ${firstName}`
-  return `Good evening, ${firstName}`
-}
-
-function todayLabel() {
-  return new Date().toLocaleDateString('en-KE', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
-}
-
-function initials(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
-}
-
 export default function Topbar() {
   const { user } = useAuthStore()
   const { unreadCount, drawerOpen, setDrawerOpen } = useNotificationStore()
   const { setMobileSidebarOpen } = useLayoutStore()
 
-  if (!user) return null
+  if (!user) return <header className="topbar" role="banner" />
 
   return (
     <header className="topbar" role="banner">

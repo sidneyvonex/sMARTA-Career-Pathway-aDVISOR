@@ -1,16 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../../store/authStore'
 import { dashboardApi } from '../../../api/dashboard'
+import { greeting } from '../../../lib/greeting'
+import { initials } from '../../../lib/format'
 import AssessmentRing from './AssessmentRing'
 import StudentList from './StudentList'
 import '../../../styles/dashboard.css'
-
-function greeting(name: string) {
-  const h = new Date().getHours()
-  if (h < 12) return `Good morning, ${name}`
-  if (h < 17) return `Good afternoon, ${name}`
-  return `Good evening, ${name}`
-}
 
 export default function CounselorDashboard() {
   const { user } = useAuthStore()
@@ -28,11 +23,27 @@ export default function CounselorDashboard() {
   const students = studentsQ.data ?? []
   const stats = statsQ.data ?? { total_students: 0, assessments_done: 0, students_needing_attention: 0, notes_written: 0 }
 
+  if (studentsQ.isLoading || statsQ.isLoading) {
+    return (
+      <div>
+        <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
+        <div className="stat-cards">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="skeleton-card">
+              <div className="skeleton" style={{ height: 16, width: '40%' }} />
+              <div className="skeleton" style={{ height: 40 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="greeting-strip" role="region" aria-label="Welcome banner">
         <div className="greeting-strip__avatar" aria-hidden="true">
-          {user ? `${user.first_name[0]}${user.last_name[0]}`.toUpperCase() : '?'}
+          {user ? initials(user.first_name, user.last_name) : '?'}
         </div>
         <div className="greeting-strip__body">
           <div className="greeting-strip__hello">{user ? greeting(user.first_name) : ''}</div>

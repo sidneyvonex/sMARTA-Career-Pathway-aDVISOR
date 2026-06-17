@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
+import { initials } from '../../lib/format'
 import type { User } from '../../api/auth'
 
 interface NavItem {
@@ -60,15 +61,11 @@ function getNavItems(role: User['role']): NavItem[] {
   return [{ to: '/', label: 'Home', icon: ICONS.grid }]
 }
 
-function initials(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
-}
-
 export default function Sidebar() {
   const { user } = useAuthStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
 
-  if (!user) return null
+  if (!user) return <aside className="sidebar" aria-label="Main navigation" />
 
   const navItems = getNavItems(user.role)
   const collapsed = sidebarCollapsed
