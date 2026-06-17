@@ -30,7 +30,7 @@ export default function AcceptInvitePage() {
     try {
       const res = await authApi.acceptInvite({ ...form, token })
       setUser(res.data.data.user)
-      toast.success('Welcome to CBC Guidance!')
+      toast.success('Welcome to Smarta Shauri!')
       navigate('/')
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'Could not activate account. The link may have expired.')
@@ -50,7 +50,7 @@ export default function AcceptInvitePage() {
   }
 
   return (
-    <AuthLayout heading="Set up your account" subheading="You've been invited to CBC Guidance">
+    <AuthLayout heading="Set up your account" subheading="You've been invited to Smarta Shauri">
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <div className="form-field">

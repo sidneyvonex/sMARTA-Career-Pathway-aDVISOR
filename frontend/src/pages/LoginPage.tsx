@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       heading="Welcome back"
-      subheading="Sign in to your CBC Guidance account"
+      subheading="Sign in to your Smarta Shauri account"
       footer={<span>Don't have an account? <Link to="/register">Create one</Link></span>}
     >
       <form className="auth-form" onSubmit={handleSubmit}>

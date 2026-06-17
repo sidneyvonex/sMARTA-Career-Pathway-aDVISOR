@@ -49,7 +49,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       heading="Create your account"
-      subheading="Join CBC Guidance — free for all students"
+      subheading="Join Smarta Shauri — free for all students"
       footer={<span>Already have an account? <Link to="/login">Sign in</Link></span>}
     >
       <form className="auth-form" onSubmit={handleSubmit}>
