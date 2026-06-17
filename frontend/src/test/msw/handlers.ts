@@ -224,19 +224,85 @@ export const handlers = [
 
   // Dashboard — counselor views
   http.get('/api/v1/counselors/students/', () => {
-    return HttpResponse.json({ data: [], error: null, message: '' })
+    return HttpResponse.json({
+      data: [
+        {
+          id: 5, first_name: 'Jane', last_name: 'Doe', grade: 9,
+          county: 'kiambu', photo_url: null, top_pathway: 'STEM',
+          fit_pct: 73, quiz_status: 'done', last_active: '2026-06-17T08:00:00Z',
+        },
+        {
+          id: 6, first_name: 'Brian', last_name: 'Kamau', grade: 10,
+          county: 'nyeri', photo_url: null, top_pathway: null,
+          fit_pct: null, quiz_status: 'pending', last_active: null,
+        },
+      ],
+      error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/counselors/students/:id/', () => {
+    return HttpResponse.json({
+      data: {
+        student: {
+          id: 5, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
+          grade: 9, county: 'kiambu', school: 'Kiambu High', photo_url: null,
+          bio: 'I love science', career_interests: 'Medicine', created_at: '2026-06-01T10:00:00Z',
+        },
+        riasec_result: {
+          id: 1, submitted_at: '2026-06-15T10:30:00Z', holland_code: 'IRE',
+          scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
+          recommendations: [
+            { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and technology.' } },
+            { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+            { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          ],
+        },
+        grades: [
+          { id: 20, subject_name: 'Mathematics', subject_code: 'MTH9', term: 1, year: 2026, level: 'ME1', created_at: '2026-06-14T10:00:00Z', updated_at: '2026-06-14T10:00:00Z' },
+        ],
+        notes_count: 2,
+      },
+      error: null, message: '',
+    })
   }),
 
   http.get('/api/v1/counselors/stats/', () => {
     return HttpResponse.json({
-      data: {
-        total_students: 0,
-        assessments_done: 0,
-        students_needing_attention: 0,
-        notes_written: 0,
-      },
-      error: null,
-      message: '',
+      data: { total_students: 12, assessments_done: 8, students_needing_attention: 4, notes_written: 23 },
+      error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/counselors/notes/', () => {
+    return HttpResponse.json({
+      data: [
+        { id: 1, student: 5, student_name: 'Jane Doe', body: 'Great progress in math.', created_at: '2026-06-16T10:00:00Z', updated_at: '2026-06-16T10:00:00Z' },
+        { id: 2, student: 5, student_name: 'Jane Doe', body: 'Needs help with science.', created_at: '2026-06-15T10:00:00Z', updated_at: '2026-06-15T10:00:00Z' },
+      ],
+      error: null, message: '',
+    })
+  }),
+
+  http.post('/api/v1/counselors/notes/', async ({ request }) => {
+    const body = await request.json() as { student_id: number; body: string }
+    return HttpResponse.json({
+      data: { id: 99, student: body.student_id, student_name: 'Jane Doe', body: body.body, created_at: '2026-06-17T10:00:00Z', updated_at: '2026-06-17T10:00:00Z' },
+      error: null, message: 'Note saved for Jane.',
+    }, { status: 201 })
+  }),
+
+  http.patch('/api/v1/counselors/notes/:id/', async ({ request }) => {
+    const body = await request.json() as { body: string }
+    return HttpResponse.json({
+      data: { id: 1, student: 5, student_name: 'Jane Doe', body: body.body, created_at: '2026-06-16T10:00:00Z', updated_at: '2026-06-17T10:00:00Z' },
+      error: null, message: 'Note updated.',
+    })
+  }),
+
+  http.delete('/api/v1/counselors/notes/:id/', () => {
+    return HttpResponse.json({
+      data: null, error: null, message: 'Note removed.',
     })
   }),
 

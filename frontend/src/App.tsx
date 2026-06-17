@@ -14,6 +14,9 @@ import StudentProfilePage from './pages/StudentProfilePage'
 import GradesPage from './pages/GradesPage'
 import AssessmentPage from './pages/AssessmentPage'
 import AssessmentResultsPage from './pages/AssessmentResultsPage'
+import StudentListPage from './pages/counselor/StudentListPage'
+import StudentDetailPage from './pages/counselor/StudentDetailPage'
+import NotesListPage from './pages/counselor/NotesListPage'
 import { useAuth } from './hooks/useAuth'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
 
@@ -45,6 +48,12 @@ function AppRoutes() {
             <Route path="/grades" element={<GradesPage />} />
             <Route path="/assessment" element={<AssessmentPage />} />
             <Route path="/assessment/results" element={<AssessmentResultsPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute roles={['counselor']} />}>
+            <Route path="/counselor/students" element={<StudentListPage />} />
+            <Route path="/counselor/students/:id" element={<StudentDetailPage />} />
+            <Route path="/counselor/notes" element={<NotesListPage />} />
           </Route>
 
           <Route path="*" element={
