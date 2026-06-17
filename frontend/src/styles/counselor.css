@@ -594,6 +594,69 @@
   gap: var(--space-2);
 }
 
+/* ── Notes list page ───────────────────────────── */
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.notes-list__item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.notes-list__student-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.note-card__student-link {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.note-card__student-link:hover {
+  text-decoration: underline;
+}
+
+.notes-list__empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.skeleton-note {
+  padding: var(--space-5);
+}
+
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    var(--color-divider) 25%,
+    var(--color-border) 50%,
+    var(--color-divider) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ── Grades table ───────────────────────────────── */
 
 .grades-table-wrap {
