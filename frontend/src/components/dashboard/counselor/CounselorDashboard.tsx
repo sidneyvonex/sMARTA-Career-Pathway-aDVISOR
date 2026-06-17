@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../store/authStore'
 import { dashboardApi } from '../../../api/dashboard'
 import { greeting } from '../../../lib/greeting'
@@ -8,6 +9,7 @@ import StudentList from './StudentList'
 import '../../../styles/dashboard.css'
 
 export default function CounselorDashboard() {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
 
   const studentsQ = useQuery({
@@ -95,7 +97,7 @@ export default function CounselorDashboard() {
         <div className="dashboard-card">
           <p className="dashboard-card__title">Assessment progress</p>
           <AssessmentRing done={stats.assessments_done} total={stats.total_students} />
-          <button className="btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }}>
+          <button className="btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} onClick={() => navigate('/counselor/notes')}>
             Add a student note
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import type { AssignedStudent } from '../../../api/dashboard'
 import { initials } from '../../../lib/format'
 
@@ -15,6 +16,8 @@ function statusLabel(s: AssignedStudent) {
 }
 
 export default function StudentList({ students }: Props) {
+  const navigate = useNavigate()
+
   if (students.length === 0) {
     return (
       <div className="dashboard-card">
@@ -31,7 +34,7 @@ export default function StudentList({ students }: Props) {
       <p className="dashboard-card__title">My students</p>
       <ul style={{ listStyle: 'none' }}>
         {students.slice(0, 5).map((s) => (
-          <li key={s.id} className="student-list-item">
+          <li key={s.id} className="student-list-item" style={{ cursor: 'pointer' }} onClick={() => navigate(`/counselor/students/${s.id}`)}>
             <div className="student-list-item__avatar" aria-hidden="true">{initials(s.first_name, s.last_name)}</div>
             <div className="student-list-item__info">
               <div className="student-list-item__name">{s.first_name} {s.last_name}</div>
@@ -44,7 +47,7 @@ export default function StudentList({ students }: Props) {
         ))}
       </ul>
       {students.length > 5 && (
-        <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)' }}>
+        <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--font-size-sm)', color: 'var(--color-primary)', cursor: 'pointer' }} onClick={() => navigate('/counselor/students')}>
           View all {students.length} students
         </p>
       )}
