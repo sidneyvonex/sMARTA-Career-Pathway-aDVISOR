@@ -101,7 +101,6 @@ export default function StudentDetailPage() {
   }
 
   const { student, riasec_result, grades } = studentQuery.data
-  const fullName = `${student.first_name} ${student.last_name}`
 
   return (
     <div className="counselor-page">
