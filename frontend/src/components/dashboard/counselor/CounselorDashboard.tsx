@@ -13,12 +13,12 @@ export default function CounselorDashboard() {
   const { user } = useAuthStore()
 
   const studentsQ = useQuery({
-    queryKey: ['counselor-students'],
+    queryKey: ['counselor', 'students'],
     queryFn: () => dashboardApi.getCounselorStudents().then((r) => r.data.data),
   })
 
   const statsQ = useQuery({
-    queryKey: ['counselor-stats'],
+    queryKey: ['counselor', 'stats'],
     queryFn: () => dashboardApi.getCounselorStats().then((r) => r.data.data),
   })
 

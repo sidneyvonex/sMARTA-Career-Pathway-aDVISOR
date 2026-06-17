@@ -15,7 +15,7 @@ export default function NotesListPage() {
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null)
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['counselor-notes'],
+    queryKey: ['counselor', 'notes'],
     queryFn: async () => {
       const res = await counselorApi.getNotes()
       return res.data.data
@@ -26,7 +26,7 @@ export default function NotesListPage() {
     mutationFn: ({ noteId, body }: { noteId: number; body: string }) =>
       counselorApi.updateNote(noteId, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['counselor-notes'] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'notes'] })
       toast.success('Note updated.')
       setEditingNoteId(null)
     },
@@ -40,7 +40,7 @@ export default function NotesListPage() {
   const deleteMutation = useMutation({
     mutationFn: (noteId: number) => counselorApi.deleteNote(noteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['counselor-notes'] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'notes'] })
       toast.success('Note removed.')
     },
     onError: (err: any) => {

@@ -2,22 +2,17 @@ import { useState, useMemo, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { counselorApi } from '../../api/counselor'
+import { isNewStudent } from '../../lib/format'
 import StudentFilterBar from '../../components/counselor/StudentFilterBar'
 import StudentTable from '../../components/counselor/StudentTable'
 import '../../styles/counselor.css'
-
-function isNewStudent(lastActive: string | null): boolean {
-  if (!lastActive) return false
-  const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
-  return new Date(lastActive).getTime() >= fourteenDaysAgo
-}
 
 export default function StudentListPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['counselor-students'],
+    queryKey: ['counselor', 'students'],
     queryFn: async () => {
       const res = await counselorApi.getStudents()
       return res.data.data

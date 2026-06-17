@@ -1,14 +1,9 @@
 import { Link } from 'react-router-dom'
 import type { AssignedStudent } from '../../api/dashboard'
-import { initials, formatRelativeTime } from '../../lib/format'
+import { initials, formatRelativeTime, isNewStudent } from '../../lib/format'
 
 interface Props {
   students: AssignedStudent[]
-}
-
-function isNewStudent(lastActive: string | null): boolean {
-  if (!lastActive) return false
-  return Date.now() - new Date(lastActive).getTime() < 14 * 24 * 60 * 60 * 1000
 }
 
 function statusBadgeClass(s: AssignedStudent) {

@@ -1,3 +1,4 @@
+from django.db.models import Exists, OuterRef, Prefetch
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,6 +6,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsCounselor, IsEmailVerified
 from accounts.models import StudentProfile
+from riasec.models import RIASECAssessment, Recommendation
+from riasec.serializers import AssessmentResultSerializer
+from students.models import CBCGrade
+from students.serializers import CBCGradeSerializer
 from .models import CounselorAssignment, CounselorNote
 from .serializers import CounselorNoteSerializer, CounselorNoteCreateSerializer
 
@@ -28,24 +33,38 @@ class CounselorStudentsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
     def get(self, request):
-        profiles = _get_assigned_profiles(request.user)
+        latest_assessments = RIASECAssessment.objects.filter(
+            student_profile=OuterRef('pk'),
+        ).order_by('-submitted_at')
+
+        profiles = (
+            _get_assigned_profiles(request.user)
+            .annotate(has_assessment=Exists(latest_assessments))
+            .prefetch_related(
+                Prefetch(
+                    'riasec_assessments',
+                    queryset=RIASECAssessment.objects.order_by('-submitted_at').prefetch_related(
+                        Prefetch('recommendations', queryset=Recommendation.objects.select_related('pathway').order_by('rank'))
+                    ),
+                )
+            )
+        )
+
         data = []
         for profile in profiles:
-            latest_assessment = (
-                profile.riasec_assessments
-                .prefetch_related('recommendations__pathway')
-                .order_by('-submitted_at')
-                .first()
-            )
             top_pathway = None
             fit_pct = None
             quiz_status = 'pending'
-            if latest_assessment:
+
+            if profile.has_assessment:
                 quiz_status = 'done'
-                top_rec = latest_assessment.recommendations.order_by('rank').first()
-                if top_rec:
-                    top_pathway = top_rec.pathway.name
-                    fit_pct = top_rec.fit_pct
+                assessments = list(profile.riasec_assessments.all())
+                if assessments:
+                    latest = assessments[0]
+                    recs = list(latest.recommendations.all())
+                    if recs:
+                        top_pathway = recs[0].pathway.name
+                        fit_pct = recs[0].fit_pct
 
             data.append({
                 'id': profile.user.id,
@@ -93,20 +112,19 @@ class CounselorStudentDetailView(APIView):
         )
         riasec_result = None
         if latest_assessment:
-            from riasec.serializers import AssessmentResultSerializer
             riasec_result = AssessmentResultSerializer(latest_assessment).data
 
-        from students.models import StudentSubject, CBCGrade
-        from students.serializers import CBCGradeSerializer
-        enrolled = StudentSubject.objects.filter(student_profile=profile).select_related('subject')
-        grades = []
-        for ss in enrolled:
-            for g in CBCGrade.objects.filter(student_subject=ss):
-                grades.append({
-                    'subject_name': ss.subject.name,
-                    'subject_code': ss.subject.code,
-                    **CBCGradeSerializer(g).data,
-                })
+        grades_qs = CBCGrade.objects.filter(
+            student_subject__student_profile=profile,
+        ).select_related('student_subject__subject')
+        grades = [
+            {
+                'subject_name': g.student_subject.subject.name,
+                'subject_code': g.student_subject.subject.code,
+                **CBCGradeSerializer(g).data,
+            }
+            for g in grades_qs
+        ]
 
         notes_count = CounselorNote.objects.filter(
             counselor=request.user, student_id=student_id, deleted_at__isnull=True,
@@ -124,11 +142,14 @@ class CounselorStatsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
     def get(self, request):
-        profiles = _get_assigned_profiles(request.user)
-        total = profiles.count()
-        assessed = sum(
-            1 for p in profiles if p.riasec_assessments.exists()
+        latest_assessments = RIASECAssessment.objects.filter(
+            student_profile=OuterRef('pk'),
         )
+        profiles = _get_assigned_profiles(request.user).annotate(
+            has_assessment=Exists(latest_assessments),
+        )
+        total = profiles.count()
+        assessed = profiles.filter(has_assessment=True).count()
         notes = CounselorNote.objects.filter(
             counselor=request.user, deleted_at__isnull=True,
         ).count()

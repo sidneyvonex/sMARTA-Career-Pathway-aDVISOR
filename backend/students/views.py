@@ -229,7 +229,10 @@ class StudentCounselorView(APIView):
 
     def get(self, request):
         from counselors.models import CounselorAssignment
-        profile = StudentProfile.objects.get(user=request.user)
+        try:
+            profile = StudentProfile.objects.get(user=request.user)
+        except StudentProfile.DoesNotExist:
+            return _success(data=None)
         try:
             assignment = CounselorAssignment.objects.select_related('counselor').get(
                 student_profile=profile, is_active=True,

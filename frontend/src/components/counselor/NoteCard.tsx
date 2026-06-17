@@ -29,7 +29,11 @@ export default function NoteCard({ note, onEdit, onDelete }: Props) {
           <button
             type="button"
             className="note-card__action note-card__action--danger"
-            onClick={() => onDelete(note.id)}
+            onClick={() => {
+              if (window.confirm('Delete this note? This cannot be undone.')) {
+                onDelete(note.id)
+              }
+            }}
             aria-label="Delete note"
           >
             Delete
