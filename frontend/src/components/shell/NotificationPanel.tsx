@@ -14,9 +14,26 @@ const CHIP_LABELS: Record<string, string> = {
   system: 'System',
 }
 
-function avatarInitials(message: string) {
-  return message.slice(0, 2).toUpperCase()
+const NOTIF_ICON: Record<string, { bg: string; icon: JSX.Element }> = {
+  counselor_note: {
+    bg: 'var(--color-accent)',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  },
+  assessment_submitted: {
+    bg: 'var(--color-success, #22c55e)',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
+  },
+  account: {
+    bg: 'var(--color-info, #3b82f6)',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} aria-hidden="true"><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>,
+  },
+  system: {
+    bg: 'var(--color-text-secondary)',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>,
+  },
 }
+
+const DEFAULT_NOTIF_ICON = NOTIF_ICON.system
 
 type Tab = 'all' | 'unread' | 'role'
 
@@ -187,9 +204,9 @@ export default function NotificationPanel() {
                 <div
                   className="notification-item__avatar"
                   aria-hidden="true"
-                  style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-light))' }}
+                  style={{ background: (NOTIF_ICON[notif.type] ?? DEFAULT_NOTIF_ICON).bg }}
                 >
-                  {avatarInitials(notif.message)}
+                  {(NOTIF_ICON[notif.type] ?? DEFAULT_NOTIF_ICON).icon}
                 </div>
                 <div className="notification-item__body">
                   <p className="notification-item__message">{notif.message}</p>
