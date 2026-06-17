@@ -1,0 +1,282 @@
+/* ── Counselor pages ──────────────────────────────── */
+
+.counselor-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.counselor-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.counselor-page__title {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.counselor-page__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Filter bar ──────────────────────────────────── */
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.filter-bar__chips {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  min-height: var(--min-touch-target);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.filter-chip--active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.filter-chip--active:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: #fff;
+}
+
+.search-input {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  min-height: var(--min-touch-target);
+  min-width: 200px;
+  transition: border-color 0.15s ease;
+}
+
+.search-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-surface);
+}
+
+/* ── Student table ───────────────────────────────── */
+
+.student-table-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.student-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.student-table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.student-table td {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-divider);
+  vertical-align: middle;
+}
+
+.student-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.student-table tbody tr:nth-child(even) {
+  background: var(--color-divider);
+}
+
+.student-table tbody tr:hover {
+  background: var(--color-primary-surface);
+}
+
+/* Student cell with avatar */
+.student-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.student-cell__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.student-cell__name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+/* Status badges (supplement dashboard.css variants) */
+.status-badge--done {
+  background: var(--color-success-surface);
+  color: var(--color-success);
+}
+
+/* Fit percentage */
+.fit-pct {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+.fit-pct--na {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* View link */
+.view-link {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  min-height: var(--min-touch-target);
+  display: inline-flex;
+  align-items: center;
+}
+
+.view-link:hover {
+  text-decoration: underline;
+}
+
+/* Empty state */
+.table-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Loading skeleton for table ──────────────────── */
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.skeleton-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+}
+
+.skeleton-bar {
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-bar--short { width: 60px; }
+.skeleton-bar--medium { width: 120px; }
+.skeleton-bar--long { width: 180px; }
+
+/* ── Responsive ──────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .counselor-page {
+    padding: var(--space-4);
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input {
+    margin-left: 0;
+    min-width: unset;
+  }
+
+  .student-table th:nth-child(n+5),
+  .student-table td:nth-child(n+5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .counselor-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .student-table th:nth-child(n+4),
+  .student-table td:nth-child(n+4) {
+    display: none;
+  }
+}
