@@ -29,6 +29,7 @@ class VerifiedUserFactory(UserFactory):
 class CounselorFactory(UserFactory):
     role = 'counselor'
     is_email_verified = True
+    school = None
 
 
 class ParentFactory(UserFactory):
@@ -105,3 +106,25 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     type = 'assessment_submitted'
     message = 'Your RIASEC assessment results are ready.'
     read = False
+
+
+from counselors.models import CounselorAssignment, CounselorNote
+
+
+class CounselorAssignmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CounselorAssignment
+
+    counselor = factory.SubFactory(CounselorFactory)
+    student_profile = factory.SubFactory(StudentProfileFactory)
+    school = factory.SubFactory(SchoolFactory)
+    is_active = True
+
+
+class CounselorNoteFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CounselorNote
+
+    counselor = factory.SubFactory(CounselorFactory)
+    student = factory.SubFactory(VerifiedUserFactory, role='student')
+    body = factory.Faker('paragraph')
