@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
-from tests.factories import VerifiedUserFactory
+from tests.factories import VerifiedUserFactory, CounselorFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -13,7 +13,7 @@ def _auth(client, user):
 
 class TestCounselorStudentsView:
     def test_returns_empty_list(self, client):
-        counselor = VerifiedUserFactory(role='counselor')
+        counselor = CounselorFactory()
         _auth(client, counselor)
         r = client.get(reverse('counselor-students'))
         assert r.status_code == 200
@@ -32,7 +32,7 @@ class TestCounselorStudentsView:
 
 class TestCounselorStatsView:
     def test_returns_zeroed_stats(self, client):
-        counselor = VerifiedUserFactory(role='counselor')
+        counselor = CounselorFactory()
         _auth(client, counselor)
         r = client.get(reverse('counselor-stats'))
         assert r.status_code == 200

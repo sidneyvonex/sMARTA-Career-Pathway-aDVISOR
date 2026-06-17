@@ -281,7 +281,7 @@
   cursor: default;
 }
 
-/* ── Notification panel tabs (Sprint 5) ─────────── */
+/* ── Notification panel tabs ──────────────────────── */
 .notification-panel__tabs {
   display: flex;
   border-bottom: 1px solid var(--color-border);
