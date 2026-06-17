@@ -7,8 +7,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { useNotificationStore } from '../store/notificationStore'
 import { useAuthStore } from '../store/authStore'
 import { useNotificationPoll } from '../hooks/useNotificationPoll'
-import Navbar from '../components/layout/Navbar'
-import NotificationDrawer from '../components/notifications/NotificationDrawer'
+import Topbar from '../components/shell/Topbar'
+import Sidebar from '../components/shell/Sidebar'
+import NotificationPanel from '../components/shell/NotificationPanel'
 
 function makeWrapper(client: QueryClient) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
@@ -52,44 +53,53 @@ describe('useNotificationPoll', () => {
   })
 })
 
-describe('Navbar', () => {
+describe('Topbar / Sidebar', () => {
+  const mockUser = {
+    id: 1, email: 'test@example.com', first_name: 'Alice', last_name: 'Doe',
+    role: 'student' as const, is_email_verified: true,
+  }
+
   beforeEach(() => {
     useAuthStore.setState({ user: null, isAuthenticated: false, isEmailVerified: false, isLoading: false })
     useNotificationStore.setState({ unreadCount: 0, drawerOpen: false })
   })
 
-  it('renders the brand name', () => {
+  it('renders the brand name in Sidebar', () => {
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
     render(
       <MemoryRouter>
-        <Navbar />
+        <Sidebar />
       </MemoryRouter>
     )
     expect(screen.getByText('Smarta Shauri')).toBeInTheDocument()
   })
 
   it('shows no badge when unreadCount is 0', () => {
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
     render(
       <MemoryRouter>
-        <Navbar />
+        <Topbar />
       </MemoryRouter>
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows badge with count when unreadCount > 0', () => {
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
     useNotificationStore.setState({ unreadCount: 3, drawerOpen: false })
     render(
       <MemoryRouter>
-        <Navbar />
+        <Topbar />
       </MemoryRouter>
     )
     expect(screen.getByRole('status')).toHaveTextContent('3')
   })
 
   it('opens drawer when bell is clicked', async () => {
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
     render(
       <MemoryRouter>
-        <Navbar />
+        <Topbar />
       </MemoryRouter>
     )
     await userEvent.click(screen.getByRole('button', { name: /notifications/i }))
@@ -97,7 +107,7 @@ describe('Navbar', () => {
   })
 })
 
-describe('NotificationDrawer', () => {
+describe('NotificationPanel', () => {
   let qc: QueryClient
 
   beforeEach(() => {
@@ -113,7 +123,7 @@ describe('NotificationDrawer', () => {
     useNotificationStore.setState({ drawerOpen: open, unreadCount: 0 })
     return render(
       createElement(QueryClientProvider, { client: qc },
-        createElement(NotificationDrawer)
+        createElement(NotificationPanel)
       )
     )
   }

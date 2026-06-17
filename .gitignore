@@ -52,3 +52,10 @@ CLAUDE.md
 .claude/
 .superpowers/
 docs/superpowers/
+
+# Design artefacts — local only, never commit
+.playwright-mcp/
+# Root-level mockup screenshots (dashboard-v3.html design references)
+/*.png
+/*.jpg
+/*.jpeg
