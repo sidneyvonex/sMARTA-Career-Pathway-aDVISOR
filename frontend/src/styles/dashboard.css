@@ -35,6 +35,7 @@
 }
 
 .dash-greeting__name {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
@@ -93,6 +94,7 @@
 }
 
 .next-step__title {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   line-height: 1.25;
@@ -112,6 +114,7 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
+  font-family: var(--font-family-display);
   background: var(--color-accent);
   color: #fff;
   border: none;
@@ -288,6 +291,7 @@
 }
 
 .dash-card__title {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
@@ -613,6 +617,7 @@
 }
 
 .greeting-strip__name {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   margin-bottom: var(--space-2);
@@ -688,6 +693,7 @@
 }
 
 .stat-card__value {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
@@ -707,6 +713,7 @@
 }
 
 .dashboard-card__title {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);

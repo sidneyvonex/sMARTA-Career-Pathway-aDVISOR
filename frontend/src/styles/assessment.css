@@ -12,7 +12,8 @@
   width: 100%;
   max-width: 640px;
   background: var(--color-white, #fff);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   padding: var(--space-6, 1.5rem);
 }
@@ -53,8 +54,9 @@
   padding-bottom: 0;
 }
 .likert-text {
+  font-family: var(--font-family-display);
   font-size: var(--font-size-base, 1rem);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text, #1a1a1a);
   margin-bottom: var(--space-3, 0.75rem);
   line-height: var(--line-height-relaxed, 1.6);
@@ -72,7 +74,7 @@
   min-height: var(--min-touch-target, 44px);
   padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
   border: 2px solid var(--color-primary-surface, #e8f5ee);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-lg);
   background: var(--color-primary-surface, #e8f5ee);
   cursor: pointer;
   font-family: inherit;
@@ -116,6 +118,7 @@
 }
 .results-holland-badge {
   display: inline-block;
+  font-family: var(--font-family-display);
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: 0.15em;
@@ -173,7 +176,7 @@
 }
 .recommendation-card {
   border: 2px solid var(--color-primary-surface, #e8f5ee);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: var(--radius-xl);
   padding: var(--space-4, 1rem);
 }
 .recommendation-card.rank-1 {
@@ -203,6 +206,7 @@
   color: var(--color-white, #fff);
 }
 .recommendation-name {
+  font-family: var(--font-family-display);
   font-weight: 700;
   color: var(--color-text, #1a1a1a);
   font-size: var(--font-size-base, 1rem);

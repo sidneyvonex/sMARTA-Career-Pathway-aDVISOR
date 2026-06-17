@@ -154,6 +154,7 @@
 
 .notification-drawer__header h2 {
   margin: 0;
+  font-family: var(--font-family-display);
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-text, #1a1a1a);
