@@ -216,4 +216,32 @@ export const handlers = [
   http.post('/api/v1/notifications/mark-all-read/', () => {
     return HttpResponse.json({ data: null, error: null, message: 'All notifications marked as read.' })
   }),
+
+  // Dashboard — student counselor
+  http.get('/api/v1/students/counselor/', () => {
+    return HttpResponse.json({ data: null, error: null, message: '' })
+  }),
+
+  // Dashboard — counselor views
+  http.get('/api/v1/counselors/students/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
+
+  http.get('/api/v1/counselors/stats/', () => {
+    return HttpResponse.json({
+      data: {
+        total_students: 0,
+        assessments_done: 0,
+        students_needing_attention: 0,
+        notes_written: 0,
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  // Dashboard — parent children
+  http.get('/api/v1/parents/children/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
 ]
