@@ -228,4 +228,23 @@ class StudentCounselorView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
 
     def get(self, request):
-        return _success(data=None)
+        from counselors.models import CounselorAssignment
+        profile = StudentProfile.objects.get(user=request.user)
+        try:
+            assignment = CounselorAssignment.objects.select_related('counselor').get(
+                student_profile=profile, is_active=True,
+            )
+            counselor = assignment.counselor
+            data = {
+                'id': counselor.id,
+                'first_name': counselor.first_name,
+                'last_name': counselor.last_name,
+                'email': counselor.email,
+                'county': counselor.county,
+                'photo_url': None,
+                'last_message': None,
+                'last_message_at': None,
+            }
+        except CounselorAssignment.DoesNotExist:
+            data = None
+        return _success(data=data)

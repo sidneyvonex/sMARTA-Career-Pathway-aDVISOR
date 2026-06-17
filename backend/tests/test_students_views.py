@@ -302,3 +302,20 @@ class TestStudentCounselorView:
         c = make_auth_client(counselor)
         response = c.get('/api/v1/students/counselor/')
         assert response.status_code == 403
+
+    def test_returns_counselor_when_assigned(self, db):
+        from tests.factories import CounselorAssignmentFactory, SchoolFactory
+        user = VerifiedUserFactory(role='student')
+        school = SchoolFactory()
+        verified_profile = StudentProfileFactory(user=user, grade=9, school=school)
+        counselor = CounselorFactory(school=school)
+        CounselorAssignmentFactory(
+            counselor=counselor, student_profile=verified_profile, school=school, is_active=True
+        )
+        c = make_auth_client(verified_profile.user)
+        response = c.get('/api/v1/students/counselor/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data is not None
+        assert data['first_name'] == counselor.first_name
+        assert data['email'] == counselor.email
