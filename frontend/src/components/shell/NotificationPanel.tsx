@@ -5,6 +5,7 @@ import { notificationsApi, type Notification } from '../../api/notifications'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useAuthStore } from '../../store/authStore'
 import { formatRelativeTime } from '../../lib/format'
+import '../../styles/notifications.css'
 
 const CHIP_LABELS: Record<string, string> = {
   counselor_note: 'From counselor',

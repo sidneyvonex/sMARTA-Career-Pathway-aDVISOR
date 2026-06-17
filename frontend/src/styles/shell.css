@@ -64,12 +64,14 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
+  overflow: hidden;
   opacity: 1;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar--collapsed .sidebar__app-name {
   opacity: 0;
+  width: 0;
   pointer-events: none;
 }
 
@@ -315,7 +317,6 @@
   align-items: center;
   justify-content: center;
   text-transform: uppercase;
-  cursor: pointer;
   border: none;
   min-height: unset;
 }
