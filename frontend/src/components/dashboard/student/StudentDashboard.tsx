@@ -87,7 +87,7 @@ export default function StudentDashboard() {
     return (
       <div className="dashboard" style={{ textAlign: 'center', padding: 'var(--space-12) 0', color: 'var(--color-text-secondary)' }}>
         <p>Could not load your profile.</p>
-        <button className="dash-card__link" onClick={() => window.location.reload()} style={{ marginTop: 'var(--space-2)' }}>
+        <button type="button" className="dash-card__link" onClick={() => window.location.reload()} style={{ marginTop: 'var(--space-2)' }}>
           Try again
         </button>
       </div>
@@ -159,7 +159,7 @@ export default function StudentDashboard() {
           {counselorAssigned && (
             <div className="quick-stat">
               <div className="quick-stat__value" style={{ fontSize: 'var(--font-size-base)' }}>
-                {counselor!.first_name} {counselor!.last_name}
+                {counselor?.first_name} {counselor?.last_name}
               </div>
               <div className="quick-stat__label">Your counselor</div>
             </div>
@@ -261,7 +261,7 @@ export default function StudentDashboard() {
         <div className="dash-card">
           <div className="dash-card__header">
             <span className="dash-card__title">Recent activity</span>
-            <button className="dash-card__link" onClick={() => setDrawerOpen(true)}>See all</button>
+            <button type="button" className="dash-card__link" onClick={() => setDrawerOpen(true)}>See all</button>
           </div>
           {notifications.slice(0, 3).map((n) => (
             <div key={n.id} className="activity-item">

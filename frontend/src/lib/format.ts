@@ -1,5 +1,5 @@
 export function initials(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase()
+  return `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.toUpperCase()
 }
 
 export function formatRelativeTime(iso: string) {
