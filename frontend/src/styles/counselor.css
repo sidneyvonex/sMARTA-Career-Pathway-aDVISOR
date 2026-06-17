@@ -23,6 +23,19 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.counselor-page__title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 1.2em;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
 }
 
 .counselor-page__count {
@@ -79,6 +92,17 @@
   color: #fff;
 }
 
+.filter-chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.note-card__action:focus-visible,
+.view-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .search-input {
   margin-left: auto;
   padding: var(--space-2) var(--space-4);
@@ -108,8 +132,9 @@
 .student-table-wrap {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow-x: auto;
+  box-shadow: var(--shadow-sm);
 }
 
 .student-table {
@@ -177,10 +202,30 @@
   color: var(--color-text);
 }
 
-/* Status badges (supplement dashboard.css variants) */
-.status-badge--done {
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.status-badge--assessed {
   background: var(--color-success-surface);
   color: var(--color-success);
+}
+
+.status-badge--pending {
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+}
+
+.status-badge--new {
+  background: var(--color-info-surface);
+  color: var(--color-info);
 }
 
 /* Fit percentage */
@@ -203,18 +248,23 @@
   min-height: var(--min-touch-target);
   display: inline-flex;
   align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
 }
 
 .view-link:hover {
-  text-decoration: underline;
+  background: var(--color-primary-surface);
+  text-decoration: none;
 }
 
 /* Empty state */
 .table-empty {
   text-align: center;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-10) var(--space-4);
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
 }
 
 /* ── Loading skeleton for table ──────────────────── */
@@ -396,6 +446,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-info-card__title {
@@ -440,6 +491,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .notes-section__title {
@@ -487,6 +539,7 @@
   background: var(--color-divider);
   border-radius: var(--radius-md);
   padding: var(--space-4);
+  border-left: 3px solid var(--color-primary-light);
 }
 
 .note-card__body {
@@ -606,10 +659,16 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.15s ease;
+}
+
+.notes-list__item:hover {
+  box-shadow: var(--shadow-sm);
 }
 
 .notes-list__student-header {
@@ -664,6 +723,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow-x: auto;
+  box-shadow: var(--shadow-sm);
 }
 
 .grades-table {
@@ -700,9 +760,17 @@
   background: var(--color-divider);
 }
 
-.grades-table__level {
+.grades-table__level-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  display: block;
+}
+
+.grades-table__level-label {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  display: block;
 }
 
 /* ── Responsive (student detail) ────────────────── */

@@ -36,8 +36,11 @@ export default function CounselorGradesTable({ grades, studentName }: Props) {
               <td>{g.subject_code}</td>
               <td>Term {g.term}</td>
               <td>{g.year}</td>
-              <td className="grades-table__level">
-                {GRADE_LEVEL_LABELS[g.level as GradeLevel] ?? g.level}
+              <td>
+                <span className="grades-table__level-code">{g.level}</span>
+                <span className="grades-table__level-label">
+                  {GRADE_LEVEL_LABELS[g.level as GradeLevel] ?? g.level}
+                </span>
               </td>
             </tr>
           ))}

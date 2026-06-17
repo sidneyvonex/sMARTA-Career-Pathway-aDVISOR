@@ -6,13 +6,21 @@ interface Props {
   students: AssignedStudent[]
 }
 
+function isNewStudent(lastActive: string | null): boolean {
+  if (!lastActive) return false
+  return Date.now() - new Date(lastActive).getTime() < 14 * 24 * 60 * 60 * 1000
+}
+
 function statusBadgeClass(s: AssignedStudent) {
   if (s.quiz_status === 'done') return 'status-badge status-badge--assessed'
+  if (isNewStudent(s.last_active)) return 'status-badge status-badge--new'
   return 'status-badge status-badge--pending'
 }
 
 function statusLabel(s: AssignedStudent) {
-  return s.quiz_status === 'done' ? 'Assessed' : 'Pending'
+  if (s.quiz_status === 'done') return 'Assessed'
+  if (isNewStudent(s.last_active)) return 'New'
+  return 'Pending'
 }
 
 export default function StudentTable({ students }: Props) {
