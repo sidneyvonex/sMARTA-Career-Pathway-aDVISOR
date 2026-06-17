@@ -52,6 +52,12 @@ class SystemAdminFactory(UserFactory):
     is_email_verified = True
 
 
+class SchoolAdminFactory(UserFactory):
+    role = 'school_admin'
+    is_email_verified = True
+    school = factory.SubFactory(SchoolFactory)
+
+
 class StudentProfileFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = StudentProfile

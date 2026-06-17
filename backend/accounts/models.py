@@ -48,6 +48,9 @@ class School(models.Model):
     name = models.CharField(max_length=200)
     county = models.CharField(max_length=20, choices=COUNTY_CHOICES)
     school_code = models.CharField(max_length=20, unique=True)
+    logo_url = models.URLField(max_length=500, null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
