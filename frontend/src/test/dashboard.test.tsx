@@ -65,9 +65,11 @@ describe('DashboardPage', () => {
     })
   })
 
-  it('renders fallback for unhandled role', () => {
+  it('renders SchoolAdminDashboard for school_admin role', async () => {
     setUser('school_admin')
     render(<DashboardPage />, { wrapper })
-    expect(screen.getByText(/not yet available/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Starehe Boys Centre')).toBeInTheDocument()
+    })
   })
 })
