@@ -26,6 +26,7 @@ from .tokens import (
     TokenExpiredError, TokenInvalidError,
 )
 from .response import _success, _error
+from parents.models import ParentStudentLink
 
 
 class RegisterView(APIView):
@@ -306,6 +307,13 @@ class AcceptInviteView(APIView):
             county=county or None,
             is_email_verified=True,
         )
+
+        if student_id is not None:
+            try:
+                student = User.objects.get(pk=student_id, role='student')
+                ParentStudentLink.objects.create(parent=user, student=student)
+            except User.DoesNotExist:
+                pass
 
         refresh = RefreshToken.for_user(user)
         response = _success(

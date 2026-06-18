@@ -1,5 +1,8 @@
 import pytest
 from django.db import IntegrityError
+from django.test import override_settings
+from accounts.tokens import make_parent_invite_token, make_invite_token
+from parents.models import ParentStudentLink
 from tests.factories import ParentFactory, VerifiedUserFactory, ParentStudentLinkFactory
 
 pytestmark = pytest.mark.django_db
@@ -43,3 +46,35 @@ class TestParentStudentLink:
         link = ParentStudentLinkFactory(parent=parent, student=student)
         assert 'Jane Doe' in str(link)
         assert 'Tom Doe' in str(link)
+
+
+class TestAcceptInviteCreatesLink:
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_accepting_parent_invite_creates_link(self, client):
+        student = VerifiedUserFactory(role='student')
+        token = make_parent_invite_token(student_id=student.id, email='parent@test.com')
+        resp = client.post('/api/v1/auth/accept-invite/', {
+            'token': token,
+            'password': 'SecurePass123!',
+            'first_name': 'Jane',
+            'last_name': 'Doe',
+            'county': 'kiambu',
+        }, content_type='application/json')
+        assert resp.status_code == 201
+        assert ParentStudentLink.objects.filter(
+            parent__email='parent@test.com',
+            student=student,
+        ).exists()
+
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+    def test_accepting_staff_invite_does_not_create_link(self, client):
+        token = make_invite_token(email='counselor@test.com', role='counselor')
+        resp = client.post('/api/v1/auth/accept-invite/', {
+            'token': token,
+            'password': 'SecurePass123!',
+            'first_name': 'Bob',
+            'last_name': 'Smith',
+            'county': 'nairobi',
+        }, content_type='application/json')
+        assert resp.status_code == 201
+        assert ParentStudentLink.objects.count() == 0
