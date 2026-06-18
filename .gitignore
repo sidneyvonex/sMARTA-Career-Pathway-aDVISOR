@@ -53,6 +53,9 @@ CLAUDE.md
 .superpowers/
 docs/superpowers/
 
+# Local setup guide — not committed
+LOCAL_SETUP.md
+
 # Design artefacts — local only, never commit
 .playwright-mcp/
 # Root-level mockup screenshots (dashboard-v3.html design references)
