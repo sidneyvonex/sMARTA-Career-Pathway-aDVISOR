@@ -5,6 +5,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework.test import APIClient
 from tests.factories import SchoolAdminFactory, SchoolFactory, StudentProfileFactory, CounselorFactory, CounselorAssignmentFactory
+from riasec.models import RIASECAssessment
+from counselors.models import CounselorAssignment
 
 pytestmark = pytest.mark.django_db
 
@@ -201,4 +203,145 @@ class TestSchoolCounselorsView:
     def test_remove_counselor_not_at_school(self):
         other = CounselorFactory(school=SchoolFactory())
         response = self.client.post(f'/api/v1/school-admin/counselors/{other.id}/remove/')
+        assert response.status_code == 404
+
+
+class TestSchoolStudentsView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.school = SchoolFactory(name='Starehe Boys', county='nairobi', school_code='NAI004')
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client.force_authenticate(self.admin)
+
+    def test_list_students(self):
+        sp1 = StudentProfileFactory(school=self.school, mode='school_linked')
+        sp2 = StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(school=SchoolFactory(), mode='school_linked')  # different school
+        StudentProfileFactory(mode='self_guided')  # no school
+        response = self.client.get('/api/v1/school-admin/students/')
+        assert response.status_code == 200
+        assert len(response.data['data']) == 2
+
+    def test_student_entry_includes_counselor(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        c = CounselorFactory(school=self.school, first_name='Dr', last_name='Ouma')
+        CounselorAssignmentFactory(counselor=c, student_profile=sp, school=self.school)
+        response = self.client.get('/api/v1/school-admin/students/')
+        student = response.data['data'][0]
+        assert student['counselor_name'] == 'Dr Ouma'
+
+    def test_student_entry_without_counselor(self):
+        StudentProfileFactory(school=self.school, mode='school_linked')
+        response = self.client.get('/api/v1/school-admin/students/')
+        student = response.data['data'][0]
+        assert student['counselor_name'] is None
+
+    def test_student_entry_includes_assessment_status(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        RIASECAssessment.objects.create(student_profile=sp)
+        response = self.client.get('/api/v1/school-admin/students/')
+        student = response.data['data'][0]
+        assert student['quiz_status'] == 'done'
+
+
+class TestSchoolStatsView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.school = SchoolFactory(name='Starehe Boys', county='nairobi', school_code='NAI005')
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client.force_authenticate(self.admin)
+
+    def test_stats_empty_school(self):
+        response = self.client.get('/api/v1/school-admin/stats/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['total_students'] == 0
+        assert data['total_counselors'] == 0
+        assert data['assessed'] == 0
+        assert data['unassigned'] == 0
+
+    def test_stats_with_data(self):
+        CounselorFactory(school=self.school)
+        sp1 = StudentProfileFactory(school=self.school, mode='school_linked')
+        sp2 = StudentProfileFactory(school=self.school, mode='school_linked')
+        sp3 = StudentProfileFactory(school=self.school, mode='school_linked')
+        RIASECAssessment.objects.create(student_profile=sp1)
+        c = CounselorFactory(school=self.school)
+        CounselorAssignmentFactory(counselor=c, student_profile=sp1, school=self.school)
+        response = self.client.get('/api/v1/school-admin/stats/')
+        data = response.data['data']
+        assert data['total_students'] == 3
+        assert data['total_counselors'] == 2
+        assert data['assessed'] == 1
+        assert data['unassigned'] == 2
+
+
+class TestSchoolAssignmentView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.school = SchoolFactory(name='Starehe Boys', county='nairobi', school_code='NAI006')
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client.force_authenticate(self.admin)
+
+    def test_assign_student_to_counselor(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        c = CounselorFactory(school=self.school)
+        response = self.client.post('/api/v1/school-admin/assignments/', {
+            'student_id': sp.user.id,
+            'counselor_id': c.id,
+        })
+        assert response.status_code == 201
+        assert CounselorAssignment.objects.filter(
+            student_profile=sp, counselor=c, is_active=True,
+        ).exists()
+
+    def test_reassign_deactivates_old(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        c1 = CounselorFactory(school=self.school)
+        c2 = CounselorFactory(school=self.school)
+        old = CounselorAssignmentFactory(counselor=c1, student_profile=sp, school=self.school)
+        response = self.client.post('/api/v1/school-admin/assignments/', {
+            'student_id': sp.user.id,
+            'counselor_id': c2.id,
+        })
+        assert response.status_code == 201
+        old.refresh_from_db()
+        assert old.is_active is False
+        assert CounselorAssignment.objects.filter(
+            student_profile=sp, counselor=c2, is_active=True,
+        ).exists()
+
+    def test_assign_student_not_at_school(self):
+        sp = StudentProfileFactory(school=SchoolFactory(), mode='school_linked')
+        c = CounselorFactory(school=self.school)
+        response = self.client.post('/api/v1/school-admin/assignments/', {
+            'student_id': sp.user.id,
+            'counselor_id': c.id,
+        })
+        assert response.status_code == 404
+
+    def test_assign_counselor_not_at_school(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        c = CounselorFactory(school=SchoolFactory())
+        response = self.client.post('/api/v1/school-admin/assignments/', {
+            'student_id': sp.user.id,
+            'counselor_id': c.id,
+        })
+        assert response.status_code == 404
+
+    def test_remove_assignment(self):
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        c = CounselorFactory(school=self.school)
+        a = CounselorAssignmentFactory(counselor=c, student_profile=sp, school=self.school)
+        response = self.client.post(f'/api/v1/school-admin/assignments/{a.id}/remove/')
+        assert response.status_code == 200
+        a.refresh_from_db()
+        assert a.is_active is False
+
+    def test_remove_assignment_wrong_school(self):
+        other_school = SchoolFactory()
+        sp = StudentProfileFactory(school=other_school, mode='school_linked')
+        c = CounselorFactory(school=other_school)
+        a = CounselorAssignmentFactory(counselor=c, student_profile=sp, school=other_school)
+        response = self.client.post(f'/api/v1/school-admin/assignments/{a.id}/remove/')
         assert response.status_code == 404

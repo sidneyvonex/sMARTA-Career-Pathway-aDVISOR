@@ -2,14 +2,15 @@ from io import BytesIO
 from PIL import Image
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.db.models import Count, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from accounts.permissions import IsSchoolAdmin, IsEmailVerified
-from accounts.models import User
+from accounts.models import User, StudentProfile
 from counselors.models import CounselorAssignment
+from riasec.models import RIASECAssessment
 
 
 def _success(data=None, message='', status_code=status.HTTP_200_OK):
@@ -207,3 +208,142 @@ class SchoolCounselorRemoveView(APIView):
         counselor.school = None
         counselor.save(update_fields=['school'])
         return _success(message=f'{counselor.first_name} {counselor.last_name} removed from {school.name}.')
+
+
+class SchoolStudentsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def get(self, request):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+
+        has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
+
+        profiles = (
+            StudentProfile.objects.filter(school=school, mode='school_linked')
+            .select_related('user')
+            .annotate(has_assessment=Exists(has_assessment))
+            .prefetch_related(
+                Prefetch(
+                    'counselor_assignments',
+                    queryset=CounselorAssignment.objects.filter(is_active=True).select_related('counselor'),
+                ),
+            )
+            .order_by('user__first_name', 'user__last_name')
+        )
+
+        data = []
+        for p in profiles:
+            active_assignment = None
+            for a in p.counselor_assignments.all():
+                if a.is_active:
+                    active_assignment = a
+                    break
+
+            data.append({
+                'id': p.user.id,
+                'first_name': p.user.first_name,
+                'last_name': p.user.last_name,
+                'email': p.user.email,
+                'grade': p.grade,
+                'photo_url': p.photo_url,
+                'quiz_status': 'done' if p.has_assessment else 'pending',
+                'counselor_id': active_assignment.counselor_id if active_assignment else None,
+                'counselor_name': (
+                    f'{active_assignment.counselor.first_name} {active_assignment.counselor.last_name}'
+                    if active_assignment else None
+                ),
+            })
+        return _success(data=data)
+
+
+class SchoolStatsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def get(self, request):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+
+        has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
+
+        profiles = (
+            StudentProfile.objects.filter(school=school, mode='school_linked')
+            .annotate(has_assessment=Exists(has_assessment))
+        )
+        total_students = profiles.count()
+        assessed = profiles.filter(has_assessment=True).count()
+        assigned_ids = set(
+            CounselorAssignment.objects.filter(school=school, is_active=True)
+            .values_list('student_profile_id', flat=True)
+        )
+        unassigned = profiles.exclude(pk__in=assigned_ids).count()
+        total_counselors = User.objects.filter(school=school, role='counselor').count()
+
+        return _success(data={
+            'total_students': total_students,
+            'total_counselors': total_counselors,
+            'assessed': assessed,
+            'unassigned': unassigned,
+        })
+
+
+class SchoolAssignmentView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+
+        student_id = request.data.get('student_id')
+        counselor_id = request.data.get('counselor_id')
+
+        try:
+            profile = StudentProfile.objects.get(
+                user_id=student_id, school=school, mode='school_linked',
+            )
+        except StudentProfile.DoesNotExist:
+            return _error('Student not found at your school.', status.HTTP_404_NOT_FOUND)
+
+        try:
+            counselor = User.objects.get(pk=counselor_id, role='counselor', school=school)
+        except User.DoesNotExist:
+            return _error('Counselor not found at your school.', status.HTTP_404_NOT_FOUND)
+
+        CounselorAssignment.objects.filter(
+            student_profile=profile, is_active=True,
+        ).update(is_active=False)
+
+        assignment = CounselorAssignment.objects.create(
+            counselor=counselor,
+            student_profile=profile,
+            school=school,
+        )
+
+        return _success(
+            data={'id': assignment.id, 'student_id': student_id, 'counselor_id': counselor_id},
+            message=f'{profile.user.first_name} assigned to {counselor.first_name} {counselor.last_name}.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class SchoolAssignmentRemoveView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request, assignment_id):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+
+        try:
+            assignment = CounselorAssignment.objects.get(
+                pk=assignment_id, school=school, is_active=True,
+            )
+        except CounselorAssignment.DoesNotExist:
+            return _error('Assignment not found.', status.HTTP_404_NOT_FOUND)
+
+        assignment.is_active = False
+        assignment.save(update_fields=['is_active'])
+        return _success(message='Assignment removed.')
