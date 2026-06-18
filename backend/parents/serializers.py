@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from riasec.models import RIASECAssessment, Recommendation
+from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment
+from students.models import StudentSubject, CBCGrade
 
 
 class LinkedChildSerializer(serializers.Serializer):
@@ -66,3 +68,83 @@ class LinkedChildSerializer(serializers.Serializer):
             return None
         rec = Recommendation.objects.filter(assessment=assessment, rank=1).first()
         return rec.fit_pct if rec else None
+
+
+class ChildProfileSerializer(serializers.Serializer):
+    id = serializers.IntegerField(source='user.id')
+    first_name = serializers.CharField(source='user.first_name')
+    last_name = serializers.CharField(source='user.last_name')
+    email = serializers.EmailField(source='user.email')
+    county = serializers.CharField(source='user.county')
+    grade = serializers.IntegerField()
+    mode = serializers.CharField()
+    bio = serializers.CharField()
+    date_of_birth = serializers.DateField()
+    career_interests = serializers.CharField()
+    photo_url = serializers.URLField()
+
+
+class ChildGradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CBCGrade
+        fields = ('id', 'term', 'year', 'level')
+
+
+class ChildSubjectSerializer(serializers.Serializer):
+    id = serializers.IntegerField(source='subject.id')
+    name = serializers.CharField(source='subject.name')
+    code = serializers.CharField(source='subject.code')
+    category = serializers.CharField(source='subject.category')
+    grades = serializers.SerializerMethodField()
+
+    def get_grades(self, obj):
+        return ChildGradeSerializer(obj.grades.all(), many=True).data
+
+
+class ChildCounselorSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+
+
+class ChildDetailSerializer(serializers.Serializer):
+    profile = serializers.SerializerMethodField()
+    subjects = serializers.SerializerMethodField()
+    assessment = serializers.SerializerMethodField()
+    counselor = serializers.SerializerMethodField()
+
+    def get_profile(self, profile):
+        return ChildProfileSerializer(profile).data
+
+    def get_subjects(self, profile):
+        subjects = (
+            StudentSubject.objects
+            .filter(student_profile=profile)
+            .select_related('subject')
+            .prefetch_related('grades')
+        )
+        return ChildSubjectSerializer(subjects, many=True).data
+
+    def get_assessment(self, profile):
+        assessment = (
+            RIASECAssessment.objects
+            .filter(student_profile=profile)
+            .prefetch_related('scores', 'recommendations__pathway')
+            .order_by('-submitted_at')
+            .first()
+        )
+        if not assessment:
+            return None
+        return AssessmentResultSerializer(assessment).data
+
+    def get_counselor(self, profile):
+        assignment = (
+            CounselorAssignment.objects
+            .filter(student_profile=profile, is_active=True)
+            .select_related('counselor')
+            .first()
+        )
+        if not assignment:
+            return None
+        return ChildCounselorSerializer(assignment.counselor).data
