@@ -24,6 +24,8 @@ INSTALLED_APPS = [
     'riasec',
     'notifications',
     'counselors',
+    'parents',
+    'school_admin',
 ]
 
 MIDDLEWARE = [

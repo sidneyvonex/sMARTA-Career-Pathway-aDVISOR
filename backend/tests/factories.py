@@ -4,6 +4,8 @@ from accounts.models import School, StudentProfile
 from students.models import Subject, StudentSubject, CBCGrade
 from riasec.models import RIASECAssessment
 from notifications.models import Notification
+from parents.models import ParentStudentLink
+from counselors.models import CounselorAssignment, CounselorNote
 
 User = get_user_model()
 
@@ -114,8 +116,6 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     read = False
 
 
-from counselors.models import CounselorAssignment, CounselorNote
-
 
 class CounselorAssignmentFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -134,3 +134,11 @@ class CounselorNoteFactory(factory.django.DjangoModelFactory):
     counselor = factory.SubFactory(CounselorFactory)
     student = factory.SubFactory(VerifiedUserFactory, role='student')
     body = factory.Faker('paragraph')
+
+
+class ParentStudentLinkFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ParentStudentLink
+
+    parent = factory.SubFactory(ParentFactory)
+    student = factory.SubFactory(VerifiedUserFactory, role='student')
