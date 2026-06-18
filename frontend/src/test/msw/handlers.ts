@@ -412,6 +412,11 @@ export const handlers = [
           last_name: 'Smith',
           email: 'drsmith@school.com',
         },
+        latest_note: {
+          body: 'Tom is showing great progress in mathematics this term. Keep encouraging him!',
+          created_at: '2026-06-15T14:30:00Z',
+          updated_at: '2026-06-15T14:30:00Z',
+        },
       },
       error: null,
       message: '',

@@ -51,11 +51,18 @@ export interface ChildCounselor {
   email: string
 }
 
+export interface ChildNote {
+  body: string
+  created_at: string
+  updated_at: string
+}
+
 export interface ChildDetail {
   profile: ChildProfile
   subjects: ChildSubject[]
   assessment: ChildAssessment | null
   counselor: ChildCounselor | null
+  latest_note: ChildNote | null
 }
 
 export const parentApi = {

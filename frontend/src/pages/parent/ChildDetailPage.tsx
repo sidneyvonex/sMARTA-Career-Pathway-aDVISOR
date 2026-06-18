@@ -55,7 +55,7 @@ export default function ChildDetailPage() {
   }
 
   const data: ChildDetail = detailQ.data!
-  const { profile, subjects, assessment, counselor } = data
+  const { profile, subjects, assessment, counselor, latest_note } = data
   const maxScore = assessment ? Math.max(...Object.values(assessment.scores)) : 0
 
   return (
@@ -161,26 +161,42 @@ export default function ChildDetailPage() {
       <div className="child-detail__section">
         <h2 className="child-detail__section-title">Counselor</h2>
         {counselor ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <div
-              style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'var(--color-primary-surface)', color: 'var(--color-primary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 'var(--font-size-sm)',
-              }}
-              aria-hidden="true"
-            >
-              {initials(counselor.first_name, counselor.last_name)}
-            </div>
-            <div>
-              <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                {counselor.first_name} {counselor.last_name}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: latest_note ? 'var(--space-4)' : 0 }}>
+              <div
+                style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: 'var(--color-primary-surface)', color: 'var(--color-primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: 'var(--font-size-sm)',
+                }}
+                aria-hidden="true"
+              >
+                {initials(counselor.first_name, counselor.last_name)}
               </div>
-              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                {counselor.email}
+              <div>
+                <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                  {counselor.first_name} {counselor.last_name}
+                </div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                  {counselor.email}
+                </div>
               </div>
             </div>
+            {latest_note ? (
+              <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
+                <p style={{ fontStyle: 'italic', color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
+                  "{latest_note.body}"
+                </p>
+                <p style={{ fontSize: 'var(--font-size-xs, 0.75rem)', color: 'var(--color-text-secondary)' }}>
+                  {new Date(latest_note.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', fontStyle: 'italic' }}>
+                No notes from the counselor yet.
+              </p>
+            )}
           </div>
         ) : (
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>

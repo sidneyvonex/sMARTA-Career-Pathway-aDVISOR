@@ -72,6 +72,11 @@ describe('ChildDetailPage', () => {
     expect(screen.getByText('drsmith@school.com')).toBeInTheDocument()
   })
 
+  it('renders counselor note', async () => {
+    renderPage()
+    expect(await screen.findByText(/great progress in mathematics/i)).toBeInTheDocument()
+  })
+
   it('has back link to dashboard', async () => {
     renderPage()
     const back = await screen.findByLabelText('Back to dashboard')
