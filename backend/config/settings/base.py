@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'notifications',
     'counselors',
     'parents',
+    'school_admin',
 ]
 
 MIDDLEWARE = [
