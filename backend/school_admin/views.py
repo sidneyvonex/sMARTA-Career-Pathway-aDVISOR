@@ -2,6 +2,7 @@ from io import BytesIO
 from PIL import Image
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from rest_framework.views import APIView
 from rest_framework import status
@@ -201,12 +202,13 @@ class SchoolCounselorRemoveView(APIView):
         except User.DoesNotExist:
             return _error('Counselor not found at your school.', status.HTTP_404_NOT_FOUND)
 
-        CounselorAssignment.objects.filter(
-            counselor=counselor, school=school, is_active=True,
-        ).update(is_active=False)
+        with transaction.atomic():
+            CounselorAssignment.objects.filter(
+                counselor=counselor, school=school, is_active=True,
+            ).update(is_active=False)
 
-        counselor.school = None
-        counselor.save(update_fields=['school'])
+            counselor.school = None
+            counselor.save(update_fields=['school'])
         return _success(message=f'{counselor.first_name} {counselor.last_name} removed from {school.name}.')
 
 
@@ -312,15 +314,16 @@ class SchoolAssignmentView(APIView):
         except User.DoesNotExist:
             return _error('Counselor not found at your school.', status.HTTP_404_NOT_FOUND)
 
-        CounselorAssignment.objects.filter(
-            student_profile=profile, is_active=True,
-        ).update(is_active=False)
+        with transaction.atomic():
+            CounselorAssignment.objects.filter(
+                student_profile=profile, is_active=True,
+            ).update(is_active=False)
 
-        assignment = CounselorAssignment.objects.create(
-            counselor=counselor,
-            student_profile=profile,
-            school=school,
-        )
+            assignment = CounselorAssignment.objects.create(
+                counselor=counselor,
+                student_profile=profile,
+                school=school,
+            )
 
         return _success(
             data={'id': assignment.id, 'student_id': student_id, 'counselor_id': counselor_id},

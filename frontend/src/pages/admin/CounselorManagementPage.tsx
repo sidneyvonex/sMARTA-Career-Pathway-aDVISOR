@@ -98,7 +98,7 @@ export default function CounselorManagementPage() {
                     className="btn-ghost"
                     onClick={() => handleRemove(c.id)}
                     disabled={removeMutation.isPending}
-                    style={removingId === c.id ? { color: 'var(--color-error, #d32f2f)' } : undefined}
+                    style={removingId === c.id ? { color: 'var(--color-error)' } : undefined}
                   >
                     {removingId === c.id ? 'Confirm Remove' : 'Remove'}
                   </button>
