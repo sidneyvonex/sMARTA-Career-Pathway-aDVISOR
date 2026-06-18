@@ -199,13 +199,28 @@ class CounselorNoteDetailView(APIView):
             note = self._get_note(note_id, request.user)
         except CounselorNote.DoesNotExist:
             return _error('Note not found.', status.HTTP_404_NOT_FOUND)
+
         body = request.data.get('body')
-        if not body:
-            return _error('Body is required.')
-        if len(body) > 2000:
-            return _error('Body must be 2000 characters or less.')
-        note.body = body
-        note.save(update_fields=['body', 'updated_at'])
+        visible_to_parent = request.data.get('visible_to_parent')
+
+        if body is None and visible_to_parent is None:
+            return _error('Nothing to update.')
+
+        update_fields = ['updated_at']
+
+        if body is not None:
+            if not body:
+                return _error('Body is required.')
+            if len(body) > 2000:
+                return _error('Body must be 2000 characters or less.')
+            note.body = body
+            update_fields.append('body')
+
+        if visible_to_parent is not None:
+            note.visible_to_parent = bool(visible_to_parent)
+            update_fields.append('visible_to_parent')
+
+        note.save(update_fields=update_fields)
         return _success(data=CounselorNoteSerializer(note).data, message='Note updated.')
 
     def delete(self, request, note_id):

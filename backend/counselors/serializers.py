@@ -7,7 +7,7 @@ class CounselorNoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CounselorNote
-        fields = ('id', 'student', 'student_name', 'body', 'created_at', 'updated_at')
+        fields = ('id', 'student', 'student_name', 'body', 'visible_to_parent', 'created_at', 'updated_at')
         read_only_fields = ('id', 'student', 'student_name', 'created_at', 'updated_at')
 
     def get_student_name(self, obj):

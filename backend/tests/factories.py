@@ -134,6 +134,7 @@ class CounselorNoteFactory(factory.django.DjangoModelFactory):
     counselor = factory.SubFactory(CounselorFactory)
     student = factory.SubFactory(VerifiedUserFactory, role='student')
     body = factory.Faker('paragraph')
+    visible_to_parent = False
 
 
 class ParentStudentLinkFactory(factory.django.DjangoModelFactory):

@@ -5,6 +5,7 @@ from tests.factories import (
     ParentStudentLinkFactory, CounselorAssignmentFactory,
     RIASECAssessmentFactory, StudentSubjectFactory,
     SubjectFactory, CBCGradeFactory, CounselorFactory,
+    CounselorNoteFactory,
 )
 from riasec.models import RIASECScore, Recommendation, Pathway
 from notifications.models import Notification
@@ -266,3 +267,66 @@ class TestRIASECParentNotification:
         }, format='json')
         assert resp.status_code == 201
         assert Notification.objects.filter(type='child_assessment_complete').count() == 0
+
+
+class TestVisibleToParentNote:
+    def setup_method(self):
+        self.client = APIClient()
+
+    def test_visible_note_appears_in_child_detail(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        counselor = CounselorFactory()
+        CounselorAssignmentFactory(counselor=counselor, student_profile=profile)
+        CounselorNoteFactory(
+            counselor=counselor, student=student,
+            body='Great progress this term!', visible_to_parent=True,
+        )
+        CounselorNoteFactory(
+            counselor=counselor, student=student,
+            body='Private note', visible_to_parent=False,
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(f'/api/v1/parents/children/{student.id}/')
+        data = resp.json()['data']
+        assert data['latest_note'] is not None
+        assert data['latest_note']['body'] == 'Great progress this term!'
+
+    def test_no_visible_notes_returns_null(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        counselor = CounselorFactory()
+        CounselorNoteFactory(
+            counselor=counselor, student=student,
+            body='Private', visible_to_parent=False,
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(f'/api/v1/parents/children/{student.id}/')
+        data = resp.json()['data']
+        assert data['latest_note'] is None
+
+    def test_counselor_can_toggle_visible_to_parent(self):
+        counselor = CounselorFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        CounselorAssignmentFactory(counselor=counselor, student_profile=profile)
+        note = CounselorNoteFactory(
+            counselor=counselor, student=student,
+            body='Some note', visible_to_parent=False,
+        )
+        self.client.force_authenticate(user=counselor)
+
+        resp = self.client.patch(
+            f'/api/v1/counselors/notes/{note.id}/',
+            {'visible_to_parent': True},
+            format='json',
+        )
+        assert resp.status_code == 200
+        note.refresh_from_db()
+        assert note.visible_to_parent is True

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from riasec.models import RIASECAssessment, Recommendation
 from riasec.serializers import AssessmentResultSerializer
-from counselors.models import CounselorAssignment
+from counselors.models import CounselorAssignment, CounselorNote
 from students.models import StudentSubject, CBCGrade
 
 
@@ -108,11 +108,18 @@ class ChildCounselorSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class ChildNoteSerializer(serializers.Serializer):
+    body = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+
 class ChildDetailSerializer(serializers.Serializer):
     profile = serializers.SerializerMethodField()
     subjects = serializers.SerializerMethodField()
     assessment = serializers.SerializerMethodField()
     counselor = serializers.SerializerMethodField()
+    latest_note = serializers.SerializerMethodField()
 
     def get_profile(self, profile):
         return ChildProfileSerializer(profile).data
@@ -148,3 +155,18 @@ class ChildDetailSerializer(serializers.Serializer):
         if not assignment:
             return None
         return ChildCounselorSerializer(assignment.counselor).data
+
+    def get_latest_note(self, profile):
+        note = (
+            CounselorNote.objects
+            .filter(
+                student=profile.user,
+                visible_to_parent=True,
+                deleted_at__isnull=True,
+            )
+            .order_by('-created_at')
+            .first()
+        )
+        if not note:
+            return None
+        return ChildNoteSerializer(note).data
