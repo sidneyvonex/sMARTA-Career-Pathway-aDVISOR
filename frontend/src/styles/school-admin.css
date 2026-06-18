@@ -235,3 +235,24 @@
 .admin-back-link:hover {
   text-decoration: underline;
 }
+
+/* ===== Status Badges (school admin context) ===== */
+
+.status-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.status-badge--assessed {
+  background: var(--color-success-surface, #E8F5EE);
+  color: var(--color-success, #1A5C38);
+}
+
+.status-badge--pending {
+  background: var(--color-warning-surface, #FEF8E7);
+  color: var(--color-warning, #D4A012);
+}
