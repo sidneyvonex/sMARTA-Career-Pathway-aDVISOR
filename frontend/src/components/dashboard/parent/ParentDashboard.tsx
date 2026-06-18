@@ -1,6 +1,9 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../../../store/authStore'
-import { dashboardApi } from '../../../api/dashboard'
+import { dashboardApi, LinkedChild } from '../../../api/dashboard'
 import { greeting } from '../../../lib/greeting'
 import { initials } from '../../../lib/format'
 import ChildHeader from './ChildHeader'
@@ -15,13 +18,28 @@ export default function ParentDashboard() {
   })
 
   const children = childrenQ.data ?? []
-  const child = children[0] ?? null
+
+  useEffect(() => {
+    if (childrenQ.isError) {
+      toast.error("Couldn't load your children's data. Please try again.")
+    }
+  }, [childrenQ.isError])
 
   if (childrenQ.isLoading) {
     return (
       <div>
         <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
         <div className="skeleton" style={{ height: 200, borderRadius: 13 }} />
+      </div>
+    )
+  }
+
+  if (childrenQ.isError) {
+    return (
+      <div className="dashboard-card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
+        <p style={{ color: 'var(--color-text-secondary)' }}>
+          Couldn't load your children's data. Please try again.
+        </p>
       </div>
     )
   }
@@ -38,65 +56,54 @@ export default function ParentDashboard() {
           <div className="greeting-strip__chips">
             <span className="greeting-chip">Parent</span>
             {user?.county && <span className="greeting-chip" style={{ textTransform: 'capitalize' }}>{user.county}</span>}
+            <span className="greeting-chip">{children.length} child{children.length !== 1 ? 'ren' : ''}</span>
           </div>
         </div>
       </div>
 
-      {child ? (
-        <>
-          <ChildHeader child={child} />
-
-          <div className="dashboard-grid">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-              <div className="dashboard-card">
-                <p className="dashboard-card__title">{child.first_name}'s career personality</p>
-                {child.top_pathway ? (
-                  <div style={{ padding: 'var(--space-4)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{child.top_pathway}</div>
-                    <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                      Top career pathway · {child.fit_pct}% fit
+      {children.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          {children.map((child: LinkedChild) => (
+            <div key={child.id} className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+              <ChildHeader child={child} />
+              <div style={{ padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <p className="dashboard-card__title">{child.first_name}'s career personality</p>
+                  {child.top_pathway ? (
+                    <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{child.top_pathway}</div>
+                      <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                        Top career pathway · {child.fit_pct}% fit
+                      </div>
                     </div>
-                  </div>
-                ) : (
+                  ) : (
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                      Career quiz not completed yet.
+                    </p>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <p className="dashboard-card__title">{child.first_name}'s subjects</p>
                   <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                    Career quiz not completed yet.
+                    {child.subject_count > 0
+                      ? `${child.subject_count} subject${child.subject_count !== 1 ? 's' : ''} enrolled.`
+                      : 'No subjects added yet.'}
                   </p>
-                )}
+                </div>
               </div>
-
-              <div className="dashboard-card">
-                <p className="dashboard-card__title">{child.first_name}'s recent grades</p>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                  {child.subject_count > 0
-                    ? `${child.subject_count} subject${child.subject_count !== 1 ? 's' : ''} enrolled.`
-                    : 'No subjects added yet.'}
-                </p>
+              <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+                <Link
+                  to={`/parent/child/${child.id}`}
+                  className="btn-ghost"
+                  style={{ fontSize: 'var(--font-size-sm)' }}
+                  aria-label={`View profile for ${child.first_name}`}
+                >
+                  View profile
+                </Link>
               </div>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-              <div className="counselor-card">
-                <p className="dashboard-card__title" style={{ marginBottom: 'var(--space-3)' }}>Counselor's note</p>
-                {child.counselor_assigned ? (
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', fontStyle: 'italic' }}>
-                    No notes yet from the counselor.
-                  </p>
-                ) : (
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                    No counselor assigned yet.
-                  </p>
-                )}
-              </div>
-
-              <div className="dashboard-card">
-                <p className="dashboard-card__title">Recent updates</p>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                  No recent activity for {child.first_name}.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
+          ))}
+        </div>
       ) : (
         <div className="dashboard-card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
           <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>

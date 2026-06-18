@@ -308,7 +308,40 @@ export const handlers = [
 
   // Dashboard — parent children
   http.get('/api/v1/parents/children/', () => {
-    return HttpResponse.json({ data: [], error: null, message: '' })
+    return HttpResponse.json({
+      data: [
+        {
+          id: 10,
+          first_name: 'Tom',
+          last_name: 'Doe',
+          grade: 9,
+          county: 'kiambu',
+          photo_url: null,
+          quiz_status: 'done',
+          subject_count: 5,
+          counselor_assigned: true,
+          last_active: '2026-06-18T10:00:00Z',
+          top_pathway: 'Engineering',
+          fit_pct: 85,
+        },
+        {
+          id: 11,
+          first_name: 'Alice',
+          last_name: 'Doe',
+          grade: 10,
+          county: 'kiambu',
+          photo_url: null,
+          quiz_status: 'pending',
+          subject_count: 3,
+          counselor_assigned: false,
+          last_active: '2026-06-17T08:00:00Z',
+          top_pathway: null,
+          fit_pct: null,
+        },
+      ],
+      error: null,
+      message: '',
+    })
   }),
 
   // School Admin handlers
