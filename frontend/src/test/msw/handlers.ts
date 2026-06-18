@@ -310,4 +310,87 @@ export const handlers = [
   http.get('/api/v1/parents/children/', () => {
     return HttpResponse.json({ data: [], error: null, message: '' })
   }),
+
+  // School Admin handlers
+  http.get('/api/v1/school-admin/school/', () => {
+    return HttpResponse.json({
+      data: {
+        id: 1, name: 'Starehe Boys Centre', county: 'nairobi', school_code: 'NAI001',
+        logo_url: null, phone: '+254712345678', email: 'info@starehe.ac.ke',
+        student_count: 24, counselor_count: 3,
+      },
+      error: null, message: '',
+    })
+  }),
+
+  http.patch('/api/v1/school-admin/school/', () => {
+    return HttpResponse.json({
+      data: {
+        id: 1, name: 'Starehe Boys Centre', county: 'nairobi', school_code: 'NAI001',
+        logo_url: null, phone: '+254712345678', email: 'info@starehe.ac.ke',
+        student_count: 24, counselor_count: 3,
+      },
+      error: null, message: 'School profile updated.',
+    })
+  }),
+
+  http.post('/api/v1/school-admin/school/logo/', () => {
+    return HttpResponse.json({
+      data: { logo_url: 'https://storage.example.com/school-logos/school_1.png' },
+      error: null, message: 'School logo updated.',
+    })
+  }),
+
+  http.delete('/api/v1/school-admin/school/logo/', () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Logo removed.' })
+  }),
+
+  http.get('/api/v1/school-admin/counselors/', () => {
+    return HttpResponse.json({
+      data: [
+        { id: 10, first_name: 'Alice', last_name: 'Wanjiku', email: 'alice@school.co.ke', student_count: 8, joined_at: '2026-01-15T10:00:00Z' },
+        { id: 11, first_name: 'Bob', last_name: 'Ochieng', email: 'bob@school.co.ke', student_count: 12, joined_at: '2026-03-01T10:00:00Z' },
+      ],
+      error: null, message: '',
+    })
+  }),
+
+  http.post('/api/v1/school-admin/counselors/add/', () => {
+    return HttpResponse.json({
+      data: { id: 12, email: 'new@school.co.ke' },
+      error: null, message: 'New Counselor added to Starehe Boys Centre.',
+    })
+  }),
+
+  http.post(/\/api\/v1\/school-admin\/counselors\/\d+\/remove\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Counselor removed.' })
+  }),
+
+  http.get('/api/v1/school-admin/students/', () => {
+    return HttpResponse.json({
+      data: [
+        { id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', counselor_id: 10, counselor_name: 'Alice Wanjiku' },
+        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', counselor_id: null, counselor_name: null },
+      ],
+      error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/school-admin/stats/', () => {
+    return HttpResponse.json({
+      data: { total_students: 24, total_counselors: 3, assessed: 18, unassigned: 6 },
+      error: null, message: '',
+    })
+  }),
+
+  http.post('/api/v1/school-admin/assignments/', () => {
+    return HttpResponse.json({
+      data: { id: 100, student_id: 21, counselor_id: 10 },
+      error: null, message: 'Kevin assigned to Alice Wanjiku.',
+    })
+  }),
+
+  http.post(/\/api\/v1\/school-admin\/assignments\/\d+\/remove\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Assignment removed.' })
+  }),
 ]
