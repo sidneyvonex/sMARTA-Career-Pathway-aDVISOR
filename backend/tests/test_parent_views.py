@@ -7,6 +7,7 @@ from tests.factories import (
     SubjectFactory, CBCGradeFactory, CounselorFactory,
 )
 from riasec.models import RIASECScore, Recommendation, Pathway
+from notifications.models import Notification
 
 pytestmark = pytest.mark.django_db
 
@@ -226,3 +227,42 @@ class TestParentChildDetailView:
         resp = self.client.get(self._url(student.id))
         data = resp.json()['data']
         assert data['counselor'] is None
+
+
+class TestRIASECParentNotification:
+    def setup_method(self):
+        self.client = APIClient()
+
+    def _all_responses(self, score=3):
+        """Build a valid 30-response payload using seeded question IDs."""
+        from riasec.models import RIASECQuestion
+        return [{'question_id': q.id, 'score': score} for q in RIASECQuestion.objects.all()]
+
+    def test_parent_notified_on_child_assessment(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        ParentStudentLinkFactory(parent=parent, student=student)
+
+        self.client.force_authenticate(user=student)
+        resp = self.client.post('/api/v1/students/assessment/', {
+            'responses': self._all_responses(4),
+        }, format='json')
+        assert resp.status_code == 201
+
+        notifs = Notification.objects.filter(
+            user=parent, type='child_assessment_complete',
+        )
+        assert notifs.count() == 1
+        assert student.first_name in notifs.first().message
+
+    def test_no_parent_no_notification(self):
+        student = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=student, grade=9)
+
+        self.client.force_authenticate(user=student)
+        resp = self.client.post('/api/v1/students/assessment/', {
+            'responses': self._all_responses(3),
+        }, format='json')
+        assert resp.status_code == 201
+        assert Notification.objects.filter(type='child_assessment_complete').count() == 0

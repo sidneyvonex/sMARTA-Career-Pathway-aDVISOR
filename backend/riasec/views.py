@@ -5,6 +5,8 @@ from django.db import transaction
 from accounts.models import StudentProfile
 from accounts.permissions import IsStudent, IsEmailVerified
 from accounts.response import _success, _error
+from parents.models import ParentStudentLink
+from notifications.utils import create_notification
 from .models import (
     RIASECQuestion, RIASECAssessment, RIASECResponse,
     RIASECScore, Pathway, Recommendation,
@@ -77,6 +79,15 @@ class AssessmentView(APIView):
                 )
                 for fit in pathway_fits
             ])
+
+        parent_links = ParentStudentLink.objects.filter(student=request.user)
+        student_name = f'{request.user.first_name} {request.user.last_name}'.strip()
+        for link in parent_links:
+            create_notification(
+                user=link.parent,
+                type_code='child_assessment_complete',
+                message=f'{student_name} has completed their career personality assessment.',
+            )
 
         assessment = (
             RIASECAssessment.objects

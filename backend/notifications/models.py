@@ -6,6 +6,7 @@ TYPE_CHOICES = [
     ('counselor_note', 'Counselor Note'),
     ('parent_linked', 'Parent Linked'),
     ('counselor_assigned', 'Counselor Assigned'),
+    ('child_assessment_complete', 'Child Assessment Complete'),
 ]
 
 
