@@ -344,6 +344,80 @@ export const handlers = [
     })
   }),
 
+  // Parent child detail
+  http.get('/api/v1/parents/children/:id/', () => {
+    return HttpResponse.json({
+      data: {
+        profile: {
+          id: 10,
+          first_name: 'Tom',
+          last_name: 'Doe',
+          email: 'tom@test.com',
+          county: 'kiambu',
+          grade: 9,
+          mode: 'school_linked',
+          bio: 'Loves math and science',
+          date_of_birth: '2010-05-15',
+          career_interests: 'Engineering, Medicine',
+          photo_url: null,
+        },
+        subjects: [
+          {
+            id: 1,
+            name: 'Mathematics',
+            code: 'MAT0019',
+            category: 'Core',
+            grades: [
+              { id: 1, term: 1, year: 2026, level: 'ME1' },
+              { id: 2, term: 2, year: 2026, level: 'EE1' },
+            ],
+          },
+          {
+            id: 2,
+            name: 'English',
+            code: 'ENG0019',
+            category: 'Core',
+            grades: [{ id: 3, term: 1, year: 2026, level: 'AE1' }],
+          },
+        ],
+        assessment: {
+          id: 1,
+          submitted_at: '2026-06-15T10:00:00Z',
+          holland_code: 'RIA',
+          scores: { R: 25, I: 22, A: 18, S: 14, E: 12, C: 10 },
+          recommendations: [
+            {
+              rank: 1,
+              fit_score: 85,
+              fit_pct: 90,
+              pathway: { id: 1, name: 'Engineering', description: 'Build and design systems' },
+            },
+            {
+              rank: 2,
+              fit_score: 72,
+              fit_pct: 78,
+              pathway: { id: 2, name: 'Medicine', description: 'Healthcare and life sciences' },
+            },
+            {
+              rank: 3,
+              fit_score: 65,
+              fit_pct: 70,
+              pathway: { id: 3, name: 'Architecture', description: 'Design physical spaces' },
+            },
+          ],
+        },
+        counselor: {
+          id: 5,
+          first_name: 'Dr',
+          last_name: 'Smith',
+          email: 'drsmith@school.com',
+        },
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
   // School Admin handlers
   http.get('/api/v1/school-admin/school/', () => {
     return HttpResponse.json({
