@@ -1,5 +1,6 @@
 from io import BytesIO
 from PIL import Image
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -7,19 +8,11 @@ from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from accounts.permissions import IsSchoolAdmin, IsEmailVerified
 from accounts.models import User, StudentProfile
+from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
-
-
-def _success(data=None, message='', status_code=status.HTTP_200_OK):
-    return Response({'data': data, 'error': None, 'message': message}, status=status_code)
-
-
-def _error(message, status_code=status.HTTP_400_BAD_REQUEST):
-    return Response({'data': None, 'error': True, 'message': message}, status=status_code)
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
@@ -61,9 +54,19 @@ class SchoolProfileView(APIView):
         updated = []
         for field in SCHOOL_EDITABLE_FIELDS:
             if field in request.data:
-                setattr(school, field, request.data[field])
+                value = request.data[field]
+                if not isinstance(value, str):
+                    return _error(f'{field} must be a string.')
+                setattr(school, field, value.strip())
                 updated.append(field)
         if updated:
+            try:
+                school.full_clean(exclude=['county', 'school_code'])
+            except ValidationError as e:
+                messages = []
+                for field_errors in e.message_dict.values():
+                    messages.extend(field_errors)
+                return _error(messages[0] if messages else 'Invalid data.')
             school.save(update_fields=updated)
         return _success(data=self._serialize(school), message='School profile updated.')
 
@@ -111,6 +114,8 @@ class SchoolLogoUploadView(APIView):
         except Exception:
             return _error('Invalid image file.')
 
+        self._delete_old_logo(school)
+
         ext = FORMAT_TO_EXT[fmt]
         filename = f'school-logos/school_{school.id}.{ext}'
         saved_path = default_storage.save(filename, ContentFile(output.read()))
@@ -120,10 +125,26 @@ class SchoolLogoUploadView(APIView):
         school.save(update_fields=['logo_url'])
         return _success(data={'logo_url': logo_url}, message='School logo updated.')
 
-    def delete(self, request):
+    def _delete_old_logo(self, school):
+        if not school.logo_url:
+            return
+        for ext in FORMAT_TO_EXT.values():
+            path = f'school-logos/school_{school.id}.{ext}'
+            if default_storage.exists(path):
+                default_storage.delete(path)
+
+
+class SchoolLogoRemoveView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request):
         school = request.user.school
         if not school:
             return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+        for ext in FORMAT_TO_EXT.values():
+            path = f'school-logos/school_{school.id}.{ext}'
+            if default_storage.exists(path):
+                default_storage.delete(path)
         school.logo_url = None
         school.save(update_fields=['logo_url'])
         return _success(message='Logo removed.')

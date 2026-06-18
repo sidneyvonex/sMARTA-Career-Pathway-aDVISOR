@@ -63,7 +63,9 @@ export default function CounselorManagementPage() {
       <h1>Counselors</h1>
 
       <form onSubmit={handleAdd} className="counselor-management-page__add-form">
+        <label htmlFor="counselor-email" className="sr-only">Counselor email</label>
         <input
+          id="counselor-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}

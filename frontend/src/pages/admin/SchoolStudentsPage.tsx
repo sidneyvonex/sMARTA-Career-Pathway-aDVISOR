@@ -67,7 +67,9 @@ export default function SchoolStudentsPage() {
       <h1>Students</h1>
 
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+        <label htmlFor="student-search" className="sr-only">Search students</label>
         <input
+          id="student-search"
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -113,6 +115,7 @@ export default function SchoolStudentsPage() {
                 <td>
                   <select
                     className="assignment-select"
+                    aria-label={`Assign counselor for ${s.first_name} ${s.last_name}`}
                     value={s.counselor_id ?? ''}
                     onChange={(e) => {
                       const val = e.target.value

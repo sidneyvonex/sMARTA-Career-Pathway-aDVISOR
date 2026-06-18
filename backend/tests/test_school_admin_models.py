@@ -1,14 +1,12 @@
 import pytest
-from accounts.models import School
+from tests.factories import SchoolFactory
 
 pytestmark = pytest.mark.django_db
 
 
 class TestSchoolModelFields:
     def test_school_has_logo_url(self):
-        school = School.objects.create(
-            name='Test School', county='kiambu', school_code='TST0001',
-        )
+        school = SchoolFactory()
         assert school.logo_url is None
         school.logo_url = 'https://example.com/logo.png'
         school.save()
@@ -16,9 +14,7 @@ class TestSchoolModelFields:
         assert school.logo_url == 'https://example.com/logo.png'
 
     def test_school_has_phone(self):
-        school = School.objects.create(
-            name='Test School', county='kiambu', school_code='TST0002',
-        )
+        school = SchoolFactory()
         assert school.phone == ''
         school.phone = '+254712345678'
         school.save()
@@ -26,9 +22,7 @@ class TestSchoolModelFields:
         assert school.phone == '+254712345678'
 
     def test_school_has_email(self):
-        school = School.objects.create(
-            name='Test School', county='kiambu', school_code='TST0003',
-        )
+        school = SchoolFactory()
         assert school.email == ''
         school.email = 'info@testschool.ac.ke'
         school.save()

@@ -73,6 +73,18 @@ class TestSchoolProfileView:
         response = student_client.get('/api/v1/school-admin/school/')
         assert response.status_code == 403
 
+    def test_patch_validates_email_format(self):
+        response = self.client.patch('/api/v1/school-admin/school/', {
+            'email': 'not-an-email',
+        })
+        assert response.status_code == 400
+
+    def test_patch_validates_name_not_blank(self):
+        response = self.client.patch('/api/v1/school-admin/school/', {
+            'name': '',
+        })
+        assert response.status_code == 400
+
     def test_admin_without_school_gets_404(self):
         orphan = SchoolAdminFactory(school=None)
         self.client.force_authenticate(orphan)
@@ -125,10 +137,10 @@ class TestSchoolLogoUpload:
         response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': txt}, format='multipart')
         assert response.status_code == 400
 
-    def test_delete_logo(self):
+    def test_remove_logo(self):
         self.school.logo_url = 'https://example.com/old.png'
         self.school.save()
-        response = self.client.delete('/api/v1/school-admin/school/logo/')
+        response = self.client.post('/api/v1/school-admin/school/logo/remove/')
         assert response.status_code == 200
         self.school.refresh_from_db()
         assert self.school.logo_url is None

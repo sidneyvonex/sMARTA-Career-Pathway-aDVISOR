@@ -54,7 +54,7 @@ export const schoolAdminApi = {
   },
 
   removeLogo: () =>
-    api.delete('/school-admin/school/logo/'),
+    api.post('/school-admin/school/logo/remove/'),
 
   getCounselors: () =>
     api.get<{ data: SchoolCounselor[] }>('/school-admin/counselors/'),

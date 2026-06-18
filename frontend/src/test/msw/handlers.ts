@@ -341,7 +341,7 @@ export const handlers = [
     })
   }),
 
-  http.delete('/api/v1/school-admin/school/logo/', () => {
+  http.post('/api/v1/school-admin/school/logo/remove/', () => {
     return HttpResponse.json({ data: null, error: null, message: 'Logo removed.' })
   }),
 

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { schoolAdminApi } from '../../../api/schoolAdmin'
 import '../../../styles/school-admin.css'
 
@@ -19,7 +20,7 @@ export default function SchoolAdminDashboard() {
   if (schoolQ.isLoading || statsQ.isLoading) {
     return (
       <div className="school-admin-dashboard">
-        <div className="skeleton" style={{ height: 80, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
+        <div className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-5)' }} />
         <div className="dashboard-stats-grid">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="skeleton-card">
@@ -28,6 +29,17 @@ export default function SchoolAdminDashboard() {
             </div>
           ))}
         </div>
+      </div>
+    )
+  }
+
+  if (schoolQ.isError || statsQ.isError) {
+    toast.error('Failed to load dashboard data.')
+    return (
+      <div className="school-admin-dashboard">
+        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
+          Something went wrong loading the dashboard. Please try again.
+        </p>
       </div>
     )
   }
@@ -56,7 +68,7 @@ export default function SchoolAdminDashboard() {
           <span className="dashboard-stat-card__value">{stats?.total_counselors ?? 0}</span>
           <span className="dashboard-stat-card__label">Counselors</span>
         </button>
-        <button className="dashboard-stat-card dashboard-stat-card--success">
+        <button className="dashboard-stat-card dashboard-stat-card--success" onClick={() => navigate('/admin/students')}>
           <span className="dashboard-stat-card__value">{stats?.assessed ?? 0}</span>
           <span className="dashboard-stat-card__label">Assessed</span>
         </button>
