@@ -4,7 +4,7 @@ from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework.test import APIClient
-from tests.factories import SchoolAdminFactory, SchoolFactory, StudentProfileFactory, CounselorFactory
+from tests.factories import SchoolAdminFactory, SchoolFactory, StudentProfileFactory, CounselorFactory, CounselorAssignmentFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -136,4 +136,69 @@ class TestSchoolLogoUpload:
         self.client.force_authenticate(orphan)
         logo = _make_image()
         response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': logo}, format='multipart')
+        assert response.status_code == 404
+
+
+class TestSchoolCounselorsView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.school = SchoolFactory(name='Starehe Boys', county='nairobi', school_code='NAI003')
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client.force_authenticate(self.admin)
+
+    def test_list_counselors(self):
+        c1 = CounselorFactory(school=self.school, first_name='Alice', last_name='Wanjiku')
+        c2 = CounselorFactory(school=self.school, first_name='Bob', last_name='Ochieng')
+        CounselorFactory(school=SchoolFactory())  # different school — should not appear
+        response = self.client.get('/api/v1/school-admin/counselors/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert len(data) == 2
+        names = {d['first_name'] for d in data}
+        assert names == {'Alice', 'Bob'}
+
+    def test_counselor_entry_has_student_count(self):
+        c = CounselorFactory(school=self.school)
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        CounselorAssignmentFactory(counselor=c, student_profile=sp, school=self.school)
+        response = self.client.get('/api/v1/school-admin/counselors/')
+        assert response.data['data'][0]['student_count'] == 1
+
+    def test_add_counselor_to_school(self):
+        counselor = CounselorFactory(school=None, email='new@school.co.ke')
+        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'new@school.co.ke'})
+        assert response.status_code == 200
+        counselor.refresh_from_db()
+        assert counselor.school == self.school
+
+    def test_add_counselor_already_at_another_school(self):
+        other_school = SchoolFactory()
+        CounselorFactory(school=other_school, email='taken@school.co.ke')
+        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'taken@school.co.ke'})
+        assert response.status_code == 400
+        assert 'already assigned' in response.data['message']
+
+    def test_add_non_counselor_fails(self):
+        SchoolAdminFactory(email='admin@school.co.ke', school=None)
+        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'admin@school.co.ke'})
+        assert response.status_code == 404
+
+    def test_add_nonexistent_email_fails(self):
+        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'nobody@school.co.ke'})
+        assert response.status_code == 404
+
+    def test_remove_counselor_from_school(self):
+        c = CounselorFactory(school=self.school)
+        sp = StudentProfileFactory(school=self.school, mode='school_linked')
+        assignment = CounselorAssignmentFactory(counselor=c, student_profile=sp, school=self.school)
+        response = self.client.post(f'/api/v1/school-admin/counselors/{c.id}/remove/')
+        assert response.status_code == 200
+        c.refresh_from_db()
+        assert c.school is None
+        assignment.refresh_from_db()
+        assert assignment.is_active is False
+
+    def test_remove_counselor_not_at_school(self):
+        other = CounselorFactory(school=SchoolFactory())
+        response = self.client.post(f'/api/v1/school-admin/counselors/{other.id}/remove/')
         assert response.status_code == 404
