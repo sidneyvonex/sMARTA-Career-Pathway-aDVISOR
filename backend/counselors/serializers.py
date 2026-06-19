@@ -17,3 +17,4 @@ class CounselorNoteSerializer(serializers.ModelSerializer):
 class CounselorNoteCreateSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()
     body = serializers.CharField(max_length=2000)
+    visible_to_parent = serializers.BooleanField(default=False, required=False)

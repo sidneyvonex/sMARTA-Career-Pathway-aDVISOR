@@ -1,7 +1,10 @@
+import logging
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+
+logger = logging.getLogger(__name__)
 from accounts.models import StudentProfile
 from accounts.permissions import IsStudent, IsEmailVerified
 from accounts.response import _success, _error
@@ -90,7 +93,7 @@ class AssessmentView(APIView):
                     message=f'{student_name} has completed their career personality assessment.',
                 )
         except Exception:
-            pass
+            logger.exception('Failed to notify parents for student %s', request.user.id)
 
         assessment = (
             RIASECAssessment.objects

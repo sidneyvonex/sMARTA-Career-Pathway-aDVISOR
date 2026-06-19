@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import override_settings
 from accounts.tokens import make_parent_invite_token, make_invite_token
@@ -21,8 +22,20 @@ class TestParentStudentLink:
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student')
         ParentStudentLinkFactory(parent=parent, student=student)
-        with pytest.raises(IntegrityError):
+        with pytest.raises((IntegrityError, ValidationError)):
             ParentStudentLinkFactory(parent=parent, student=student)
+
+    def test_rejects_non_parent_role(self):
+        counselor = VerifiedUserFactory(role='counselor')
+        student = VerifiedUserFactory(role='student')
+        with pytest.raises(ValidationError):
+            ParentStudentLinkFactory(parent=counselor, student=student)
+
+    def test_rejects_non_student_role(self):
+        parent = ParentFactory()
+        other_parent = ParentFactory()
+        with pytest.raises(ValidationError):
+            ParentStudentLinkFactory(parent=parent, student=other_parent)
 
     def test_parent_can_link_multiple_students(self):
         parent = ParentFactory()

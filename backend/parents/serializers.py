@@ -22,6 +22,27 @@ class LinkedChildSerializer(serializers.Serializer):
     def _profile(self, obj):
         return getattr(obj.student, 'student_profile', None)
 
+    def _top_recommendation(self, profile):
+        if not hasattr(self, '_rec_cache'):
+            self._rec_cache = {}
+        key = profile.pk
+        if key not in self._rec_cache:
+            assessment = (
+                RIASECAssessment.objects
+                .filter(student_profile=profile)
+                .order_by('-submitted_at')
+                .first()
+            )
+            if assessment:
+                self._rec_cache[key] = (
+                    assessment,
+                    Recommendation.objects.filter(assessment=assessment, rank=1)
+                    .select_related('pathway').first(),
+                )
+            else:
+                self._rec_cache[key] = (None, None)
+        return self._rec_cache[key]
+
     def get_grade(self, obj):
         p = self._profile(obj)
         return p.grade if p else None
@@ -34,7 +55,8 @@ class LinkedChildSerializer(serializers.Serializer):
         p = self._profile(obj)
         if not p:
             return 'pending'
-        return 'done' if RIASECAssessment.objects.filter(student_profile=p).exists() else 'pending'
+        assessment, _ = self._top_recommendation(p)
+        return 'done' if assessment else 'pending'
 
     def get_subject_count(self, obj):
         p = self._profile(obj)
@@ -53,20 +75,14 @@ class LinkedChildSerializer(serializers.Serializer):
         p = self._profile(obj)
         if not p:
             return None
-        assessment = RIASECAssessment.objects.filter(student_profile=p).order_by('-submitted_at').first()
-        if not assessment:
-            return None
-        rec = Recommendation.objects.filter(assessment=assessment, rank=1).select_related('pathway').first()
+        _, rec = self._top_recommendation(p)
         return rec.pathway.name if rec else None
 
     def get_fit_pct(self, obj):
         p = self._profile(obj)
         if not p:
             return None
-        assessment = RIASECAssessment.objects.filter(student_profile=p).order_by('-submitted_at').first()
-        if not assessment:
-            return None
-        rec = Recommendation.objects.filter(assessment=assessment, rank=1).first()
+        _, rec = self._top_recommendation(p)
         return rec.fit_pct if rec else None
 
 
@@ -75,13 +91,13 @@ class ChildProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField(source='user.first_name')
     last_name = serializers.CharField(source='user.last_name')
     email = serializers.EmailField(source='user.email')
-    county = serializers.CharField(source='user.county')
+    county = serializers.CharField(source='user.county', allow_null=True)
     grade = serializers.IntegerField()
     mode = serializers.CharField()
-    bio = serializers.CharField()
-    date_of_birth = serializers.DateField()
-    career_interests = serializers.CharField()
-    photo_url = serializers.URLField()
+    bio = serializers.CharField(allow_blank=True)
+    date_of_birth = serializers.DateField(allow_null=True)
+    career_interests = serializers.CharField(allow_blank=True)
+    photo_url = serializers.URLField(allow_null=True)
 
 
 class ChildGradeSerializer(serializers.ModelSerializer):

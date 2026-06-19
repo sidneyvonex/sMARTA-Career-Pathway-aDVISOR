@@ -178,6 +178,7 @@ class CounselorNotesView(APIView):
             counselor=request.user,
             student_id=student_id,
             body=serializer.validated_data['body'],
+            visible_to_parent=serializer.validated_data.get('visible_to_parent', False),
         )
         return _success(
             data=CounselorNoteSerializer(note).data,

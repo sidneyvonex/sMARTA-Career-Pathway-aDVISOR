@@ -19,6 +19,17 @@ export default function ChildDetailPage() {
   const { id } = useParams<{ id: string }>()
   const studentId = Number(id)
 
+  if (Number.isNaN(studentId)) {
+    return (
+      <div className="child-detail">
+        <Link to="/" className="child-detail__back" aria-label="Back to dashboard">← Back to dashboard</Link>
+        <div className="child-detail__section" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Invalid child ID. Please go back to your dashboard.</p>
+        </div>
+      </div>
+    )
+  }
+
   const detailQ = useQuery({
     queryKey: ['parent-child-detail', studentId],
     queryFn: () => parentApi.getChildDetail(studentId).then((r) => r.data.data),

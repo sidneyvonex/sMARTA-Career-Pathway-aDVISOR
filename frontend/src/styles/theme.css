@@ -26,6 +26,10 @@
   --color-border: #E2E5EA;
   --color-divider: #F0F1F3;
 
+  /* On-dark surface */
+  --color-text-on-primary: #FFFFFF;
+  --color-overlay-light: rgba(255, 255, 255, 0.2);
+
   /* Semantic */
   --color-success: #1A5C38;
   --color-success-surface: #E8F5EE;

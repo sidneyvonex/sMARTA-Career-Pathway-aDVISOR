@@ -1,5 +1,7 @@
 import logging
 
+logger = logging.getLogger(__name__)
+
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.conf import settings
@@ -308,17 +310,27 @@ class AcceptInviteView(APIView):
             is_email_verified=True,
         )
 
+        link_created = False
         if student_id is not None:
             try:
                 student = User.objects.get(pk=student_id, role='student')
                 ParentStudentLink.objects.create(parent=user, student=student)
+                link_created = True
             except User.DoesNotExist:
-                pass
+                logger.warning(
+                    'Parent invite accepted but student_id=%s not found or wrong role',
+                    student_id,
+                )
+
+        if student_id and not link_created:
+            message = 'Account created, but the student could not be found. Contact your school to link your child.'
+        else:
+            message = 'Account created successfully.'
 
         refresh = RefreshToken.for_user(user)
         response = _success(
             data={'user': UserSerializer(user).data},
-            message='Account created successfully.',
+            message=message,
             status_code=status.HTTP_201_CREATED,
         )
         _set_auth_cookies(response, str(refresh.access_token), str(refresh))
