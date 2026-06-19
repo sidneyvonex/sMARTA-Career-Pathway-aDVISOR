@@ -294,3 +294,23 @@
   background: #FEE2E2;
   color: #B91C1C;
 }
+
+/* ===== Audit log details toggle ===== */
+
+.sysadmin-details-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-width: 300px;
+}
+
+.sysadmin-details-toggle:hover {
+  color: var(--color-primary);
+}
