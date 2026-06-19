@@ -10,6 +10,8 @@ from rest_framework.views import APIView
 from accounts.models import School, User, StudentProfile, COUNTY_CHOICES
 from accounts.permissions import IsSystemAdmin, IsEmailVerified
 from accounts.response import _success, _error
+from counselors.models import CounselorAssignment
+from riasec.models import RIASECAssessment
 from .models import AuditLog
 from .utils import log_action
 
@@ -335,3 +337,213 @@ class SchoolActivateView(APIView):
         )
 
         return _success(message=f'{school.name} has been activated.')
+
+
+class UserListView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def get(self, request):
+        qs = User.objects.all()
+
+        role = request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+
+        county = request.query_params.get('county')
+        if county:
+            qs = qs.filter(county=county)
+
+        school_id = request.query_params.get('school')
+        if school_id:
+            qs = qs.filter(school_id=school_id)
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        active_param = request.query_params.get('active')
+        if active_param == 'true':
+            qs = qs.filter(is_active=True)
+        elif active_param == 'false':
+            qs = qs.filter(is_active=False)
+
+        qs = qs.select_related('school').order_by('-created_at')
+
+        page = max(int(request.query_params.get('page', 1)), 1)
+        page_size = 20
+        total = qs.count()
+        start = (page - 1) * page_size
+        users = qs[start:start + page_size]
+
+        data = [
+            {
+                'id': u.id,
+                'first_name': u.first_name,
+                'last_name': u.last_name,
+                'email': u.email,
+                'role': u.role,
+                'county': u.county,
+                'school_name': u.school.name if u.school else None,
+                'is_active': u.is_active,
+                'is_email_verified': u.is_email_verified,
+                'created_at': u.created_at.isoformat(),
+            }
+            for u in users
+        ]
+
+        return _success(data={'results': data, 'total': total, 'page': page, 'page_size': page_size})
+
+
+class UserDetailView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.select_related('school').get(pk=user_id)
+        except User.DoesNotExist:
+            return _error('User not found.', status.HTTP_404_NOT_FOUND)
+
+        data = {
+            'id': user.id,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'role': user.role,
+            'county': user.county,
+            'school_id': user.school_id,
+            'school_name': user.school.name if user.school else None,
+            'is_active': user.is_active,
+            'is_email_verified': user.is_email_verified,
+            'created_at': user.created_at.isoformat(),
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+        }
+
+        if user.role == 'student':
+            try:
+                profile = user.student_profile
+                data['grade'] = profile.grade
+                data['mode'] = profile.mode
+                data['has_assessment'] = RIASECAssessment.objects.filter(
+                    student_profile=profile,
+                ).exists()
+            except StudentProfile.DoesNotExist:
+                data['grade'] = None
+                data['mode'] = None
+                data['has_assessment'] = False
+
+        if user.role == 'counselor':
+            data['student_count'] = CounselorAssignment.objects.filter(
+                counselor=user, is_active=True,
+            ).count()
+
+        return _success(data=data)
+
+
+class UserDeactivateView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def post(self, request, user_id):
+        if request.user.id == user_id:
+            return _error('You cannot deactivate your own account.')
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return _error('User not found.', status.HTTP_404_NOT_FOUND)
+
+        if not user.is_active:
+            return _error('User is already deactivated.')
+
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+
+        log_action(
+            actor=request.user,
+            action='account_deactivated',
+            target_type='user',
+            target_id=user.id,
+            details={'email': user.email, 'role': user.role},
+            request=request,
+        )
+
+        return _success(message=f'{user.first_name} {user.last_name} has been deactivated.')
+
+
+class UserActivateView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return _error('User not found.', status.HTTP_404_NOT_FOUND)
+
+        if user.is_active:
+            return _error('User is already active.')
+
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+
+        log_action(
+            actor=request.user,
+            action='account_activated',
+            target_type='user',
+            target_id=user.id,
+            details={'email': user.email, 'role': user.role},
+            request=request,
+        )
+
+        return _success(message=f'{user.first_name} {user.last_name} has been activated.')
+
+
+class AuditLogListView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def get(self, request):
+        qs = AuditLog.objects.select_related('actor')
+
+        action = request.query_params.get('action')
+        if action:
+            qs = qs.filter(action=action)
+
+        actor_id = request.query_params.get('actor')
+        if actor_id:
+            qs = qs.filter(actor_id=actor_id)
+
+        date_from = request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+
+        date_to = request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+
+        page = max(int(request.query_params.get('page', 1)), 1)
+        page_size = 20
+        total = qs.count()
+        start = (page - 1) * page_size
+        logs = qs[start:start + page_size]
+
+        data = [
+            {
+                'id': log.id,
+                'actor_email': log.actor.email if log.actor else None,
+                'actor_name': (
+                    f'{log.actor.first_name} {log.actor.last_name}'.strip()
+                    if log.actor else None
+                ),
+                'action': log.action,
+                'target_type': log.target_type,
+                'target_id': log.target_id,
+                'details': log.details,
+                'ip_address': log.ip_address,
+                'created_at': log.created_at.isoformat(),
+            }
+            for log in logs
+        ]
+
+        return _success(data={'results': data, 'total': total, 'page': page, 'page_size': page_size})

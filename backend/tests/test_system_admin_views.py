@@ -243,3 +243,187 @@ class TestSchoolDeactivateActivate:
     def test_deactivate_nonexistent(self):
         response = self.client.post('/api/v1/system-admin/schools/99999/deactivate/')
         assert response.status_code == 404
+
+
+class TestUserListView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_list_all_users(self):
+        VerifiedUserFactory(role='student')
+        VerifiedUserFactory(role='counselor')
+        response = self.client.get('/api/v1/system-admin/users/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['total'] >= 3  # 2 created + the admin itself
+
+    def test_filter_by_role(self):
+        VerifiedUserFactory(role='student')
+        VerifiedUserFactory(role='counselor')
+        response = self.client.get('/api/v1/system-admin/users/?role=student')
+        data = response.data['data']
+        for u in data['results']:
+            assert u['role'] == 'student'
+
+    def test_filter_by_county(self):
+        VerifiedUserFactory(role='student', county='nyeri')
+        VerifiedUserFactory(role='student', county='kiambu')
+        response = self.client.get('/api/v1/system-admin/users/?county=nyeri')
+        data = response.data['data']
+        for u in data['results']:
+            assert u['county'] == 'nyeri'
+
+    def test_search_by_email(self):
+        VerifiedUserFactory(email='unique_test_email@example.com', role='student')
+        response = self.client.get('/api/v1/system-admin/users/?search=unique_test_email')
+        data = response.data['data']
+        assert data['total'] == 1
+
+    def test_filter_active(self):
+        u = VerifiedUserFactory(role='student')
+        u.is_active = False
+        u.save(update_fields=['is_active'])
+        response = self.client.get('/api/v1/system-admin/users/?active=false')
+        data = response.data['data']
+        assert data['total'] == 1
+
+    def test_pagination(self):
+        for _ in range(25):
+            VerifiedUserFactory(role='student')
+        response = self.client.get('/api/v1/system-admin/users/?page=2')
+        data = response.data['data']
+        assert data['page'] == 2
+
+    def test_includes_school_name(self):
+        school = SchoolFactory(name='My School')
+        VerifiedUserFactory(role='counselor', school=school)
+        response = self.client.get('/api/v1/system-admin/users/?role=counselor')
+        results = response.data['data']['results']
+        counselor = next(r for r in results if r['school_name'] == 'My School')
+        assert counselor['school_name'] == 'My School'
+
+    def test_requires_system_admin(self):
+        client = APIClient()
+        client.force_authenticate(VerifiedUserFactory(role='student'))
+        response = client.get('/api/v1/system-admin/users/')
+        assert response.status_code == 403
+
+
+class TestUserDetailView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_get_student_detail(self):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9, mode='self_guided')
+        response = self.client.get(f'/api/v1/system-admin/users/{student.id}/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['email'] == student.email
+        assert data['grade'] == 9
+        assert data['mode'] == 'self_guided'
+        assert data['has_assessment'] is False
+
+    def test_get_counselor_detail(self):
+        counselor = CounselorFactory()
+        response = self.client.get(f'/api/v1/system-admin/users/{counselor.id}/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['role'] == 'counselor'
+        assert data['student_count'] == 0
+
+    def test_nonexistent_user(self):
+        response = self.client.get('/api/v1/system-admin/users/99999/')
+        assert response.status_code == 404
+
+
+class TestUserDeactivateActivate:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_deactivate_user(self):
+        user = VerifiedUserFactory(role='student')
+        response = self.client.post(f'/api/v1/system-admin/users/{user.id}/deactivate/')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.is_active is False
+        assert AuditLog.objects.filter(action='account_deactivated').count() == 1
+
+    def test_cannot_deactivate_self(self):
+        response = self.client.post(f'/api/v1/system-admin/users/{self.admin.id}/deactivate/')
+        assert response.status_code == 400
+
+    def test_deactivate_already_inactive(self):
+        user = VerifiedUserFactory(role='student')
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        response = self.client.post(f'/api/v1/system-admin/users/{user.id}/deactivate/')
+        assert response.status_code == 400
+
+    def test_activate_user(self):
+        user = VerifiedUserFactory(role='student')
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        response = self.client.post(f'/api/v1/system-admin/users/{user.id}/activate/')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.is_active is True
+        assert AuditLog.objects.filter(action='account_activated').count() == 1
+
+    def test_activate_already_active(self):
+        user = VerifiedUserFactory(role='student')
+        response = self.client.post(f'/api/v1/system-admin/users/{user.id}/activate/')
+        assert response.status_code == 400
+
+    def test_deactivate_nonexistent(self):
+        response = self.client.post('/api/v1/system-admin/users/99999/deactivate/')
+        assert response.status_code == 404
+
+
+class TestAuditLogListView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_list_audit_logs(self):
+        AuditLogFactory(actor=self.admin, action='school_created', target_id=1)
+        AuditLogFactory(actor=self.admin, action='invite_sent', target_id=2)
+        response = self.client.get('/api/v1/system-admin/audit-logs/')
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['total'] == 2
+
+    def test_filter_by_action(self):
+        AuditLogFactory(action='school_created')
+        AuditLogFactory(action='invite_sent')
+        response = self.client.get('/api/v1/system-admin/audit-logs/?action=school_created')
+        data = response.data['data']
+        assert data['total'] == 1
+        assert data['results'][0]['action'] == 'school_created'
+
+    def test_filter_by_date_range(self):
+        AuditLogFactory(action='school_created')
+        response = self.client.get('/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
+        data = response.data['data']
+        assert data['total'] >= 1
+
+    def test_pagination(self):
+        for i in range(25):
+            AuditLogFactory(target_id=i)
+        response = self.client.get('/api/v1/system-admin/audit-logs/?page=2')
+        data = response.data['data']
+        assert data['page'] == 2
+        assert len(data['results']) == 5
+
+    def test_requires_system_admin(self):
+        client = APIClient()
+        client.force_authenticate(VerifiedUserFactory(role='student'))
+        response = client.get('/api/v1/system-admin/audit-logs/')
+        assert response.status_code == 403
