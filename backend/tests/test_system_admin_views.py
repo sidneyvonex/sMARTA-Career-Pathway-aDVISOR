@@ -427,3 +427,55 @@ class TestAuditLogListView:
         client.force_authenticate(VerifiedUserFactory(role='student'))
         response = client.get('/api/v1/system-admin/audit-logs/')
         assert response.status_code == 403
+
+
+class TestAuditLogIntegration:
+    """Verify audit log entries are created by existing views."""
+
+    def setup_method(self):
+        self.client = APIClient()
+
+    def test_registration_creates_audit_log(self):
+        response = self.client.post('/api/v1/auth/register/', {
+            'email': 'newstudent@test.com',
+            'password': 'TestPass123!',
+            'first_name': 'New',
+            'last_name': 'Student',
+            'role': 'student',
+            'county': 'kiambu',
+            'grade': 9,
+        }, format='json')
+        assert response.status_code == 201
+        assert AuditLog.objects.filter(action='user_registered').count() == 1
+
+    def test_invite_sent_creates_audit_log(self):
+        admin = SystemAdminFactory()
+        self.client.force_authenticate(admin)
+        response = self.client.post('/api/v1/auth/invite/', {
+            'email': 'newcounselor@test.com',
+            'role': 'counselor',
+        })
+        assert response.status_code == 200
+        entry = AuditLog.objects.get(action='invite_sent')
+        assert entry.details['email'] == 'newcounselor@test.com'
+        assert entry.details['role'] == 'counselor'
+
+    def test_counselor_add_creates_audit_log(self):
+        school = SchoolFactory()
+        school_admin = SchoolAdminFactory(school=school)
+        counselor = CounselorFactory(school=None)
+        self.client.force_authenticate(school_admin)
+        response = self.client.post('/api/v1/school-admin/counselors/add/', {
+            'email': counselor.email,
+        })
+        assert response.status_code == 200
+        assert AuditLog.objects.filter(action='counselor_added').count() == 1
+
+    def test_counselor_remove_creates_audit_log(self):
+        school = SchoolFactory()
+        school_admin = SchoolAdminFactory(school=school)
+        counselor = CounselorFactory(school=school)
+        self.client.force_authenticate(school_admin)
+        response = self.client.post(f'/api/v1/school-admin/counselors/{counselor.id}/remove/')
+        assert response.status_code == 200
+        assert AuditLog.objects.filter(action='counselor_removed').count() == 1

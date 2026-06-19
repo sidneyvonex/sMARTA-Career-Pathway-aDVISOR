@@ -13,6 +13,7 @@ from accounts.models import User, StudentProfile
 from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
+from system_admin.utils import log_action
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
@@ -204,6 +205,12 @@ class SchoolCounselorAddView(APIView):
             return _error('This counselor is already assigned to a school.')
         counselor.school = school
         counselor.save(update_fields=['school'])
+        log_action(
+            actor=request.user, action='counselor_added', target_type='user',
+            target_id=counselor.id,
+            details={'school_id': school.id, 'school_name': school.name},
+            request=request,
+        )
         return _success(
             data={'id': counselor.id, 'email': counselor.email},
             message=f'{counselor.first_name} {counselor.last_name} added to {school.name}.',
@@ -230,6 +237,12 @@ class SchoolCounselorRemoveView(APIView):
 
             counselor.school = None
             counselor.save(update_fields=['school'])
+        log_action(
+            actor=request.user, action='counselor_removed', target_type='user',
+            target_id=counselor.id,
+            details={'school_id': school.id, 'school_name': school.name},
+            request=request,
+        )
         return _success(message=f'{counselor.first_name} {counselor.last_name} removed from {school.name}.')
 
 
@@ -346,6 +359,12 @@ class SchoolAssignmentView(APIView):
                 school=school,
             )
 
+        log_action(
+            actor=request.user, action='counselor_assigned', target_type='assignment',
+            target_id=assignment.id,
+            details={'student_id': student_id, 'counselor_id': counselor_id},
+            request=request,
+        )
         return _success(
             data={'id': assignment.id, 'student_id': student_id, 'counselor_id': counselor_id},
             message=f'{profile.user.first_name} assigned to {counselor.first_name} {counselor.last_name}.',

@@ -29,6 +29,7 @@ from .tokens import (
 )
 from .response import _success, _error
 from parents.models import ParentStudentLink
+from system_admin.utils import log_action
 
 
 class RegisterView(APIView):
@@ -43,6 +44,10 @@ class RegisterView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         user = serializer.save()
+        log_action(
+            actor=user, action='user_registered', target_type='user',
+            target_id=user.id, details={'email': user.email}, request=request,
+        )
         send_verification_email.delay(user.id, user.email, user.first_name)
         return _success(
             message='Registration successful. Check your email to verify your account.',
@@ -161,6 +166,10 @@ class VerifyEmailView(APIView):
             user = User.objects.get(pk=payload['user_id'])
             user.is_email_verified = True
             user.save(update_fields=['is_email_verified'])
+            log_action(
+                actor=user, action='email_verified', target_type='user',
+                target_id=user.id, request=request,
+            )
             return _success(message='Email verified successfully.')
         except (TokenExpiredError, TokenInvalidError):
             return _error('Invalid or expired verification link.')
@@ -220,6 +229,10 @@ class PasswordResetConfirmView(APIView):
             return _error(e.messages, status.HTTP_400_BAD_REQUEST)
         user.set_password(password)
         user.save(update_fields=['password'])
+        log_action(
+            actor=user, action='password_reset', target_type='user',
+            target_id=user.id, request=request,
+        )
         return _success(message='Password reset successfully.')
 
 
@@ -237,6 +250,10 @@ class InviteStaffView(APIView):
         if User.objects.filter(email=email).exists():
             return _error('An account with this email already exists.')
         send_staff_invite_email.delay(invitee_email=email, role=role)
+        log_action(
+            actor=request.user, action='invite_sent', target_type='user',
+            target_id=0, details={'email': email, 'role': role}, request=request,
+        )
         return _success(message=f'Invite sent to {email}.')
 
 
@@ -308,6 +325,10 @@ class AcceptInviteView(APIView):
             role=role,
             county=county or None,
             is_email_verified=True,
+        )
+        log_action(
+            actor=user, action='invite_accepted', target_type='user',
+            target_id=user.id, details={'role': role}, request=request,
         )
 
         link_created = False
