@@ -505,4 +505,129 @@ export const handlers = [
   http.post(/\/api\/v1\/school-admin\/assignments\/\d+\/remove\//, () => {
     return HttpResponse.json({ data: null, error: null, message: 'Assignment removed.' })
   }),
+
+  // System Admin
+  http.get('/api/v1/system-admin/dashboard/', () => {
+    return HttpResponse.json({
+      data: {
+        users_by_role: { student: 45, counselor: 8, school_admin: 3, parent: 20, system_admin: 1 },
+        schools_by_county: { kiambu: 4, nyeri: 3, muranga: 2, kirinyaga: 1, nyandarua: 1 },
+        total_schools: 11,
+        recent_signups: 7,
+        recent_audit: [
+          { id: 1, action: 'school_created', target_type: 'school', target_id: 1, actor_email: 'admin@test.com', actor_name: 'Admin User', created_at: '2026-06-19T10:00:00Z' },
+          { id: 2, action: 'invite_sent', target_type: 'user', target_id: 0, actor_email: 'admin@test.com', actor_name: 'Admin User', created_at: '2026-06-19T09:00:00Z' },
+        ],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get('/api/v1/system-admin/schools/', () => {
+    return HttpResponse.json({
+      data: {
+        results: [
+          { id: 1, name: 'Starehe Boys Centre', county: 'kiambu', school_code: 'KIA001', phone: '+254712345678', email: 'info@starehe.ac.ke', logo_url: null, is_active: true, student_count: 24, counselor_count: 3 },
+          { id: 2, name: 'Alliance Girls', county: 'kiambu', school_code: 'KIA002', phone: '', email: '', logo_url: null, is_active: true, student_count: 30, counselor_count: 2 },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.post('/api/v1/system-admin/schools/', async ({ request }) => {
+    const body = await request.json() as { name: string; county: string; school_code: string }
+    return HttpResponse.json({
+      data: { id: 99, name: body.name, county: body.county, school_code: body.school_code, phone: '', email: '', logo_url: null, is_active: true },
+      error: null,
+      message: `${body.name} created.`,
+    }, { status: 201 })
+  }),
+
+  http.get(/\/api\/v1\/system-admin\/schools\/\d+\//, () => {
+    return HttpResponse.json({
+      data: {
+        id: 1, name: 'Starehe Boys Centre', county: 'kiambu', school_code: 'KIA001', phone: '+254712345678', email: 'info@starehe.ac.ke', logo_url: null, is_active: true, student_count: 24, counselor_count: 3,
+        counselors: [
+          { id: 10, first_name: 'Alice', last_name: 'Wanjiku', email: 'alice@school.co.ke', student_count: 8 },
+        ],
+        recent_students: [
+          { id: 20, first_name: 'Jane', last_name: 'Muthoni', grade: 9, created_at: '2026-06-15T10:00:00Z' },
+        ],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch(/\/api\/v1\/system-admin\/schools\/\d+\//, () => {
+    return HttpResponse.json({
+      data: { id: 1, name: 'Updated School', county: 'kiambu', school_code: 'KIA001', phone: '', email: '', logo_url: null, is_active: true },
+      error: null,
+      message: 'School updated.',
+    })
+  }),
+
+  http.post(/\/api\/v1\/system-admin\/schools\/\d+\/deactivate\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'School has been deactivated.' })
+  }),
+
+  http.post(/\/api\/v1\/system-admin\/schools\/\d+\/activate\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'School has been activated.' })
+  }),
+
+  http.get('/api/v1/system-admin/users/', () => {
+    return HttpResponse.json({
+      data: {
+        results: [
+          { id: 1, first_name: 'Jane', last_name: 'Doe', email: 'jane@test.com', role: 'student', county: 'kiambu', school_name: 'Starehe Boys', is_active: true, is_email_verified: true, created_at: '2026-06-01T10:00:00Z' },
+          { id: 2, first_name: 'Bob', last_name: 'Smith', email: 'bob@test.com', role: 'counselor', county: 'nyeri', school_name: 'Alliance Girls', is_active: true, is_email_verified: true, created_at: '2026-06-05T10:00:00Z' },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get(/\/api\/v1\/system-admin\/users\/\d+\//, () => {
+    return HttpResponse.json({
+      data: {
+        id: 1, first_name: 'Jane', last_name: 'Doe', email: 'jane@test.com', role: 'student', county: 'kiambu', school_id: 1, school_name: 'Starehe Boys', is_active: true, is_email_verified: true, created_at: '2026-06-01T10:00:00Z', last_login: '2026-06-19T08:00:00Z', grade: 9, mode: 'school_linked', has_assessment: true,
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.post(/\/api\/v1\/system-admin\/users\/\d+\/deactivate\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'User has been deactivated.' })
+  }),
+
+  http.post(/\/api\/v1\/system-admin\/users\/\d+\/activate\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'User has been activated.' })
+  }),
+
+  http.get('/api/v1/system-admin/audit-logs/', () => {
+    return HttpResponse.json({
+      data: {
+        results: [
+          { id: 1, actor_email: 'admin@test.com', actor_name: 'Admin User', action: 'school_created', target_type: 'school', target_id: 1, details: { name: 'Starehe Boys' }, ip_address: '192.168.1.1', created_at: '2026-06-19T10:00:00Z' },
+          { id: 2, actor_email: 'admin@test.com', actor_name: 'Admin User', action: 'invite_sent', target_type: 'user', target_id: 0, details: { email: 'new@test.com', role: 'counselor' }, ip_address: '192.168.1.1', created_at: '2026-06-19T09:00:00Z' },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      },
+      error: null,
+      message: '',
+    })
+  }),
 ]
