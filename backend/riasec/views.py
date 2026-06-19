@@ -80,14 +80,17 @@ class AssessmentView(APIView):
                 for fit in pathway_fits
             ])
 
-        parent_links = ParentStudentLink.objects.filter(student=request.user)
-        student_name = f'{request.user.first_name} {request.user.last_name}'.strip()
-        for link in parent_links:
-            create_notification(
-                user=link.parent,
-                type_code='child_assessment_complete',
-                message=f'{student_name} has completed their career personality assessment.',
-            )
+        try:
+            parent_links = ParentStudentLink.objects.filter(student=request.user)
+            student_name = f'{request.user.first_name} {request.user.last_name}'.strip()
+            for link in parent_links:
+                create_notification(
+                    user=link.parent,
+                    type_code='child_assessment_complete',
+                    message=f'{student_name} has completed their career personality assessment.',
+                )
+        except Exception:
+            pass
 
         assessment = (
             RIASECAssessment.objects

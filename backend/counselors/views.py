@@ -217,7 +217,9 @@ class CounselorNoteDetailView(APIView):
             update_fields.append('body')
 
         if visible_to_parent is not None:
-            note.visible_to_parent = bool(visible_to_parent)
+            if not isinstance(visible_to_parent, bool):
+                return _error('visible_to_parent must be true or false.')
+            note.visible_to_parent = visible_to_parent
             update_fields.append('visible_to_parent')
 
         note.save(update_fields=update_fields)
