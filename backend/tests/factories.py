@@ -6,6 +6,7 @@ from riasec.models import RIASECAssessment
 from notifications.models import Notification
 from parents.models import ParentStudentLink
 from counselors.models import CounselorAssignment, CounselorNote
+from system_admin.models import AuditLog
 
 User = get_user_model()
 
@@ -143,3 +144,14 @@ class ParentStudentLinkFactory(factory.django.DjangoModelFactory):
 
     parent = factory.SubFactory(ParentFactory)
     student = factory.SubFactory(VerifiedUserFactory, role='student')
+
+
+class AuditLogFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AuditLog
+
+    actor = factory.SubFactory(SystemAdminFactory)
+    action = 'school_created'
+    target_type = 'school'
+    target_id = 1
+    details = factory.LazyFunction(dict)

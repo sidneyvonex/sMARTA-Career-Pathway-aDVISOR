@@ -51,6 +51,7 @@ class School(models.Model):
     logo_url = models.URLField(max_length=500, null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True, default='')
     email = models.EmailField(blank=True, default='')
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
