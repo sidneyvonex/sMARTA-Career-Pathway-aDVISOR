@@ -21,6 +21,9 @@ import SchoolProfilePage from './pages/admin/SchoolProfilePage'
 import CounselorManagementPage from './pages/admin/CounselorManagementPage'
 import SchoolStudentsPage from './pages/admin/SchoolStudentsPage'
 import ChildDetailPage from './pages/parent/ChildDetailPage'
+import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
+import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
+import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
 import { useAuth } from './hooks/useAuth'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
 
@@ -68,6 +71,12 @@ function AppRoutes() {
 
           <Route element={<ProtectedRoute roles={['parent']} />}>
             <Route path="/parent/child/:id" element={<ChildDetailPage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute roles={['system_admin']} />}>
+            <Route path="/system-admin/schools" element={<SystemAdminSchoolsPage />} />
+            <Route path="/system-admin/users" element={<SystemAdminUsersPage />} />
+            <Route path="/system-admin/audit-log" element={<SystemAdminAuditLogPage />} />
           </Route>
 
           <Route path="*" element={

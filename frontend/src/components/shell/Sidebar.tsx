@@ -37,6 +37,7 @@ const ICONS = {
     </svg>
   ),
   school: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21V9l9-6 9 6v12H3z" /></svg>,
+  log: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
 }
 
 function getNavItems(role: User['role']): NavItem[] {
@@ -62,6 +63,14 @@ function getNavItems(role: User['role']): NavItem[] {
       { to: '/admin/school', label: 'School Profile', icon: ICONS.school },
       { to: '/admin/counselors', label: 'Counselors', icon: ICONS.users },
       { to: '/admin/students', label: 'Students', icon: ICONS.users },
+    ]
+  }
+  if (role === 'system_admin') {
+    return [
+      { to: '/', label: 'Dashboard', icon: ICONS.grid },
+      { to: '/system-admin/schools', label: 'Schools', icon: ICONS.school },
+      { to: '/system-admin/users', label: 'Users', icon: ICONS.users },
+      { to: '/system-admin/audit-log', label: 'Audit Log', icon: ICONS.log },
     ]
   }
   if (role === 'parent') {
