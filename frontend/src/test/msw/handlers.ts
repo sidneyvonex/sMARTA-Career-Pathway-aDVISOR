@@ -630,4 +630,16 @@ export const handlers = [
       message: '',
     })
   }),
+
+  // Reports
+  http.get(/\/api\/v1\/reports\/student\/\d+\/pdf\//, () => {
+    const pdfContent = '%PDF-1.4 mock report content'
+    return new HttpResponse(pdfContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="smarta-shauri-report-Test-Student-2026-06-20.pdf"',
+      },
+    })
+  }),
 ]
