@@ -90,7 +90,10 @@ class SchoolListView(APIView):
 
         qs = qs.order_by('name')
 
-        page = max(int(request.query_params.get('page', 1)), 1)
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (ValueError, TypeError):
+            page = 1
         page_size = 20
         total = qs.count()
         start = (page - 1) * page_size
@@ -373,7 +376,10 @@ class UserListView(APIView):
 
         qs = qs.select_related('school').order_by('-created_at')
 
-        page = max(int(request.query_params.get('page', 1)), 1)
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (ValueError, TypeError):
+            page = 1
         page_size = 20
         total = qs.count()
         start = (page - 1) * page_size
@@ -522,7 +528,10 @@ class AuditLogListView(APIView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
-        page = max(int(request.query_params.get('page', 1)), 1)
+        try:
+            page = max(int(request.query_params.get('page', 1)), 1)
+        except (ValueError, TypeError):
+            page = 1
         page_size = 20
         total = qs.count()
         start = (page - 1) * page_size

@@ -25,6 +25,67 @@
   margin-top: var(--space-6);
 }
 
+/* ===== Stat Cards Grid (shared dashboard components) ===== */
+
+.dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.dashboard-stat-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dashboard-stat-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-stat-card__value {
+  font-size: var(--font-size-3xl, 1.875rem);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+.dashboard-stat-card__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.dashboard-stat-card--success .dashboard-stat-card__value {
+  color: var(--color-primary-light);
+}
+
+.dashboard-stat-card--warning .dashboard-stat-card__value {
+  color: var(--color-accent);
+}
+
+.skeleton-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-empty-state {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
 /* ===== Section headers ===== */
 
 .sysadmin-section-title {
@@ -216,7 +277,7 @@
 }
 
 .sysadmin-action-btn--danger:hover {
-  background: #FEF2F2;
+  background: var(--color-error-surface, #FEF2F2);
 }
 
 /* ===== Create form ===== */
@@ -281,18 +342,18 @@
 }
 
 .sysadmin-role-badge--school_admin {
-  background: #E0F2FE;
-  color: #0369A1;
+  background: var(--color-info-surface, #E0F2FE);
+  color: var(--color-info, #0369A1);
 }
 
 .sysadmin-role-badge--parent {
-  background: #F3E8FF;
-  color: #7C3AED;
+  background: var(--color-purple-surface, #F3E8FF);
+  color: var(--color-purple, #7C3AED);
 }
 
 .sysadmin-role-badge--system_admin {
-  background: #FEE2E2;
-  color: #B91C1C;
+  background: var(--color-error-surface, #FEE2E2);
+  color: var(--color-error, #B91C1C);
 }
 
 /* ===== Audit log details toggle ===== */
