@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { parentApi, ChildDetail } from '../../api/parent'
 import { initials } from '../../lib/format'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/parent.css'
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -29,6 +30,8 @@ export default function ChildDetailPage() {
       </div>
     )
   }
+
+  const { downloadReport, isDownloading } = useDownloadReport()
 
   const detailQ = useQuery({
     queryKey: ['parent-child-detail', studentId],
@@ -87,6 +90,18 @@ export default function ChildDetailPage() {
             <div className="child-detail__meta" style={{ marginTop: 'var(--space-2)' }}>{profile.bio}</div>
           )}
         </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)' }}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => downloadReport(studentId)}
+          disabled={isDownloading}
+          style={{ minHeight: 'var(--min-touch-target)' }}
+        >
+          {isDownloading ? 'Generating…' : 'Download Report'}
+        </button>
       </div>
 
       {/* Career Personality */}

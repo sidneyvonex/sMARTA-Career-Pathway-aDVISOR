@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { systemAdminApi, UserItem } from '../../api/systemAdmin'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/system-admin.css'
 
 const COUNTIES = [
@@ -48,6 +49,8 @@ function formatDate(dateStr: string): string {
 
 export default function SystemAdminUsersPage() {
   const queryClient = useQueryClient()
+
+  const { downloadReport, isDownloading } = useDownloadReport()
 
   // Filter state
   const [role, setRole] = useState('')
@@ -266,6 +269,18 @@ export default function SystemAdminUsersPage() {
                   >
                     {user.is_active ? 'Deactivate' : 'Activate'}
                   </button>
+                  {user.role === 'student' && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => downloadReport(user.id)}
+                      disabled={isDownloading}
+                      aria-label={`Download report for ${user.first_name} ${user.last_name}`}
+                      style={{ minHeight: 'var(--min-touch-target)', padding: 'var(--space-1) var(--space-2)', marginLeft: 'var(--space-2)' }}
+                    >
+                      PDF
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { schoolAdminApi, SchoolStudent } from '../../api/schoolAdmin'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/school-admin.css'
 
 type Filter = 'all' | 'assigned' | 'unassigned' | 'assessed' | 'pending'
@@ -15,6 +16,8 @@ export default function SchoolStudentsPage() {
     queryKey: ['school-admin', 'students'],
     queryFn: () => schoolAdminApi.getStudents().then(r => r.data.data),
   })
+
+  const { downloadReport, isDownloading } = useDownloadReport()
 
   const { data: counselors } = useQuery({
     queryKey: ['school-admin', 'counselors'],
@@ -100,6 +103,7 @@ export default function SchoolStudentsPage() {
               <th>Grade</th>
               <th>Assessment</th>
               <th>Assigned Counselor</th>
+              <th>Report</th>
             </tr>
           </thead>
           <tbody>
@@ -130,6 +134,18 @@ export default function SchoolStudentsPage() {
                       </option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => downloadReport(s.id)}
+                    disabled={isDownloading}
+                    aria-label={`Download report for ${s.first_name} ${s.last_name}`}
+                    style={{ minHeight: 'var(--min-touch-target)', padding: 'var(--space-1) var(--space-2)' }}
+                  >
+                    PDF
+                  </button>
                 </td>
               </tr>
             ))}

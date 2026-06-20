@@ -4,10 +4,12 @@ import { studentsApi } from '../../../api/students'
 import { assessmentApi } from '../../../api/assessment'
 import { dashboardApi } from '../../../api/dashboard'
 import { notificationsApi } from '../../../api/notifications'
+import { useAuthStore } from '../../../store/authStore'
 import { useNotificationStore } from '../../../store/notificationStore'
 import { greeting } from '../../../lib/greeting'
 import { initials, formatRelativeTime } from '../../../lib/format'
 import type { RIASECDimension } from '../../../api/assessment'
+import { useDownloadReport } from '../../../hooks/useDownloadReport'
 import NextStepCard from './NextStepCard'
 import JourneyProgress from './JourneyProgress'
 import '../../../styles/dashboard.css'
@@ -39,7 +41,9 @@ const CHART_ICON = (
 )
 
 export default function StudentDashboard() {
+  const { user } = useAuthStore()
   const { setDrawerOpen } = useNotificationStore()
+  const { downloadReport, isDownloading } = useDownloadReport()
 
   const profileQ = useQuery({
     queryKey: ['student-profile'],
@@ -99,6 +103,7 @@ export default function StudentDashboard() {
   const quizDone = result !== null
   const counselorAssigned = counselor !== null
   const topPathway = result?.recommendations[0]
+  const canDownload = quizDone || hasSubjects
 
   return (
     <div className="dashboard">
@@ -272,6 +277,21 @@ export default function StudentDashboard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Download report */}
+      {canDownload && (
+        <div className="dash-card" style={{ textAlign: 'center' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => downloadReport(user!.id)}
+            disabled={isDownloading}
+            style={{ minHeight: 'var(--min-touch-target)' }}
+          >
+            {isDownloading ? 'Generating…' : 'Download Report'}
+          </button>
         </div>
       )}
     </div>

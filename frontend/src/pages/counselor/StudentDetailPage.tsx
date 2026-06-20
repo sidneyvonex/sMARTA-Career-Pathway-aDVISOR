@@ -10,6 +10,7 @@ import NoteCard from '../../components/counselor/NoteCard'
 import NoteForm from '../../components/counselor/NoteForm'
 import ScoreBars from '../../components/assessment/ScoreBars'
 import RecommendationCards from '../../components/assessment/RecommendationCards'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/counselor.css'
 
 export default function StudentDetailPage() {
@@ -17,6 +18,7 @@ export default function StudentDetailPage() {
   const studentId = Number(id)
   const queryClient = useQueryClient()
 
+  const { downloadReport, isDownloading } = useDownloadReport()
   const [editingNote, setEditingNote] = useState<CounselorNote | null>(null)
 
   const studentQuery = useQuery({
@@ -108,6 +110,15 @@ export default function StudentDetailPage() {
         <Link to="/counselor/students" className="view-link">
           &larr; Back to students
         </Link>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => downloadReport(studentId)}
+          disabled={isDownloading}
+          style={{ minHeight: 'var(--min-touch-target)' }}
+        >
+          {isDownloading ? 'Generating…' : 'Download Report'}
+        </button>
       </div>
 
       <div className="student-detail">
