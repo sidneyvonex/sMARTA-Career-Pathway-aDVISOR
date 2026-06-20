@@ -9,10 +9,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/**'],
       manifest: {
-        name: 'CBC Career Guidance System',
-        short_name: 'CBC Guidance',
-        description: 'Competency-Based Career Guidance for Kenyan Students',
-        theme_color: '#006B3F',
+        name: 'Smarta Shauri',
+        short_name: 'Shauri',
+        description: 'CBC Career Guidance for Kenyan Students',
+        theme_color: '#1A5C38',
         background_color: '#F8F9FA',
         display: 'standalone',
         start_url: '/',
@@ -32,6 +32,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallback: '/offline.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https?:\/\/.*\/api\/v1\//,

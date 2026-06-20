@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline — Smarta Shauri</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #F8F9FA;
+      color: #1A1A1A;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .offline-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .offline-logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+    }
+    .offline-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1A5C38;
+      margin-bottom: 8px;
+    }
+    .offline-text {
+      font-size: 0.938rem;
+      color: #5A5A5A;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .offline-btn {
+      display: inline-block;
+      padding: 12px 32px;
+      background: #1A5C38;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+      transition: background 0.15s;
+    }
+    .offline-btn:hover { background: #22743F; }
+    .offline-btn:active { background: #0F3B22; }
+  </style>
+</head>
+<body>
+  <div class="offline-card">
+    <img src="/logo.png" alt="Smarta Shauri" class="offline-logo">
+    <h1 class="offline-title">You're offline</h1>
+    <p class="offline-text">
+      Please check your internet connection and try again.
+    </p>
+    <button class="offline-btn" onclick="window.location.reload()">
+      Retry
+    </button>
+  </div>
+</body>
+</html>
