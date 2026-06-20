@@ -26,6 +26,8 @@ import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
 import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
 import { useAuth } from './hooks/useAuth'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
+import { usePWAUpdate } from './hooks/usePWAUpdate'
+import InstallBanner from './components/InstallBanner'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -34,6 +36,7 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   useAuth()
   useNotificationPoll()
+  usePWAUpdate()
 
   return (
     <Routes>
@@ -96,6 +99,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppRoutes />
+        <InstallBanner />
         <Toaster
           position="top-right"
           toastOptions={{
