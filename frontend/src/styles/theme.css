@@ -39,6 +39,8 @@
   --color-warning-surface: #FEF8E7;
   --color-info: #2563EB;
   --color-info-surface: #EFF6FF;
+  --color-purple: #7C3AED;
+  --color-purple-surface: #F3E8FF;
 
   /* Typography — Poppins for display, DM Sans for body */
   --font-family-display: 'Poppins', system-ui, -apple-system, sans-serif;

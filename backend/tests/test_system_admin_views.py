@@ -479,3 +479,60 @@ class TestAuditLogIntegration:
         response = self.client.post(f'/api/v1/school-admin/counselors/{counselor.id}/remove/')
         assert response.status_code == 200
         assert AuditLog.objects.filter(action='counselor_removed').count() == 1
+
+
+class TestInputValidation:
+    """Verify invalid query params return 200 (not 500)."""
+
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_users_invalid_school_param(self):
+        response = self.client.get('/api/v1/system-admin/users/?school=abc')
+        assert response.status_code == 200
+
+    def test_audit_logs_invalid_actor_param(self):
+        response = self.client.get('/api/v1/system-admin/audit-logs/?actor=abc')
+        assert response.status_code == 200
+
+    def test_audit_logs_invalid_date_from(self):
+        response = self.client.get('/api/v1/system-admin/audit-logs/?date_from=not-a-date')
+        assert response.status_code == 200
+
+    def test_audit_logs_invalid_date_to(self):
+        response = self.client.get('/api/v1/system-admin/audit-logs/?date_to=xyz')
+        assert response.status_code == 200
+
+    def test_audit_logs_valid_dates_still_filter(self):
+        AuditLogFactory(actor=self.admin, action='school_created', target_id=1)
+        response = self.client.get('/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
+        assert response.status_code == 200
+        assert response.data['data']['total'] >= 1
+
+    def test_create_school_invalid_email_rejected(self):
+        response = self.client.post('/api/v1/system-admin/schools/', {
+            'name': 'Bad Email School',
+            'county': 'kiambu',
+            'school_code': 'BAD001',
+            'email': 'not-an-email',
+        }, format='json')
+        assert response.status_code == 400
+
+    def test_create_school_empty_email_accepted(self):
+        response = self.client.post('/api/v1/system-admin/schools/', {
+            'name': 'No Email School',
+            'county': 'kiambu',
+            'school_code': 'NOEML01',
+        }, format='json')
+        assert response.status_code == 201
+
+    def test_create_school_valid_email_accepted(self):
+        response = self.client.post('/api/v1/system-admin/schools/', {
+            'name': 'Valid Email School',
+            'county': 'nyeri',
+            'school_code': 'VALID01',
+            'email': 'school@example.com',
+        }, format='json')
+        assert response.status_code == 201

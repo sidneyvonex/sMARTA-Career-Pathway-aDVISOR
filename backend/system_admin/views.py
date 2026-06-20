@@ -135,13 +135,22 @@ class SchoolListView(APIView):
         if School.objects.filter(school_code=school_code).exists():
             return _error('A school with this code already exists.')
 
-        school = School.objects.create(
+        school = School(
             name=name,
             county=county,
             school_code=school_code,
             phone=phone,
             email=email,
         )
+        from django.core.exceptions import ValidationError
+        try:
+            school.full_clean()
+        except ValidationError as e:
+            messages = []
+            for field_errors in e.message_dict.values():
+                messages.extend(field_errors)
+            return _error(messages[0] if messages else 'Invalid data.')
+        school.save()
 
         log_action(
             actor=request.user,
@@ -358,7 +367,10 @@ class UserListView(APIView):
 
         school_id = request.query_params.get('school')
         if school_id:
-            qs = qs.filter(school_id=school_id)
+            try:
+                qs = qs.filter(school_id=int(school_id))
+            except (ValueError, TypeError):
+                pass
 
         search = request.query_params.get('search', '').strip()
         if search:
@@ -518,15 +530,28 @@ class AuditLogListView(APIView):
 
         actor_id = request.query_params.get('actor')
         if actor_id:
-            qs = qs.filter(actor_id=actor_id)
+            try:
+                qs = qs.filter(actor_id=int(actor_id))
+            except (ValueError, TypeError):
+                pass
 
         date_from = request.query_params.get('date_from')
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            try:
+                from datetime import date as dt_date
+                dt_date.fromisoformat(date_from)
+                qs = qs.filter(created_at__date__gte=date_from)
+            except ValueError:
+                pass
 
         date_to = request.query_params.get('date_to')
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            try:
+                from datetime import date as dt_date
+                dt_date.fromisoformat(date_to)
+                qs = qs.filter(created_at__date__lte=date_to)
+            except ValueError:
+                pass
 
         try:
             page = max(int(request.query_params.get('page', 1)), 1)
