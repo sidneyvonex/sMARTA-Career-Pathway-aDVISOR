@@ -8,7 +8,7 @@ export function usePWAUpdate() {
       onNeedRefresh() {
         toast(
           (t) => (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               A new version is available.
               <button
                 type="button"
@@ -21,7 +21,7 @@ export function usePWAUpdate() {
                   color: '#fff',
                   border: 'none',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '4px 12px',
+                  padding: 'var(--space-1) var(--space-3)',
                   cursor: 'pointer',
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
