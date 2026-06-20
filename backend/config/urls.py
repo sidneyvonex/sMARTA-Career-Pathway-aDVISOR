@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/v1/parents/', include('parents.urls')),
     path('api/v1/school-admin/', include('school_admin.urls')),
     path('api/v1/system-admin/', include('system_admin.urls')),
+    path('api/v1/reports/', include('reports.urls')),
 ]

@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'parents',
     'school_admin',
     'system_admin',
+    'reports',
 ]
 
 MIDDLEWARE = [
@@ -144,3 +145,5 @@ CORS_ALLOW_CREDENTIALS = True
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'memory://')
 CELERY_RESULT_BACKEND = 'cache+memory://'
+
+REPORT_LOGO_PATH = BASE_DIR.parent / 'frontend' / 'public' / 'logo.png'
