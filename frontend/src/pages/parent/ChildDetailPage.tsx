@@ -31,7 +31,7 @@ export default function ChildDetailPage() {
     )
   }
 
-  const { downloadReport, isDownloading } = useDownloadReport()
+  const { downloadReport, downloadingId } = useDownloadReport()
 
   const detailQ = useQuery({
     queryKey: ['parent-child-detail', studentId],
@@ -97,10 +97,10 @@ export default function ChildDetailPage() {
           type="button"
           className="btn-primary"
           onClick={() => downloadReport(studentId)}
-          disabled={isDownloading}
+          disabled={downloadingId !== null}
           style={{ minHeight: 'var(--min-touch-target)' }}
         >
-          {isDownloading ? 'Generating…' : 'Download Report'}
+          {downloadingId !== null ? 'Generating…' : 'Download Report'}
         </button>
       </div>
 

@@ -18,7 +18,7 @@ export default function StudentDetailPage() {
   const studentId = Number(id)
   const queryClient = useQueryClient()
 
-  const { downloadReport, isDownloading } = useDownloadReport()
+  const { downloadReport, downloadingId } = useDownloadReport()
   const [editingNote, setEditingNote] = useState<CounselorNote | null>(null)
 
   const studentQuery = useQuery({
@@ -114,10 +114,10 @@ export default function StudentDetailPage() {
           type="button"
           className="btn-primary"
           onClick={() => downloadReport(studentId)}
-          disabled={isDownloading}
+          disabled={downloadingId !== null}
           style={{ minHeight: 'var(--min-touch-target)' }}
         >
-          {isDownloading ? 'Generating…' : 'Download Report'}
+          {downloadingId !== null ? 'Generating…' : 'Download Report'}
         </button>
       </div>
 

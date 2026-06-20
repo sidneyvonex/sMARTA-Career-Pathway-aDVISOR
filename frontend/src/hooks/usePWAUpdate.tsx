@@ -25,6 +25,7 @@ export function usePWAUpdate() {
                   cursor: 'pointer',
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
+                  minHeight: 'var(--min-touch-target)',
                 }}
               >
                 Refresh

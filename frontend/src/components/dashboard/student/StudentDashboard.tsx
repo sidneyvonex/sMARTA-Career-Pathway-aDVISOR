@@ -43,7 +43,7 @@ const CHART_ICON = (
 export default function StudentDashboard() {
   const { user } = useAuthStore()
   const { setDrawerOpen } = useNotificationStore()
-  const { downloadReport, isDownloading } = useDownloadReport()
+  const { downloadReport, downloadingId } = useDownloadReport()
 
   const profileQ = useQuery({
     queryKey: ['student-profile'],
@@ -287,10 +287,10 @@ export default function StudentDashboard() {
             type="button"
             className="btn-primary"
             onClick={() => downloadReport(user!.id)}
-            disabled={isDownloading}
+            disabled={downloadingId !== null}
             style={{ minHeight: 'var(--min-touch-target)' }}
           >
-            {isDownloading ? 'Generating…' : 'Download Report'}
+            {downloadingId !== null ? 'Generating…' : 'Download Report'}
           </button>
         </div>
       )}

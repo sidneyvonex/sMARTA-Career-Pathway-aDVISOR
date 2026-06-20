@@ -17,7 +17,7 @@ export default function SchoolStudentsPage() {
     queryFn: () => schoolAdminApi.getStudents().then(r => r.data.data),
   })
 
-  const { downloadReport, isDownloading } = useDownloadReport()
+  const { downloadReport, downloadingId } = useDownloadReport()
 
   const { data: counselors } = useQuery({
     queryKey: ['school-admin', 'counselors'],
@@ -140,11 +140,11 @@ export default function SchoolStudentsPage() {
                     type="button"
                     className="btn-ghost"
                     onClick={() => downloadReport(s.id)}
-                    disabled={isDownloading}
+                    disabled={downloadingId === s.id}
                     aria-label={`Download report for ${s.first_name} ${s.last_name}`}
                     style={{ minHeight: 'var(--min-touch-target)', padding: 'var(--space-1) var(--space-2)' }}
                   >
-                    PDF
+                    {downloadingId === s.id ? 'Generating…' : 'PDF'}
                   </button>
                 </td>
               </tr>

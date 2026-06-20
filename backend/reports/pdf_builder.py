@@ -36,7 +36,6 @@ def build_student_report(data):
         rightMargin=20 * mm,
         topMargin=15 * mm,
         bottomMargin=20 * mm,
-        compress=False,
     )
 
     styles = getSampleStyleSheet()

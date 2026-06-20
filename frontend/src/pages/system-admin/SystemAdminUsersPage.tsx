@@ -50,7 +50,7 @@ function formatDate(dateStr: string): string {
 export default function SystemAdminUsersPage() {
   const queryClient = useQueryClient()
 
-  const { downloadReport, isDownloading } = useDownloadReport()
+  const { downloadReport, downloadingId } = useDownloadReport()
 
   // Filter state
   const [role, setRole] = useState('')
@@ -274,11 +274,11 @@ export default function SystemAdminUsersPage() {
                       type="button"
                       className="btn-ghost"
                       onClick={() => downloadReport(user.id)}
-                      disabled={isDownloading}
+                      disabled={downloadingId === user.id}
                       aria-label={`Download report for ${user.first_name} ${user.last_name}`}
                       style={{ minHeight: 'var(--min-touch-target)', padding: 'var(--space-1) var(--space-2)', marginLeft: 'var(--space-2)' }}
                     >
-                      PDF
+                      {downloadingId === user.id ? 'Generating…' : 'PDF'}
                     </button>
                   )}
                 </td>

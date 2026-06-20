@@ -3,10 +3,10 @@ import toast from 'react-hot-toast'
 import { reportsApi } from '../api/reports'
 
 export function useDownloadReport() {
-  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const downloadReport = useCallback(async (studentId: number) => {
-    setIsDownloading(true)
+    setDownloadingId(studentId)
     const toastId = toast.loading('Generating report…')
 
     try {
@@ -45,9 +45,9 @@ export function useDownloadReport() {
       }
       toast.error(message, { id: toastId })
     } finally {
-      setIsDownloading(false)
+      setDownloadingId(null)
     }
   }, [])
 
-  return { downloadReport, isDownloading }
+  return { downloadReport, downloadingId }
 }
