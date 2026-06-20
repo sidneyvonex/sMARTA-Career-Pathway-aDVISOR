@@ -36,6 +36,10 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
+            urlPattern: /^https?:\/\/.*\/api\/v1\/reports\/.*\/pdf\//,
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https?:\/\/.*\/api\/v1\//,
             handler: 'StaleWhileRevalidate',
             options: {

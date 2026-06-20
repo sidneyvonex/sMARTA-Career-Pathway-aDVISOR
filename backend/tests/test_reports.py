@@ -130,9 +130,9 @@ from tests.factories import (
     CounselorAssignmentFactory, SchoolFactory, SchoolAdminFactory,
     ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
     SubjectFactory, StudentSubjectFactory, CBCGradeFactory,
-    RIASECAssessmentFactory,
+    RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
+    RecommendationFactory,
 )
-from riasec.models import RIASECScore, Recommendation, Pathway
 
 
 class TestStudentReportViewPermissions:
@@ -260,14 +260,9 @@ class TestStudentReportViewEdgeCases:
         profile = StudentProfileFactory(user=student, grade=9)
         assessment = RIASECAssessmentFactory(student_profile=profile)
         for dim in ['R', 'I', 'A', 'S', 'E', 'C']:
-            RIASECScore.objects.create(assessment=assessment, dimension=dim, raw_score=15)
-        pathway = Pathway.objects.create(
-            name='Test Pathway', description='Test',
-            weight_r=1, weight_i=1, weight_a=0, weight_s=0, weight_e=0, weight_c=0,
-        )
-        Recommendation.objects.create(
-            assessment=assessment, pathway=pathway, rank=1, fit_score=0.87, fit_pct=87,
-        )
+            RIASECScoreFactory(assessment=assessment, dimension=dim, raw_score=15)
+        pathway = PathwayFactory(name='Test Pathway')
+        RecommendationFactory(assessment=assessment, pathway=pathway, rank=1)
         response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/')
         assert response.status_code == 200
         assert response['Content-Type'] == 'application/pdf'

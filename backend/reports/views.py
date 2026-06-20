@@ -1,4 +1,4 @@
-import logging
+import re
 from datetime import date
 
 from django.conf import settings
@@ -14,8 +14,6 @@ from parents.models import ParentStudentLink
 from students.models import StudentSubject, GRADE_LEVEL_CHOICES
 from riasec.models import RIASECAssessment
 from .pdf_builder import build_student_report
-
-logger = logging.getLogger(__name__)
 
 GRADE_LABELS = dict(GRADE_LEVEL_CHOICES)
 
@@ -41,7 +39,7 @@ class StudentReportView(APIView):
         riasec_data, recommendations_data = self._get_riasec_data(profile)
 
         if not subjects_data and riasec_data is None:
-            return _error('This student has no grades or assessment results to report.')
+            return _error('This student has no grades or assessment results to report.', 400)
 
         logo_path = getattr(settings, 'REPORT_LOGO_PATH', None)
         if logo_path:
@@ -62,7 +60,9 @@ class StudentReportView(APIView):
 
         pdf_bytes = build_student_report(data)
         today = date.today().isoformat()
-        filename = f'smarta-shauri-report-{student.first_name}-{student.last_name}-{today}.pdf'
+        safe_first = re.sub(r'[^\w-]', '', student.first_name)
+        safe_last = re.sub(r'[^\w-]', '', student.last_name)
+        filename = f'smarta-shauri-report-{safe_first}-{safe_last}-{today}.pdf'
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'

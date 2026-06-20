@@ -2,7 +2,7 @@ import factory
 from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
 from students.models import Subject, StudentSubject, CBCGrade
-from riasec.models import RIASECAssessment
+from riasec.models import RIASECAssessment, RIASECScore, Pathway, Recommendation
 from notifications.models import Notification
 from parents.models import ParentStudentLink
 from counselors.models import CounselorAssignment, CounselorNote
@@ -105,6 +105,40 @@ class RIASECAssessmentFactory(factory.django.DjangoModelFactory):
         model = RIASECAssessment
 
     student_profile = factory.SubFactory(StudentProfileFactory, grade=9)
+
+
+class RIASECScoreFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RIASECScore
+
+    assessment = factory.SubFactory(RIASECAssessmentFactory)
+    dimension = 'R'
+    raw_score = 15
+
+
+class PathwayFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Pathway
+
+    name = factory.Sequence(lambda n: f'Pathway {n}')
+    description = 'Test pathway description'
+    weight_r = 1.0
+    weight_i = 1.0
+    weight_a = 0.0
+    weight_s = 0.0
+    weight_e = 0.0
+    weight_c = 0.0
+
+
+class RecommendationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Recommendation
+
+    assessment = factory.SubFactory(RIASECAssessmentFactory)
+    pathway = factory.SubFactory(PathwayFactory)
+    rank = 1
+    fit_score = 0.87
+    fit_pct = 87
 
 
 class NotificationFactory(factory.django.DjangoModelFactory):
