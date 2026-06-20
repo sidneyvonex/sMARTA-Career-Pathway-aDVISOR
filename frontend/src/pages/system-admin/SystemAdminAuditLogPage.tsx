@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { systemAdminApi } from '../../api/systemAdmin'
@@ -67,6 +67,10 @@ export default function SystemAdminAuditLogPage() {
         .then(r => r.data.data),
   })
 
+  useEffect(() => {
+    if (isError) toast.error('Failed to load audit logs.')
+  }, [isError])
+
   // Loading skeleton
   if (isLoading) {
     return (
@@ -80,9 +84,7 @@ export default function SystemAdminAuditLogPage() {
     )
   }
 
-  // Error state
   if (isError) {
-    toast.error('Failed to load audit logs.')
     return (
       <div className="sysadmin-page">
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>

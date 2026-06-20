@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { systemAdminApi, SchoolItem } from '../../api/systemAdmin'
@@ -158,6 +158,10 @@ export default function SystemAdminSchoolsPage() {
 
   const isMutating = createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending || activateMutation.isPending
 
+  useEffect(() => {
+    if (isError) toast.error('Failed to load schools.')
+  }, [isError])
+
   // Loading skeleton
   if (isLoading) {
     return (
@@ -171,9 +175,7 @@ export default function SystemAdminSchoolsPage() {
     )
   }
 
-  // Error state
   if (isError) {
-    toast.error('Failed to load schools.')
     return (
       <div className="sysadmin-page">
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>

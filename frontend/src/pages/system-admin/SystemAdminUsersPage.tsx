@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { systemAdminApi, UserItem } from '../../api/systemAdmin'
@@ -124,6 +124,10 @@ export default function SystemAdminUsersPage() {
 
   const isMutating = deactivateMutation.isPending || activateMutation.isPending
 
+  useEffect(() => {
+    if (isError) toast.error('Failed to load users.')
+  }, [isError])
+
   // Loading skeleton
   if (isLoading) {
     return (
@@ -137,9 +141,7 @@ export default function SystemAdminUsersPage() {
     )
   }
 
-  // Error state
   if (isError) {
-    toast.error('Failed to load users.')
     return (
       <div className="sysadmin-page">
         <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
