@@ -180,6 +180,7 @@
   border-style: dashed;
   align-items: flex-start;
   justify-content: center;
+  grid-column: 1 / -1;
 }
 
 .landing-pathway-card--cta a {
@@ -208,6 +209,13 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-10);
+}
+
+.landing-spotlight__icon {
+  width: 4rem;
+  height: 4rem;
+  flex-shrink: 0;
+  color: var(--color-accent);
 }
 
 .landing-spotlight__meta {
@@ -275,9 +283,13 @@
 }
 
 .landing-footer__links a {
-  color: var(--color-overlay-light);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--min-touch-target);
+  color: var(--color-text-on-primary);
+  opacity: 0.8;
 }
 
 .landing-footer__links a:hover {
-  color: var(--color-text-on-primary);
+  opacity: 1;
 }

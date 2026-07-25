@@ -41,5 +41,6 @@ describe('RootRoute at /', () => {
     })
     renderApp()
     expect(screen.queryByRole('link', { name: /get started/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: /main navigation/i })).toBeInTheDocument()
   })
 })
