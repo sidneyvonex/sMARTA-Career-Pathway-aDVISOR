@@ -1,12 +1,17 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import NotificationPanel from './NotificationPanel'
 import { useLayoutStore } from '../../store/layoutStore'
 import '../../styles/shell.css'
 
-export default function Shell() {
+interface ShellProps {
+  children?: ReactNode
+}
+
+export default function Shell({ children }: ShellProps) {
   const { sidebarCollapsed, mobileSidebarOpen, setMobileSidebarOpen } = useLayoutStore()
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export default function Shell() {
       <div className="shell__main">
         <Topbar />
         <main className="shell__content" id="main-content">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
 
