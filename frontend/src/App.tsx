@@ -24,7 +24,9 @@ import ChildDetailPage from './pages/parent/ChildDetailPage'
 import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
 import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
+import LandingPage from './pages/LandingPage'
 import { useAuth } from './hooks/useAuth'
+import { useAuthStore } from './store/authStore'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
 import { usePWAUpdate } from './hooks/usePWAUpdate'
 import InstallBanner from './components/InstallBanner'
@@ -32,6 +34,24 @@ import InstallBanner from './components/InstallBanner'
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
 })
+
+function RootRoute() {
+  const { isAuthenticated, isLoading } = useAuthStore()
+
+  if (isLoading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage />
+  }
+
+  return (
+    <Shell>
+      <DashboardPage />
+    </Shell>
+  )
+}
 
 function AppRoutes() {
   useAuth()
@@ -41,6 +61,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public auth pages — no Shell */}
+      <Route path="/" element={<RootRoute />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -51,8 +72,6 @@ function AppRoutes() {
       {/* Authenticated pages — wrapped in Shell */}
       <Route element={<ProtectedRoute />}>
         <Route element={<Shell />}>
-          <Route path="/" element={<DashboardPage />} />
-
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/profile" element={<StudentProfilePage />} />
             <Route path="/grades" element={<GradesPage />} />
