@@ -72,15 +72,6 @@ export default function LandingCommunity() {
           </figure>
         ))}
       </div>
-
-      <p className="landing-community__hint">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v5M12 16h.01" />
-        </svg>
-        8 of the 5 supported counties&apos; schools shown — Murang&apos;a, Kirinyaga, and
-        Nyandarua don&apos;t yet have freely-licensed photos we could verify.
-      </p>
     </div>
   )
 }

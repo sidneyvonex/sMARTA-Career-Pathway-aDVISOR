@@ -72,8 +72,8 @@
   background: var(--color-accent);
 }
 .landing-color-band--gold .landing-section__heading { color: var(--color-text); }
-.landing-color-band--gold .landing-eyebrow { color: var(--color-accent-hover); }
-.landing-color-band--gold .landing-eyebrow::before { background: var(--color-accent-hover); }
+.landing-color-band--gold .landing-eyebrow { color: var(--color-flame-hover); }
+.landing-color-band--gold .landing-eyebrow::before { background: var(--color-flame-hover); }
 
 .landing-section {
   padding: var(--space-16) var(--space-6);
@@ -704,7 +704,7 @@
   line-height: 1.1;
 }
 .landing-cta-band__heading .landing-script {
-  color: var(--color-accent-hover);
+  color: var(--color-flame-hover);
   font-size: 1.1em;
   display: block;
   margin-top: 0.1em;
