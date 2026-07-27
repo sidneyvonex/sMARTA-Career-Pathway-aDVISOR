@@ -13,7 +13,8 @@
 
 .landing-page {
   background: var(--color-background);
-  overflow-x: hidden;
+  /* NOTE: no overflow-x here — an overflow value on this ancestor would break
+     the sticky PublicNav. Full-bleed bands use width:100% and never overflow. */
 }
 
 .landing-wrap {
