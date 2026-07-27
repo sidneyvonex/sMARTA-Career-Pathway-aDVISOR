@@ -1,32 +1,50 @@
+import PublicNav from '../components/marketing/PublicNav'
+import PublicFooter from '../components/marketing/PublicFooter'
 import LandingHero from '../components/landing/LandingHero'
-import LandingTicker from '../components/landing/LandingTicker'
 import LandingPurpose from '../components/landing/LandingPurpose'
-import LandingBand from '../components/landing/LandingBand'
-import LandingPathwayGrid from '../components/landing/LandingPathwayGrid'
 import LandingSpotlight from '../components/landing/LandingSpotlight'
+import LandingPathwayGrid from '../components/landing/LandingPathwayGrid'
+import LandingSteps from '../components/landing/LandingSteps'
+import LandingNotice from '../components/landing/LandingNotice'
+import LandingCommunity from '../components/landing/LandingCommunity'
 import LandingCTA from '../components/landing/LandingCTA'
-import LandingFooter from '../components/landing/LandingFooter'
-import { RoadmapIcon } from '../components/landing/icons'
 import '../styles/landing.css'
 
 export default function LandingPage() {
   return (
     <div className="landing-page">
+      <PublicNav />
+
       <LandingHero />
-      <LandingTicker />
-      <LandingPurpose />
-      <LandingBand variant="dark" icon={<RoadmapIcon />} heading="Less Confusion. Clearer Choices." />
-      <div id="explore-your-pathway">
+
+      <div className="landing-color-band landing-color-band--white">
+        <LandingPurpose />
+        <div className="landing-section landing-section--tight">
+          <LandingSpotlight />
+        </div>
+      </div>
+
+      <div className="landing-color-band landing-color-band--green">
         <LandingPathwayGrid />
       </div>
-      <LandingSpotlight />
-      <LandingBand
-        variant="quote"
-        icon={<RoadmapIcon />}
-        heading="Every learner's path is different — yours should be too."
-      />
-      <LandingCTA />
-      <LandingFooter />
+
+      <div className="landing-color-band landing-color-band--ink">
+        <LandingSteps />
+      </div>
+
+      <div className="landing-color-band landing-color-band--white">
+        <LandingNotice />
+      </div>
+
+      <div className="landing-color-band landing-color-band--ink">
+        <LandingCommunity />
+      </div>
+
+      <div className="landing-color-band landing-color-band--gold">
+        <LandingCTA />
+      </div>
+
+      <PublicFooter />
     </div>
   )
 }
