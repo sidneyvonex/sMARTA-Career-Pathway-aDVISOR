@@ -633,6 +633,7 @@
 .mk-band--ink { background: var(--color-text); }
 .mk-band--green { background: var(--color-primary); }
 .mk-band--gold { background: var(--color-accent); }
+.mk-band--white { background: var(--color-surface); }
 .mk-band--ink .mk-section__heading,
 .mk-band--green .mk-section__heading { color: var(--color-surface); }
 .mk-band--ink .mk-section__lede,
@@ -800,3 +801,112 @@
 .mk-cta-band--gold .mk-cta-band__heading { color: var(--color-text); }
 .mk-cta-band--gold .mk-cta-band__heading .mk-script { color: var(--color-flame-hover); }
 .mk-cta-band--gold .mk-cta-band__sub { color: rgba(20, 20, 15, 0.65); }
+
+/* ---------- PRICING GRID (For Schools page) ---------- */
+.mk-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 3rem;
+  align-items: stretch;
+}
+@media (max-width: 960px) {
+  .mk-pricing-grid { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; }
+}
+.mk-pricing-card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--mk-radius-lg);
+  box-shadow: var(--mk-shadow-sm);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.mk-pricing-card--highlight {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  box-shadow: var(--mk-shadow-lg);
+}
+.mk-pricing-card--highlight .mk-pricing-card__price-sub { color: rgba(251, 248, 239, 0.75); }
+.mk-pricing-card--highlight .mk-pricing-card__features li { color: rgba(251, 248, 239, 0.92); }
+.mk-pricing-card--highlight .mk-pricing-card__features li svg { color: var(--color-accent); }
+.mk-pricing-card__badge {
+  position: absolute;
+  top: -0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-accent);
+  color: var(--color-text);
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-extrabold);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 1rem;
+  border-radius: var(--mk-radius-full);
+  white-space: nowrap;
+}
+.mk-pricing-card__tag {
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-bold);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-flame);
+}
+.mk-pricing-card--highlight .mk-pricing-card__tag { color: var(--color-accent); }
+.mk-pricing-card__name {
+  font-family: var(--font-family-display);
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-extrabold);
+}
+.mk-pricing-card__price {
+  font-family: var(--font-family-display);
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-extrabold);
+  margin-top: 0.1rem;
+}
+.mk-pricing-card__price-sub { font-size: 0.85rem; color: var(--color-text-secondary); }
+.mk-pricing-card__features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+  flex: 1;
+  padding: 0;
+}
+.mk-pricing-card__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+.mk-pricing-card__features li svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--color-primary);
+}
+.mk-pricing-card__cta { margin-top: 0.5rem; }
+.mk-pricing-card__status {
+  font-family: var(--font-family-display);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-flame);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.mk-pricing-card--highlight .mk-pricing-card__status { color: var(--color-accent); }
+
+.mk-pricing-note {
+  max-width: 720px;
+  margin: 2.5rem auto 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+.mk-pricing-note a { text-decoration: underline; font-weight: var(--font-weight-bold); }
