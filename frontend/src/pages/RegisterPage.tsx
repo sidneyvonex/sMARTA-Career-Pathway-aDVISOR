@@ -51,6 +51,11 @@ export default function RegisterPage() {
       heading="Create your account"
       subheading="Join Smarta Shauri — free for all students"
       footer={<span>Already have an account? <Link to="/login">Sign in</Link></span>}
+      brandImage="/img/mahiga-girls.jpg"
+      brandImageAlt="Pupils at Mahiga Girls Secondary School, Nyeri County"
+      brandEyebrow="Free, always"
+      brandQuote="Your pathway starts"
+      brandQuoteAccent="right here."
     >
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="form-row">
