@@ -1,18 +1,20 @@
 import { render } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
-import { CompassIcon, LightbulbIcon, NetworkIcon, RoadmapIcon } from '../components/landing/icons'
+import { CompassIcon, LightbulbIcon, NetworkIcon, RoadmapIcon, CheckIcon, ArrowRightIcon } from '../components/landing/icons'
 
 describe('landing icons', () => {
-  it('renders all four icons as svg elements', () => {
+  it('renders all six icons as svg elements', () => {
     const { container } = render(
       <>
         <CompassIcon />
         <LightbulbIcon />
         <NetworkIcon />
         <RoadmapIcon />
+        <CheckIcon />
+        <ArrowRightIcon />
       </>
     )
-    expect(container.querySelectorAll('svg')).toHaveLength(4)
+    expect(container.querySelectorAll('svg')).toHaveLength(6)
   })
 
   it('applies a passed className to the svg', () => {

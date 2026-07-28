@@ -20,8 +20,10 @@ describe('RootRoute at /', () => {
   it('shows the LandingPage hero when auth resolves logged out', () => {
     useAuthStore.setState({ isLoading: false, isAuthenticated: false })
     renderApp()
-    expect(screen.getByRole('heading', { level: 1, name: /smarta shauri/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /get started/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1 })
+    ).toHaveTextContent(/discover\.\s*plan\.\s*choose\.\s*succeed\./i)
+    expect(screen.getAllByRole('link', { name: /get started/i }).length).toBeGreaterThan(0)
   })
 
   it('shows the Dashboard (not the landing hero) when authenticated', () => {

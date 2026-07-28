@@ -1,20 +1,36 @@
 export default function LandingPurpose() {
   return (
     <section className="landing-section">
-      <h2 className="landing-section__heading">Built for the CBC Journey</h2>
-      <p>
-        Take the RIASEC interest assessment, get matched to a CBC pathway, and track your
-        subject grades every term — all in one place designed around Kenya's Competency-Based
-        Curriculum.
-      </p>
-      <div className="landing-stats">
-        <div className="landing-stat">
-          <span className="landing-stat__number">3</span>
-          <span className="landing-stat__label">CBC Pathways</span>
+      <span className="landing-eyebrow">Our work</span>
+      <div className="landing-statement">
+        <h2 className="landing-statement__heading">
+          Three pathways.
+          <span className="landing-script">One decision.</span>
+        </h2>
+        <div className="landing-statement__side">
+          <p className="landing-section__lede">
+            You don&apos;t need to have it all figured out. CBC groups every subject choice
+            into three broad pathways — we help you see which one actually fits, not just
+            which one your friends picked.
+          </p>
         </div>
-        <div className="landing-stat">
-          <span className="landing-stat__number">6</span>
-          <span className="landing-stat__label">RIASEC Dimensions Measured</span>
+      </div>
+
+      <div className="landing-stat-row">
+        <div className="landing-stat-card">
+          <span className="landing-stat-card__label">CBC pathways</span>
+          <span className="landing-stat-card__value">3</span>
+          <p className="landing-stat-card__sub">STEM, Social Sciences, Arts &amp; Sports Science</p>
+        </div>
+        <div className="landing-stat-card">
+          <span className="landing-stat-card__label">RIASEC dimensions</span>
+          <span className="landing-stat-card__value">6</span>
+          <p className="landing-stat-card__sub">Measured across a single interest assessment</p>
+        </div>
+        <div className="landing-stat-card">
+          <span className="landing-stat-card__label">To get started</span>
+          <span className="landing-stat-card__value">Free</span>
+          <p className="landing-stat-card__sub">No cost, no credit card, ever</p>
         </div>
       </div>
     </section>

@@ -25,6 +25,10 @@ import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
 import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
 import LandingPage from './pages/LandingPage'
+import AboutPage from './pages/AboutPage'
+import PathwaysPage from './pages/PathwaysPage'
+import HowItWorksPage from './pages/HowItWorksPage'
+import ForSchoolsPage from './pages/ForSchoolsPage'
 import { useAuth } from './hooks/useAuth'
 import { useAuthStore } from './store/authStore'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
@@ -62,6 +66,10 @@ function AppRoutes() {
     <Routes>
       {/* Public auth pages — no Shell */}
       <Route path="/" element={<RootRoute />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/pathways" element={<PathwaysPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/for-schools" element={<ForSchoolsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
