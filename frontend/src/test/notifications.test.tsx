@@ -56,7 +56,7 @@ describe('useNotificationPoll', () => {
 describe('Topbar / Sidebar', () => {
   const mockUser = {
     id: 1, email: 'test@example.com', first_name: 'Alice', last_name: 'Doe',
-    role: 'student' as const, is_email_verified: true,
+    role: 'student' as const, is_email_verified: true, county: null,
   }
 
   beforeEach(() => {

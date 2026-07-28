@@ -60,7 +60,7 @@ export const schoolAdminApi = {
     api.get<{ data: SchoolCounselor[] }>('/school-admin/counselors/'),
 
   addCounselor: (email: string) =>
-    api.post<{ data: { id: number; email: string } }>('/school-admin/counselors/add/', { email }),
+    api.post<{ data: { id: number; email: string }; message: string }>('/school-admin/counselors/add/', { email }),
 
   removeCounselor: (counselorId: number) =>
     api.post('/school-admin/counselors/' + counselorId + '/remove/'),

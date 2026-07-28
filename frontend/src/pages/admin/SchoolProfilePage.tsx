@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { schoolAdminApi, SchoolProfile } from '../../api/schoolAdmin'
+import { schoolAdminApi } from '../../api/schoolAdmin'
 import '../../styles/school-admin.css'
 
 export default function SchoolProfilePage() {
