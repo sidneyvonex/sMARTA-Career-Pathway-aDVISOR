@@ -61,6 +61,11 @@ export default function StudentDashboard() {
     queryFn: () => notificationsApi.getList().then((response) => response.data.data),
   })
 
+  const interventionsQ = useQuery({
+    queryKey: ['student', 'interventions'],
+    queryFn: () => studentsApi.getInterventions().then((response) => response.data.data),
+  })
+
   const subjects = subjectsQ.data ?? []
   const gradeQueries = useQueries({
     queries: subjects.map((subject) => ({
@@ -81,7 +86,8 @@ export default function StudentDashboard() {
     profileQ.isLoading ||
     subjectsQ.isLoading ||
     evidenceQ.isLoading ||
-    choicesQ.isLoading
+    choicesQ.isLoading ||
+    interventionsQ.isLoading
   ) {
     return (
       <div className="lv-loading" aria-label="Loading dashboard">
@@ -98,6 +104,7 @@ export default function StudentDashboard() {
     subjectsQ.isError ||
     evidenceQ.isError ||
     choicesQ.isError ||
+    interventionsQ.isError ||
     !profile ||
     !evidence
   ) {
@@ -110,6 +117,7 @@ export default function StudentDashboard() {
           subjectsQ.refetch()
           evidenceQ.refetch()
           choicesQ.refetch()
+          interventionsQ.refetch()
         }}
       />
     )
@@ -191,6 +199,7 @@ export default function StudentDashboard() {
       time: formatRelativeTime(notification.created_at),
       actor: notification.type === 'counselor_note' && counselorName ? counselorName : fullName,
     })),
+    interventions: interventionsQ.data ?? [],
     onOpenActivity: () => setDrawerOpen(true),
     onDownloadReport: (quizDone || subjects.length > 0) && user
       ? () => downloadReport(user.id)

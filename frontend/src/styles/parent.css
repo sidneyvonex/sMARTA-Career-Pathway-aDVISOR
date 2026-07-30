@@ -382,6 +382,30 @@
   gap: var(--space-3);
 }
 
+.child-detail__interventions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.child-detail__interventions article {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+}
+
+.child-detail__interventions strong,
+.child-detail__interventions small {
+  display: block;
+}
+
+.child-detail__interventions small {
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
 .child-detail__notes blockquote {
   padding: var(--space-4);
   border-radius: var(--radius-lg);

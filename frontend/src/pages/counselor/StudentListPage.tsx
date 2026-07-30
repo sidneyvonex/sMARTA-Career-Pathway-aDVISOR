@@ -1,88 +1,139 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { counselorApi } from '../../api/counselor'
-import { isNewStudent } from '../../lib/format'
 import StudentFilterBar from '../../components/counselor/StudentFilterBar'
-import StudentTable from '../../components/counselor/StudentTable'
+import EmptyState from '../../components/common/dashboard/EmptyState'
+import ErrorState from '../../components/common/dashboard/ErrorState'
+import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
+import StatusBadge from '../../components/common/dashboard/StatusBadge'
+import { initials, isNewStudent } from '../../lib/format'
 import '../../styles/counselor.css'
 
 export default function StudentListPage() {
   const [activeFilter, setActiveFilter] = useState('all')
+  const [reasonFilter, setReasonFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-
-  const { data, isLoading, isError } = useQuery({
+  const studentsQ = useQuery({
     queryKey: ['counselor', 'students'],
-    queryFn: async () => {
-      const res = await counselorApi.getStudents()
-      return res.data.data
-    },
+    queryFn: () => counselorApi.getStudents().then((response) => response.data.data),
   })
 
   useEffect(() => {
-    if (isError) {
+    if (studentsQ.isError) {
       toast.error("Couldn't load students. Please try again.")
     }
-  }, [isError])
+  }, [studentsQ.isError])
 
-  const students = data ?? []
-
+  const students = studentsQ.data ?? []
   const filtered = useMemo(() => {
     let list = students
-
-    // Filter by status
     if (activeFilter === 'needs_attention') {
-      list = list.filter((s) => s.quiz_status === 'pending')
+      list = list.filter((student) => student.needs_attention)
     } else if (activeFilter === 'assessed') {
-      list = list.filter((s) => s.quiz_status === 'done')
+      list = list.filter((student) => student.quiz_status === 'done')
     } else if (activeFilter === 'new') {
-      list = list.filter((s) => isNewStudent(s.last_active))
+      list = list.filter((student) => isNewStudent(student.last_active))
     }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      list = list.filter(
-        (s) =>
-          s.first_name.toLowerCase().includes(q) ||
-          s.last_name.toLowerCase().includes(q)
-      )
+    if (reasonFilter !== 'all') {
+      list = list.filter((student) => (
+        student.attention_reasons.some((reason) => reason.code === reasonFilter)
+      ))
     }
-
+    const query = searchQuery.trim().toLowerCase()
+    if (query) {
+      list = list.filter((student) => (
+        `${student.first_name} ${student.last_name}`.toLowerCase().includes(query)
+      ))
+    }
     return list
-  }, [students, activeFilter, searchQuery])
+  }, [activeFilter, reasonFilter, searchQuery, students])
 
   return (
     <div className="counselor-page">
-      <div className="counselor-page__header">
-        <h1 className="counselor-page__title">My Students</h1>
-        {!isLoading && (
+      <header className="counselor-page__header">
+        <div>
+          <span className="counselor-page__eyebrow">Assigned learners</span>
+          <h1 className="counselor-page__title">My Students</h1>
+        </div>
+        {!studentsQ.isLoading && (
           <span className="counselor-page__count">
-            {students.length} student{students.length !== 1 ? 's' : ''} assigned
+            {students.length} student{students.length === 1 ? '' : 's'} assigned
           </span>
         )}
-      </div>
+      </header>
 
       <StudentFilterBar
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        reasonFilter={reasonFilter}
+        onReasonChange={setReasonFilter}
       />
 
-      {isLoading ? (
-        <div className="student-table-wrap">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="skeleton-row">
-              <div className="skeleton skeleton-circle" />
-              <div className="skeleton skeleton-bar skeleton-bar--long" />
-              <div className="skeleton skeleton-bar skeleton-bar--short" />
-              <div className="skeleton skeleton-bar skeleton-bar--medium" />
-            </div>
+      {studentsQ.isLoading && (
+        <LoadingSkeleton label="Loading assigned learners" rows={5} />
+      )}
+      {studentsQ.isError && (
+        <ErrorState
+          title="The learner caseload could not load"
+          description="Check your connection and retry the assigned learner list."
+          onRetry={() => studentsQ.refetch()}
+        />
+      )}
+      {!studentsQ.isLoading && !studentsQ.isError && filtered.length === 0 && (
+        <EmptyState
+          title="No learners match these filters"
+          description="Clear a status, attention reason or search term to see more learners."
+          action={{
+            label: 'Clear filters',
+            onClick: () => {
+              setActiveFilter('all')
+              setReasonFilter('all')
+              setSearchQuery('')
+            },
+          }}
+        />
+      )}
+      {!studentsQ.isLoading && !studentsQ.isError && filtered.length > 0 && (
+        <div className="counselor-caseload" aria-label="Assigned learner caseload">
+          {filtered.map((student) => (
+            <article className="counselor-caseload__card" key={student.id}>
+              <div className="counselor-caseload__identity">
+                <div aria-hidden="true">{initials(student.first_name, student.last_name)}</div>
+                <div>
+                  <h2>{student.first_name} {student.last_name}</h2>
+                  <p>Grade {student.grade} · {student.county ?? 'County not set'}</p>
+                </div>
+                <StatusBadge tone={student.needs_attention ? 'warning' : 'positive'}>
+                  {student.needs_attention ? 'Needs attention' : 'Up to date'}
+                </StatusBadge>
+              </div>
+
+              <div className="counselor-caseload__alignment">
+                <span>Interest alignment</span>
+                <strong>{student.top_pathway ?? 'Assessment not completed'}</strong>
+              </div>
+
+              <div className="counselor-caseload__reasons">
+                {student.attention_reasons.length > 0 ? (
+                  student.attention_reasons.map((reason) => (
+                    <span key={reason.code}>{reason.label}</span>
+                  ))
+                ) : (
+                  <span className="counselor-caseload__clear">No current attention reasons</span>
+                )}
+              </div>
+
+              <Link to={`/counselor/students/${student.id}`}>
+                Review learner
+                <span aria-hidden="true">→</span>
+              </Link>
+            </article>
           ))}
         </div>
-      ) : (
-        <StudentTable students={filtered} />
       )}
     </div>
   )

@@ -89,6 +89,8 @@ describe('ChildDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Plan milestones' })).toBeInTheDocument()
     expect(screen.getByText('Review two pilot schools')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Parent-visible notes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Agreed next steps' })).toBeInTheDocument()
+    expect(screen.getByText('Discuss the reviewed learner plan.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Download report' })).toHaveLength(2)
   })
 

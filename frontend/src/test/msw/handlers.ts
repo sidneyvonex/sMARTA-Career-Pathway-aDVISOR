@@ -274,6 +274,29 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: '' })
   }),
 
+  http.get('/api/v1/students/interventions/', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 77,
+          student: 1,
+          student_name: 'Jane Doe',
+          category: 'plan',
+          action_agreed: 'Review your milestone dates.',
+          follow_up_date: '2026-08-06',
+          status: 'open',
+          learner_visible: true,
+          parent_visible: false,
+          completed_at: null,
+          created_at: '2026-07-29T08:00:00Z',
+          updated_at: '2026-07-29T08:00:00Z',
+        },
+      ],
+      error: null,
+      message: '',
+    })
+  }),
+
   // Dashboard — counselor views
   http.get('/api/v1/counselors/students/', () => {
     return HttpResponse.json({
@@ -335,6 +358,62 @@ export const handlers = [
           { id: 20, subject_name: 'Mathematics', subject_code: 'MTH9', term: 1, year: 2026, level: 'ME1', created_at: '2026-06-14T10:00:00Z', updated_at: '2026-06-14T10:00:00Z' },
         ],
         notes_count: 2,
+        attention_reasons: [
+          {
+            code: 'academic_evidence_missing',
+            label: 'Academic evidence incomplete',
+            guidance: 'Review the enrolled subjects and add missing grade evidence.',
+          },
+        ],
+        evidence_summary: {
+          academic: {
+            status: 'in_progress',
+            total_subjects: 2,
+            subjects_with_evidence: 1,
+            total_grade_records: 1,
+          },
+          assessment: { status: 'complete' },
+        },
+        combination_choices: [
+          {
+            id: 12,
+            status: 'provisional',
+            learner_reason: 'I enjoy practical science.',
+            code: 'ST1042',
+            title: 'Agriculture, Biology & Chemistry',
+            pathway: 'STEM',
+            track: 'Pure Sciences',
+            subjects: ['Agriculture', 'Biology', 'Chemistry'],
+          },
+        ],
+        plan: {
+          status: 'ready_for_review',
+          learner_reason: 'This route connects to my interests.',
+          milestones: [
+            {
+              id: 1,
+              title: 'Review two pilot schools',
+              due_date: '2026-09-15',
+              is_complete: false,
+            },
+          ],
+        },
+        interventions: [
+          {
+            id: 91,
+            student: 5,
+            student_name: 'Jane Doe',
+            category: 'academic_evidence',
+            action_agreed: 'Bring the latest mathematics evidence.',
+            follow_up_date: '2026-08-04',
+            status: 'open',
+            learner_visible: true,
+            parent_visible: true,
+            completed_at: null,
+            created_at: '2026-07-29T09:00:00Z',
+            updated_at: '2026-07-29T09:00:00Z',
+          },
+        ],
       },
       error: null, message: '',
     })
@@ -410,6 +489,64 @@ export const handlers = [
   }),
 
   // Dashboard — parent children
+  http.post('/api/v1/counselors/interventions/', async ({ request }) => {
+    const body = await request.json() as {
+      student_id: number
+      category: string
+      action_agreed: string
+      follow_up_date: string | null
+      learner_visible: boolean
+      parent_visible: boolean
+    }
+    return HttpResponse.json({
+      data: {
+        id: 92,
+        student: body.student_id,
+        student_name: 'Jane Doe',
+        category: body.category,
+        action_agreed: body.action_agreed,
+        follow_up_date: body.follow_up_date,
+        status: 'open',
+        learner_visible: body.learner_visible,
+        parent_visible: body.parent_visible,
+        completed_at: null,
+        created_at: '2026-07-30T09:00:00Z',
+        updated_at: '2026-07-30T09:00:00Z',
+      },
+      error: null,
+      message: 'Intervention created.',
+    }, { status: 201 })
+  }),
+
+  http.patch('/api/v1/counselors/interventions/:id/', async ({ params, request }) => {
+    const body = await request.json() as {
+      status?: 'open' | 'completed'
+      category?: string
+      action_agreed?: string
+      follow_up_date?: string | null
+      learner_visible?: boolean
+      parent_visible?: boolean
+    }
+    return HttpResponse.json({
+      data: {
+        id: Number(params.id),
+        student: 5,
+        student_name: 'Jane Doe',
+        category: body.category ?? 'academic_evidence',
+        action_agreed: body.action_agreed ?? 'Bring the latest mathematics evidence.',
+        follow_up_date: body.follow_up_date ?? '2026-08-04',
+        status: body.status ?? 'open',
+        learner_visible: body.learner_visible ?? true,
+        parent_visible: body.parent_visible ?? true,
+        completed_at: body.status === 'completed' ? '2026-07-30T09:30:00Z' : null,
+        created_at: '2026-07-29T09:00:00Z',
+        updated_at: '2026-07-30T09:30:00Z',
+      },
+      error: null,
+      message: 'Intervention updated.',
+    })
+  }),
+
   http.get('/api/v1/parents/children/', () => {
     return HttpResponse.json({
       data: [
@@ -587,6 +724,22 @@ export const handlers = [
             body: 'Tom is showing great progress in mathematics this term. Keep encouraging him!',
             created_at: '2026-06-15T14:30:00Z',
             updated_at: '2026-06-15T14:30:00Z',
+          },
+        ],
+        interventions: [
+          {
+            id: 81,
+            student: 10,
+            student_name: 'Tom Doe',
+            category: 'plan',
+            action_agreed: 'Discuss the reviewed learner plan.',
+            follow_up_date: '2026-08-08',
+            status: 'open',
+            learner_visible: true,
+            parent_visible: true,
+            completed_at: null,
+            created_at: '2026-07-29T08:00:00Z',
+            updated_at: '2026-07-29T08:00:00Z',
           },
         ],
       },

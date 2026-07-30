@@ -1,4 +1,5 @@
 import api from '../lib/axios'
+import type { CounselorIntervention } from './counselor'
 
 export interface ChildProfile {
   id: number
@@ -95,6 +96,7 @@ export interface ChildDetail {
   counselor: ChildCounselor | null
   latest_note: ChildNote | null
   parent_visible_notes: ChildNote[]
+  interventions: CounselorIntervention[]
 }
 
 export const parentApi = {

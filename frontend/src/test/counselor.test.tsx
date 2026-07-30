@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
@@ -72,6 +72,20 @@ describe('StudentListPage', () => {
     expect(screen.getByRole('button', { name: 'Needs attention' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Assessed' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Filter by attention reason' })).toBeInTheDocument()
+  })
+
+  it('filters the caseload by explicit attention reason', async () => {
+    renderPage()
+    expect(await screen.findByText('Jane Doe')).toBeInTheDocument()
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Filter by attention reason' }),
+      { target: { value: 'no_plan' } },
+    )
+
+    expect(screen.getByText('Brian Kamau')).toBeInTheDocument()
+    expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument()
   })
 
   it('shows the student count after loading', async () => {
@@ -81,8 +95,8 @@ describe('StudentListPage', () => {
 
   it('shows ranked interest alignment without a fit percentage', async () => {
     renderPage()
-    expect(await screen.findByRole('columnheader', { name: 'Interest alignment' })).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: /fit/i })).not.toBeInTheDocument()
+    expect((await screen.findAllByText('Interest alignment')).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/fit percentage/i)).not.toBeInTheDocument()
     expect(screen.queryByText('73%')).not.toBeInTheDocument()
   })
 })
@@ -129,6 +143,19 @@ describe('StudentDetailPage', () => {
   it('shows back link to student list', async () => {
     renderPage()
     expect(await screen.findByText(/back to students/i)).toBeInTheDocument()
+  })
+
+  it('shows evidence, choices, plan and the intervention workflow', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Attention reasons' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Evidence summary' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Saved and provisional choices' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Learner plan' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Intervention timeline' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Agreed next step')).toBeInTheDocument()
+    expect(screen.getByLabelText('Follow-up date')).toBeInTheDocument()
+    expect(screen.getByText('Bring the latest mathematics evidence.')).toBeInTheDocument()
   })
 })
 

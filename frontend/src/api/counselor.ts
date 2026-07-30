@@ -38,6 +38,37 @@ export interface StudentDetail {
     updated_at: string
   }[]
   notes_count: number
+  attention_reasons: AssignedStudent['attention_reasons']
+  evidence_summary: {
+    academic: {
+      status: 'not_started' | 'in_progress' | 'ready'
+      total_subjects: number
+      subjects_with_evidence: number
+      total_grade_records: number
+    }
+    assessment: { status: 'not_started' | 'complete' }
+  }
+  combination_choices: {
+    id: number
+    status: 'saved' | 'provisional'
+    learner_reason: string
+    code: string
+    title: string
+    pathway: string
+    track: string
+    subjects: string[]
+  }[]
+  plan: {
+    status: 'draft' | 'ready_for_review' | 'reviewed'
+    learner_reason: string
+    milestones: {
+      id: number
+      title: string
+      due_date: string | null
+      is_complete: boolean
+    }[]
+  } | null
+  interventions: CounselorIntervention[]
 }
 
 export interface CounselorNote {

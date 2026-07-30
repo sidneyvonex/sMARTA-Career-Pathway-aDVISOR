@@ -1,4 +1,5 @@
 import api from '../lib/axios'
+import type { CounselorIntervention } from './counselor'
 
 export interface StudentProfile {
   id: number
@@ -114,6 +115,9 @@ export interface ParentAccess {
 export const studentsApi = {
   getEvidenceSummary: () =>
     api.get<{ data: EvidenceSummary }>('/students/evidence-summary/'),
+
+  getInterventions: () =>
+    api.get<{ data: CounselorIntervention[] }>('/students/interventions/'),
 
   getParentAccess: () =>
     api.get<{ data: ParentAccess[] }>('/students/parent-access/'),

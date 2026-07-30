@@ -32,6 +32,12 @@ export interface LivelyData {
   gradeTrend: GradePoint[] | null
   counselor: { name: string; role: string; message?: string; photoUrl?: string | null } | null
   activity: { text: string; time: string; actor?: string }[]
+  interventions: {
+    id: number
+    action_agreed: string
+    follow_up_date: string | null
+    status: 'open' | 'completed'
+  }[]
   onOpenActivity?: () => void
   onDownloadReport?: () => void
   reportDownloading?: boolean
@@ -220,8 +226,39 @@ export default function LivelyStudentDashboard(data: LivelyData) {
         </div>
       </section>
 
+      <section className="lv-card lv-actions lv-anim" style={{ ['--i' as string]: 5 }} aria-labelledby="agreed-actions-title">
+        <SectionHeader
+          className="lv-card__head"
+          eyebrow="With your counsellor"
+          title="Agreed next steps"
+          titleId="agreed-actions-title"
+        />
+        {data.interventions.length > 0 ? (
+          <div className="lv-actions__list">
+            {data.interventions.slice(0, 4).map((intervention) => (
+              <article key={intervention.id}>
+                <span aria-hidden="true">{intervention.status === 'completed' ? '✓' : '→'}</span>
+                <div>
+                  <strong>{intervention.action_agreed}</strong>
+                  <small>
+                    {intervention.follow_up_date
+                      ? `Follow up ${new Date(`${intervention.follow_up_date}T00:00:00`).toLocaleDateString('en-KE', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}`
+                      : 'No follow-up date'}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="lv-actions__empty">Agreed actions from your counsellor will appear here.</p>
+        )}
+      </section>
+
       <section className="lv-people-grid" aria-label="Support and recent activity">
-        <article className="lv-card lv-card--counselor lv-anim" style={{ ['--i' as string]: 5 }}>
+        <article className="lv-card lv-card--counselor lv-anim" style={{ ['--i' as string]: 6 }}>
           <span className="lv-card__sun" aria-hidden="true" />
           <SectionHeader className="lv-card__head" eyebrow="Your support" title="Career counsellor" titleAs="h3" />
           {data.counselor ? (
@@ -243,7 +280,7 @@ export default function LivelyStudentDashboard(data: LivelyData) {
           )}
         </article>
 
-        <article className="lv-card lv-card--activity lv-anim" style={{ ['--i' as string]: 6 }}>
+        <article className="lv-card lv-card--activity lv-anim" style={{ ['--i' as string]: 7 }}>
           <SectionHeader
             className="lv-card__head"
             eyebrow="Latest"
@@ -270,7 +307,7 @@ export default function LivelyStudentDashboard(data: LivelyData) {
         </article>
       </section>
 
-      <aside className="lv-quote lv-anim" style={{ ['--i' as string]: 7 }}>
+      <aside className="lv-quote lv-anim" style={{ ['--i' as string]: 8 }}>
         <div className="lv-quote__students" aria-hidden="true">
           <Avatar seed="Njeri" size={54} shape="squircle" />
           <Avatar seed="Baraka" size={54} shape="squircle" />

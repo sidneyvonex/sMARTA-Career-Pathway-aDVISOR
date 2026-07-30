@@ -76,6 +76,7 @@ export default function ChildDetailPage() {
     plan,
     counselor,
     parent_visible_notes: notes,
+    interventions = [],
   } = detailQ.data
   const maxScore = assessment ? Math.max(...Object.values(assessment.scores)) : 0
   const completedMilestones = plan?.milestones.filter((item) => item.is_complete).length ?? 0
@@ -249,6 +250,35 @@ export default function ChildDetailPage() {
           </>
         ) : (
           <EmptyCopy>No learner plan has been started yet.</EmptyCopy>
+        )}
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="actions-title">
+        <SectionTitle eyebrow="Shared actions" title="Agreed next steps" id="actions-title" />
+        {interventions.length > 0 ? (
+          <div className="child-detail__interventions">
+            {interventions.map((intervention) => (
+              <article key={intervention.id}>
+                <StatusBadge tone={intervention.status === 'completed' ? 'positive' : 'warning'}>
+                  {intervention.status === 'completed' ? 'Completed' : 'Open'}
+                </StatusBadge>
+                <div>
+                  <strong>{intervention.action_agreed}</strong>
+                  <small>
+                    {intervention.follow_up_date
+                      ? `Follow up ${new Date(`${intervention.follow_up_date}T00:00:00`).toLocaleDateString('en-KE', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}`
+                      : 'No follow-up date'}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyCopy>No agreed actions have been shared with parents yet.</EmptyCopy>
         )}
       </section>
 

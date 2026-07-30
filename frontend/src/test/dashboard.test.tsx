@@ -55,6 +55,8 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('progressbar', { name: 'Career journey progress' })).not.toBeInTheDocument()
     expect(screen.getByText('Your strength shape')).toBeInTheDocument()
     expect(screen.getByText('Interest-aligned pathways')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Agreed next steps' })).toBeInTheDocument()
+    expect(screen.getByText('Review your milestone dates.')).toBeInTheDocument()
     expect(screen.getByText(/suggestions are starting points for exploration/i)).toBeInTheDocument()
     expect(screen.queryByText('73%')).not.toBeInTheDocument()
   })
