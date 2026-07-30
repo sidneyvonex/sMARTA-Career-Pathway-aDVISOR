@@ -39,3 +39,7 @@ MEDIA_URL = '/media/'
 
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# A single presenter switches through five roles from one localhost IP.
+# Production and normal development retain their login rate limits.
+RATELIMIT_ENABLE = False

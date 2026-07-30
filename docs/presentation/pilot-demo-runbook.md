@@ -23,8 +23,10 @@ Remove-Item Env:PILOT_DEMO_PASSWORD
 
 The presentation profile uses `backend/pilot_demo.sqlite3`, which is ignored by Git.
 It avoids external MySQL, email and object-storage credentials and persists between
-the three commands above. Delete that local database only when an intentional clean
-rehearsal dataset is required; the normal seed command is idempotent.
+the three commands above. It also disables IP login throttling locally so one presenter
+can switch through all five roles; development and production limits are unchanged.
+Delete that local database only when an intentional clean rehearsal dataset is required;
+the normal seed command is idempotent.
 
 In a second terminal:
 
