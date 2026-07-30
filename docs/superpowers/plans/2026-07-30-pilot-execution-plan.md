@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 5 - Parent support and access
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 Task 5.1 learner-approved parent access
 
-**Next:** Task 5.1 parent-link approval and revocation
+**Next:** Task 5.2 parent dashboard redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -42,6 +42,7 @@
 | `38836be` | Evidence-led two-or-three-choice comparison with curated related routes |
 | `737d96b` | Learner action plan, evidence gaps, milestones and review readiness |
 | `7b2c62f` | Evidence-to-action learner dashboard with calculated next action |
+| `dac4407` | Learner-approved parent access, revocation and pilot identity notice |
 
 ## 1. How to use this plan
 
@@ -1007,6 +1008,23 @@ Acceptance:
 - Parent cannot access child detail until active.
 - Learner can see and revoke active links.
 - UI states that legal guardian identity is not independently verified in the pilot.
+
+Verification:
+
+- Parent links record claimed relationship, invited/pending/active/revoked state, learner approval time and revocation time.
+- Existing links migrate as active while newly accepted parent invitations wait for learner approval.
+- Learner-scoped endpoints list access claims, approve pending access and revoke pending or active access with ownership checks and row locking.
+- Parent child lists, child detail, PDF reports and assessment notifications require an active link.
+- `/access` lets a learner invite a supporter, inspect the claimed relationship, approve or decline requests and revoke active access.
+- The learner shell exposes Parent Access without direct URL entry, with explicit loading, retryable error, empty and mutation-feedback states.
+- The UI explicitly states that legal guardian identity is not independently verified during the pilot.
+- Parent-access, model, parent-view and invitation backend suite: 76 tests passed after the corrected import.
+- Focused active-versus-pending report permission suite: 2 tests passed.
+- Parent-access, authentication, shell and route frontend suite: 14 tests passed.
+- Strict TypeScript check: passed.
+- Django system check: no issues.
+- Parent migration drift check: no changes detected.
+- Commit: `dac4407`.
 
 ### Task 5.2 - Redesign parent dashboard
 
