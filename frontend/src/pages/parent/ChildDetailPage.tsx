@@ -1,10 +1,13 @@
 import { useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { parentApi, ChildDetail } from '../../api/parent'
+import { parentApi } from '../../api/parent'
 import { initials } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
+import ErrorState from '../../components/common/dashboard/ErrorState'
+import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
+import StatusBadge from '../../components/common/dashboard/StatusBadge'
 import '../../styles/parent.css'
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -16,27 +19,20 @@ const DIMENSION_LABELS: Record<string, string> = {
   C: 'Conventional',
 }
 
+const PLAN_LABELS = {
+  draft: 'Draft',
+  ready_for_review: 'Ready for review',
+  reviewed: 'Reviewed',
+}
+
 export default function ChildDetailPage() {
   const { id } = useParams<{ id: string }>()
   const studentId = Number(id)
-
-  if (Number.isNaN(studentId)) {
-    return (
-      <div className="child-detail">
-        <Link to="/" className="child-detail__back" aria-label="Back to dashboard">← Back to dashboard</Link>
-        <div className="child-detail__section" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Invalid child ID. Please go back to your dashboard.</p>
-        </div>
-      </div>
-    )
-  }
-
   const { downloadReport, downloadingId } = useDownloadReport()
-
   const detailQ = useQuery({
     queryKey: ['parent-child-detail', studentId],
-    queryFn: () => parentApi.getChildDetail(studentId).then((r) => r.data.data),
-    enabled: !Number.isNaN(studentId),
+    queryFn: () => parentApi.getChildDetail(studentId).then((response) => response.data.data),
+    enabled: Number.isInteger(studentId) && studentId > 0,
   })
 
   useEffect(() => {
@@ -45,197 +41,285 @@ export default function ChildDetailPage() {
     }
   }, [detailQ.isError])
 
+  if (!Number.isInteger(studentId) || studentId <= 0) {
+    return (
+      <div className="child-detail">
+        <Link to="/" className="child-detail__back" aria-label="Back to dashboard">← Back to dashboard</Link>
+        <ErrorState
+          title="This learner link is invalid"
+          description="Return to the parent dashboard and choose an approved learner."
+          secondaryAction={{ label: 'Back to dashboard', to: '/' }}
+        />
+      </div>
+    )
+  }
   if (detailQ.isLoading) {
+    return <LoadingSkeleton label="Loading learner summary" rows={5} />
+  }
+  if (detailQ.isError || !detailQ.data) {
     return (
-      <div className="child-detail">
-        <div className="skeleton" style={{ height: 100, borderRadius: 13 }} />
-        <div className="skeleton" style={{ height: 200, borderRadius: 13 }} />
-        <div className="skeleton" style={{ height: 200, borderRadius: 13 }} />
-      </div>
+      <ErrorState
+        title="Couldn't load profile"
+        description="This access may no longer be active, or the connection may have failed."
+        onRetry={() => detailQ.refetch()}
+        secondaryAction={{ label: 'Back to dashboard', to: '/' }}
+      />
     )
   }
 
-  if (detailQ.isError) {
-    return (
-      <div className="child-detail">
-        <Link to="/" className="child-detail__back" aria-label="Back to dashboard">← Back</Link>
-        <div className="child-detail__section" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
-          <p style={{ color: 'var(--color-text-secondary)' }}>
-            Couldn't load profile. Please try again.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  const data: ChildDetail = detailQ.data!
-  const { profile, subjects, assessment, counselor, latest_note } = data
+  const {
+    profile,
+    subjects,
+    assessment,
+    academic_readiness: academic,
+    provisional_combination: provisional,
+    plan,
+    counselor,
+    parent_visible_notes: notes,
+  } = detailQ.data
   const maxScore = assessment ? Math.max(...Object.values(assessment.scores)) : 0
+  const completedMilestones = plan?.milestones.filter((item) => item.is_complete).length ?? 0
 
   return (
     <div className="child-detail">
       <Link to="/" className="child-detail__back" aria-label="Back to dashboard">← Back to dashboard</Link>
 
-      {/* Header */}
-      <div className="child-detail__header" role="region" aria-label="Child profile header">
+      <header className="child-detail__header" aria-labelledby="child-detail-title">
         <div className="child-detail__avatar" aria-hidden="true">
           {initials(profile.first_name, profile.last_name)}
         </div>
-        <div>
-          <div className="child-detail__name">{profile.first_name} {profile.last_name}</div>
-          <div className="child-detail__meta">
-            Grade {profile.grade} · {profile.county ?? 'No county'} · {profile.mode === 'school_linked' ? 'School-linked' : 'Self-guided'}
-          </div>
-          {profile.bio && (
-            <div className="child-detail__meta" style={{ marginTop: 'var(--space-2)' }}>{profile.bio}</div>
-          )}
+        <div className="child-detail__header-copy">
+          <span>Learner-approved summary</span>
+          <h1 id="child-detail-title">{profile.first_name} {profile.last_name}</h1>
+          <p>
+            Grade {profile.grade} · {profile.county ?? 'County not recorded'} ·{' '}
+            {profile.mode === 'school_linked' ? 'School-linked' : 'Self-guided'}
+          </p>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--space-4)' }}>
         <button
           type="button"
-          className="btn-primary"
           onClick={() => downloadReport(studentId)}
-          disabled={downloadingId !== null}
-          style={{ minHeight: 'var(--min-touch-target)' }}
+          disabled={downloadingId === studentId}
         >
-          {downloadingId !== null ? 'Generating…' : 'Download Report'}
+          {downloadingId === studentId ? 'Preparing report...' : 'Download report'}
         </button>
-      </div>
+      </header>
 
-      {/* Career Personality */}
-      <div className="child-detail__section">
-        <h2 className="child-detail__section-title">{profile.first_name}'s career personality</h2>
+      <aside className="child-detail__approval" role="note">
+        <StatusBadge tone="positive">Learner approved</StatusBadge>
+        <p>You are viewing information available through this learner's active parent-access approval.</p>
+      </aside>
+
+      <section className="child-detail__section" aria-labelledby="summary-title">
+        <SectionTitle eyebrow="Learner summary" title="Interests and context" id="summary-title" />
+        <div className="child-detail__summary-grid">
+          <div>
+            <strong>About</strong>
+            <p>{profile.bio || 'No learner summary has been recorded yet.'}</p>
+          </div>
+          <div>
+            <strong>Career interests</strong>
+            <p>{profile.career_interests || 'No career interests have been recorded yet.'}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="interest-title">
+        <SectionTitle eyebrow="Interest evidence" title="Career interest profile" id="interest-title" />
         {assessment ? (
           <>
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-              <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                  Holland Code: {assessment.holland_code}
-                </span>
-              </div>
-            </div>
-            {Object.entries(assessment.scores).map(([dim, score]) => (
-              <div className="trait-row" key={dim}>
-                <span className="trait-row__label">{dim}</span>
-                <div className="trait-row__bar" role="progressbar" aria-valuenow={score} aria-valuemin={0} aria-valuemax={maxScore} aria-label={DIMENSION_LABELS[dim] ?? dim}>
-                  <div className="trait-row__fill" style={{ width: `${maxScore > 0 ? (score / maxScore) * 100 : 0}%` }} />
+            <div className="child-detail__code">Holland Code: {assessment.holland_code}</div>
+            <div className="child-detail__traits">
+              {Object.entries(assessment.scores).map(([dimension, score]) => (
+                <div className="trait-row" key={dimension}>
+                  <span className="trait-row__label">{dimension}</span>
+                  <div
+                    className="trait-row__bar"
+                    role="progressbar"
+                    aria-valuenow={score}
+                    aria-valuemin={0}
+                    aria-valuemax={maxScore}
+                    aria-label={DIMENSION_LABELS[dimension] ?? dimension}
+                  >
+                    <div
+                      className="trait-row__fill"
+                      style={{ width: `${maxScore > 0 ? (score / maxScore) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="trait-row__score">{score}</span>
                 </div>
-                <span className="trait-row__score">{score}</span>
-              </div>
-            ))}
+              ))}
+            </div>
+            <p className="child-detail__advisory">
+              These interest-aligned suggestions are starting points for discussion. They do not predict success or determine placement.
+            </p>
+            <div className="child-detail__pathways">
+              {assessment.recommendations.map((recommendation) => (
+                <article key={recommendation.rank}>
+                  <span>Explore {recommendation.rank}</span>
+                  <h3>{recommendation.pathway.name}</h3>
+                  <p>{recommendation.pathway.description}</p>
+                  <small>
+                    {recommendation.rank === 1
+                      ? 'Strongest interest alignment'
+                      : 'Suggested for exploration'}
+                  </small>
+                </article>
+              ))}
+            </div>
           </>
         ) : (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-            {profile.first_name} hasn't completed the career quiz yet.
-          </p>
+          <EmptyCopy>{profile.first_name} has not completed the career interest assessment yet.</EmptyCopy>
         )}
-      </div>
+      </section>
 
-      {/* Career Pathways */}
-      {assessment && assessment.recommendations.length > 0 && (
-        <div className="child-detail__section">
-          <h2 className="child-detail__section-title">Pathways to explore</h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>
-            These interest-aligned suggestions are starting points for discussion. They do not
-            predict success or determine placement.
+      <section className="child-detail__section" aria-labelledby="academic-title">
+        <SectionTitle eyebrow="Academic evidence" title="Academic readiness" id="academic-title" />
+        <div className="child-detail__readiness">
+          <StatusBadge tone={academic.status === 'ready' ? 'positive' : 'attention'}>
+            {academic.status === 'ready' ? 'Evidence ready' : academic.status === 'in_progress' ? 'In progress' : 'Not started'}
+          </StatusBadge>
+          <p>
+            {academic.subjects_with_evidence} of {academic.total_subjects} enrolled subjects have grade evidence, across {academic.total_grade_records} records.
           </p>
-          {assessment.recommendations.map((rec) => (
-            <div className="pathway-row" key={rec.rank}>
-              <div className={`pathway-row__rank pathway-row__rank--${rec.rank}`}>
-                {rec.rank}
-              </div>
-              <div className="pathway-row__info">
-                <div className="pathway-row__name">{rec.pathway.name}</div>
-                <div className="pathway-row__desc">{rec.pathway.description}</div>
-              </div>
-              <div className="pathway-row__pct">
-                {rec.rank === 1 ? 'Strongest interest alignment' : 'Suggested for exploration'}
-              </div>
-            </div>
-          ))}
         </div>
-      )}
-
-      {/* Grades */}
-      <div className="child-detail__section">
-        <h2 className="child-detail__section-title">{profile.first_name}'s grades</h2>
-        {subjects.length > 0 ? (
-          subjects.map((subj) => (
-            <div className="subject-row" key={subj.id}>
-              <div>
-                <div className="subject-row__name">{subj.name}</div>
-                <div style={{ fontSize: 'var(--font-size-xs, 0.75rem)', color: 'var(--color-text-secondary)' }}>
-                  {subj.category}
+        {subjects.length ? (
+          <div className="child-detail__subjects">
+            {subjects.map((subject) => (
+              <article key={subject.id}>
+                <div>
+                  <h3>{subject.name}</h3>
+                  <p>{subject.category}</p>
                 </div>
-              </div>
-              <div className="subject-row__grades">
-                {subj.grades.length > 0
-                  ? subj.grades.map((g) => (
-                      <span className="grade-badge" key={g.id}>
-                        T{g.term}: {g.level}
-                      </span>
-                    ))
-                  : <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>No grades</span>
-                }
-              </div>
-            </div>
-          ))
-        ) : (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-            {profile.first_name} hasn't enrolled in any subjects yet.
-          </p>
-        )}
-      </div>
-
-      {/* Counselor */}
-      <div className="child-detail__section">
-        <h2 className="child-detail__section-title">Counselor</h2>
-        {counselor ? (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: latest_note ? 'var(--space-4)' : 0 }}>
-              <div
-                style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: 'var(--color-primary-surface)', color: 'var(--color-primary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: 'var(--font-size-sm)',
-                }}
-                aria-hidden="true"
-              >
-                {initials(counselor.first_name, counselor.last_name)}
-              </div>
-              <div>
-                <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                  {counselor.first_name} {counselor.last_name}
+                <div>
+                  {subject.grades.length
+                    ? subject.grades.map((grade) => (
+                        <span className="grade-badge" key={grade.id}>
+                          T{grade.term}: {grade.level}
+                        </span>
+                      ))
+                    : <small>No grade evidence</small>}
                 </div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                  {counselor.email}
-                </div>
-              </div>
-            </div>
-            {latest_note ? (
-              <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ fontStyle: 'italic', color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
-                  "{latest_note.body}"
-                </p>
-                <p style={{ fontSize: 'var(--font-size-xs, 0.75rem)', color: 'var(--color-text-secondary)' }}>
-                  {new Date(latest_note.created_at).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
-              </div>
-            ) : (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', fontStyle: 'italic' }}>
-                No notes from the counselor yet.
-              </p>
-            )}
+              </article>
+            ))}
           </div>
         ) : (
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-            No counselor assigned yet.
-          </p>
+          <EmptyCopy>No subjects have been enrolled yet.</EmptyCopy>
         )}
-      </div>
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="choice-title">
+        <SectionTitle eyebrow="Current direction" title="Provisional combination" id="choice-title" />
+        {provisional ? (
+          <div className="child-detail__choice">
+            <span>{provisional.code}</span>
+            <h3>{provisional.title}</h3>
+            <p>{provisional.pathway} · {provisional.track}</p>
+            <ul>{provisional.subjects.map((subject) => <li key={subject}>{subject}</li>)}</ul>
+          </div>
+        ) : (
+          <EmptyCopy>No provisional combination has been selected.</EmptyCopy>
+        )}
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="plan-title">
+        <SectionTitle eyebrow="Action plan" title="Plan milestones" id="plan-title" />
+        {plan ? (
+          <>
+            <div className="child-detail__plan-head">
+              <StatusBadge tone={plan.status === 'reviewed' ? 'positive' : 'neutral'}>
+                {PLAN_LABELS[plan.status]}
+              </StatusBadge>
+              <span>{completedMilestones} of {plan.milestones.length} complete</span>
+            </div>
+            {plan.learner_reason && <p className="child-detail__reason">“{plan.learner_reason}”</p>}
+            {plan.milestones.length ? (
+              <ul className="child-detail__milestones">
+                {plan.milestones.map((milestone) => (
+                  <li key={milestone.id}>
+                    <span aria-hidden="true">{milestone.is_complete ? '✓' : '○'}</span>
+                    <div>
+                      <strong>{milestone.title}</strong>
+                      {milestone.due_date && <small>Due {formatDate(milestone.due_date)}</small>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : <EmptyCopy>No plan milestones have been added yet.</EmptyCopy>}
+          </>
+        ) : (
+          <EmptyCopy>No learner plan has been started yet.</EmptyCopy>
+        )}
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="notes-title">
+        <SectionTitle eyebrow="Shared support" title="Parent-visible notes" id="notes-title" />
+        {counselor && (
+          <div className="child-detail__counselor">
+            <div aria-hidden="true">{initials(counselor.first_name, counselor.last_name)}</div>
+            <p>
+              <strong>{counselor.first_name} {counselor.last_name}</strong>
+              <span>{counselor.email}</span>
+            </p>
+          </div>
+        )}
+        {notes.length ? (
+          <div className="child-detail__notes">
+            {notes.map((note) => (
+              <blockquote key={`${note.created_at}-${note.body}`}>
+                <p>“{note.body}”</p>
+                <footer>{formatDateTime(note.created_at)}</footer>
+              </blockquote>
+            ))}
+          </div>
+        ) : (
+          <EmptyCopy>No notes have been shared with parents yet.</EmptyCopy>
+        )}
+      </section>
+
+      <section className="child-detail__report" aria-labelledby="report-title">
+        <div>
+          <span>Portable summary</span>
+          <h2 id="report-title">Download learner report</h2>
+          <p>Use the report for a learner-led conversation with the counsellor or school.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => downloadReport(studentId)}
+          disabled={downloadingId === studentId}
+        >
+          {downloadingId === studentId ? 'Preparing report...' : 'Download report'}
+        </button>
+      </section>
     </div>
   )
+}
+
+function SectionTitle({ eyebrow, title, id }: { eyebrow: string; title: string; id: string }) {
+  return (
+    <header className="child-detail__section-head">
+      <span>{eyebrow}</span>
+      <h2 id={id}>{title}</h2>
+    </header>
+  )
+}
+
+function EmptyCopy({ children }: { children: React.ReactNode }) {
+  return <p className="child-detail__empty">{children}</p>
+}
+
+function formatDate(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }

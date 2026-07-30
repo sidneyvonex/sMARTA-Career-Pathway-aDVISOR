@@ -486,6 +486,40 @@ export const handlers = [
             },
           ],
         },
+        academic_readiness: {
+          status: 'in_progress',
+          total_subjects: 2,
+          subjects_with_evidence: 2,
+          total_grade_records: 3,
+        },
+        provisional_combination: {
+          id: 1,
+          code: 'ST1042',
+          title: 'Agriculture, Biology & Chemistry',
+          pathway: 'STEM',
+          track: 'Pure Sciences',
+          subjects: ['Agriculture', 'Biology', 'Chemistry'],
+        },
+        plan: {
+          status: 'draft',
+          learner_reason: 'I enjoy practical science and want to explore agriculture.',
+          milestones: [
+            {
+              id: 1,
+              title: 'Review two pilot schools',
+              due_date: '2026-09-15',
+              is_complete: false,
+              completed_at: null,
+            },
+            {
+              id: 2,
+              title: 'Discuss subject strengths',
+              due_date: null,
+              is_complete: true,
+              completed_at: '2026-07-20T10:00:00Z',
+            },
+          ],
+        },
         counselor: {
           id: 5,
           first_name: 'Dr',
@@ -497,6 +531,13 @@ export const handlers = [
           created_at: '2026-06-15T14:30:00Z',
           updated_at: '2026-06-15T14:30:00Z',
         },
+        parent_visible_notes: [
+          {
+            body: 'Tom is showing great progress in mathematics this term. Keep encouraging him!',
+            created_at: '2026-06-15T14:30:00Z',
+            updated_at: '2026-06-15T14:30:00Z',
+          },
+        ],
       },
       error: null,
       message: '',

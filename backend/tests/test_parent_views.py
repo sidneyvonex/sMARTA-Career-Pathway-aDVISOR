@@ -334,6 +334,50 @@ class TestParentChildDetailView:
         data = resp.json()['data']
         assert data['counselor'] is None
 
+    def test_detail_includes_academic_readiness_provisional_choice_and_plan(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        for index in range(3):
+            enrollment = StudentSubjectFactory(
+                student_profile=profile,
+                subject=SubjectFactory(code=f'PAR{index}9', grade=9),
+            )
+            CBCGradeFactory(student_subject=enrollment)
+        combination = SubjectCombination.objects.filter(
+            framework_version=FrameworkVersion.objects.current(),
+        ).first()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=profile,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=profile,
+            provisional_choice=choice,
+            learner_reason='I want to explore practical science.',
+        )
+        PlanMilestone.objects.create(
+            plan=plan,
+            title='Visit a pilot school',
+            due_date='2026-10-01',
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(self._url(student.id))
+
+        data = resp.json()['data']
+        assert data['academic_readiness']['status'] == 'ready'
+        assert data['academic_readiness']['subjects_with_evidence'] == 3
+        assert data['provisional_combination']['code'] == combination.code
+        assert len(data['provisional_combination']['subjects']) == 3
+        assert data['plan']['status'] == 'draft'
+        assert data['plan']['learner_reason'] == (
+            'I want to explore practical science.'
+        )
+        assert data['plan']['milestones'][0]['title'] == 'Visit a pilot school'
+
 
 class TestRIASECParentNotification:
     def setup_method(self):
@@ -420,6 +464,9 @@ class TestVisibleToParentNote:
         data = resp.json()['data']
         assert data['latest_note'] is not None
         assert data['latest_note']['body'] == 'Great progress this term!'
+        assert [note['body'] for note in data['parent_visible_notes']] == [
+            'Great progress this term!',
+        ]
 
     def test_no_visible_notes_returns_null(self):
         parent = ParentFactory()
@@ -436,6 +483,7 @@ class TestVisibleToParentNote:
         resp = self.client.get(f'/api/v1/parents/children/{student.id}/')
         data = resp.json()['data']
         assert data['latest_note'] is None
+        assert data['parent_visible_notes'] == []
 
     def test_counselor_can_toggle_visible_to_parent(self):
         counselor = CounselorFactory()

@@ -1,8 +1,6 @@
 from rest_framework import serializers
-from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
-from counselors.models import CounselorAssignment, CounselorNote
-from students.models import StudentSubject, CBCGrade
+from students.models import CBCGrade
 from students.summaries import next_action_for, profile_completion_summary
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
@@ -307,55 +305,123 @@ class ChildDetailSerializer(serializers.Serializer):
     profile = serializers.SerializerMethodField()
     subjects = serializers.SerializerMethodField()
     assessment = serializers.SerializerMethodField()
+    academic_readiness = serializers.SerializerMethodField()
+    provisional_combination = serializers.SerializerMethodField()
+    plan = serializers.SerializerMethodField()
     counselor = serializers.SerializerMethodField()
     latest_note = serializers.SerializerMethodField()
+    parent_visible_notes = serializers.SerializerMethodField()
 
     def get_profile(self, profile):
         return ChildProfileSerializer(profile).data
 
     def get_subjects(self, profile):
-        subjects = (
-            StudentSubject.objects
-            .filter(student_profile=profile)
-            .select_related('subject')
-            .prefetch_related('grades')
-        )
+        subjects = profile.enrolled_subjects.all()
         return ChildSubjectSerializer(subjects, many=True).data
 
     def get_assessment(self, profile):
-        assessment = (
-            RIASECAssessment.objects
-            .filter(student_profile=profile)
-            .prefetch_related('scores', 'recommendations__pathway')
-            .order_by('-submitted_at')
-            .first()
-        )
+        assessments = list(profile.riasec_assessments.all())
+        assessment = assessments[0] if assessments else None
         if not assessment:
             return None
         return AssessmentResultSerializer(assessment).data
 
-    def get_counselor(self, profile):
-        assignment = (
-            CounselorAssignment.objects
-            .filter(student_profile=profile, is_active=True)
-            .select_related('counselor')
-            .first()
+    def get_academic_readiness(self, profile):
+        enrollments = list(profile.enrolled_subjects.all())
+        grade_counts = [len(list(item.grades.all())) for item in enrollments]
+        total_subjects = len(enrollments)
+        subjects_with_evidence = sum(count > 0 for count in grade_counts)
+        total_grade_records = sum(grade_counts)
+        if total_subjects >= 3 and subjects_with_evidence == total_subjects:
+            readiness_status = 'ready'
+        elif total_subjects or total_grade_records:
+            readiness_status = 'in_progress'
+        else:
+            readiness_status = 'not_started'
+        return {
+            'status': readiness_status,
+            'total_subjects': total_subjects,
+            'subjects_with_evidence': subjects_with_evidence,
+            'total_grade_records': total_grade_records,
+        }
+
+    def _plan(self, profile):
+        try:
+            return profile.learner_plan
+        except LearnerPlan.DoesNotExist:
+            return None
+
+    def _provisional_choice(self, profile):
+        plan = self._plan(profile)
+        if plan:
+            return plan.provisional_choice
+        return next(
+            (
+                choice for choice in profile.combination_choices.all()
+                if choice.status == LearnerCombinationChoice.STATUS_PROVISIONAL
+            ),
+            None,
         )
+
+    def get_provisional_combination(self, profile):
+        choice = self._provisional_choice(profile)
+        if choice is None:
+            return None
+        combination = choice.combination
+        return {
+            'id': combination.id,
+            'code': combination.code,
+            'title': combination.title,
+            'pathway': combination.track.pathway.name,
+            'track': combination.track.name,
+            'subjects': [
+                combination.subject_one.name,
+                combination.subject_two.name,
+                combination.subject_three.name,
+            ],
+        }
+
+    def get_plan(self, profile):
+        plan = self._plan(profile)
+        if plan is None:
+            return None
+        return {
+            'status': plan.review_status,
+            'learner_reason': plan.learner_reason,
+            'milestones': [
+                {
+                    'id': milestone.id,
+                    'title': milestone.title,
+                    'due_date': (
+                        milestone.due_date.isoformat()
+                        if milestone.due_date
+                        else None
+                    ),
+                    'is_complete': milestone.is_complete,
+                    'completed_at': (
+                        milestone.completed_at.isoformat()
+                        if milestone.completed_at
+                        else None
+                    ),
+                }
+                for milestone in plan.milestones.all()
+            ],
+        }
+
+    def get_counselor(self, profile):
+        assignments = getattr(profile, 'active_parent_assignments', [])
+        assignment = assignments[0] if assignments else None
         if not assignment:
             return None
         return ChildCounselorSerializer(assignment.counselor).data
 
     def get_latest_note(self, profile):
-        note = (
-            CounselorNote.objects
-            .filter(
-                student=profile.user,
-                visible_to_parent=True,
-                deleted_at__isnull=True,
-            )
-            .order_by('-created_at')
-            .first()
-        )
+        notes = getattr(profile.user, 'parent_visible_notes', [])
+        note = notes[0] if notes else None
         if not note:
             return None
         return ChildNoteSerializer(note).data
+
+    def get_parent_visible_notes(self, profile):
+        notes = getattr(profile.user, 'parent_visible_notes', [])
+        return ChildNoteSerializer(notes, many=True).data

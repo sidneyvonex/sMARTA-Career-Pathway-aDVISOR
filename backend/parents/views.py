@@ -7,7 +7,10 @@ from rest_framework import status
 from accounts.permissions import IsParent, IsEmailVerified, IsStudent
 from accounts.response import _success, _error
 from accounts.models import StudentProfile
-from counselors.models import CounselorAssignment
+from counselors.models import CounselorAssignment, CounselorNote
+from guidance.models import LearnerCombinationChoice
+from riasec.models import RIASECAssessment
+from students.models import StudentSubject
 from parents.models import ParentStudentLink
 from parents.serializers import (
     ChildDetailSerializer,
@@ -60,7 +63,57 @@ class ParentChildDetailView(APIView):
             return _error('Child not found.', status.HTTP_404_NOT_FOUND)
 
         try:
-            profile = StudentProfile.objects.select_related('user').get(user_id=student_id)
+            profile = (
+                StudentProfile.objects
+                .select_related(
+                    'user',
+                    'learner_plan__provisional_choice__combination'
+                    '__track__pathway',
+                    'learner_plan__provisional_choice__combination__subject_one',
+                    'learner_plan__provisional_choice__combination__subject_two',
+                    'learner_plan__provisional_choice__combination__subject_three',
+                )
+                .prefetch_related(
+                    Prefetch(
+                        'enrolled_subjects',
+                        queryset=StudentSubject.objects
+                        .select_related('subject')
+                        .prefetch_related('grades'),
+                    ),
+                    Prefetch(
+                        'riasec_assessments',
+                        queryset=RIASECAssessment.objects
+                        .prefetch_related('scores', 'recommendations__pathway')
+                        .order_by('-submitted_at'),
+                    ),
+                    Prefetch(
+                        'counselor_assignments',
+                        queryset=CounselorAssignment.objects
+                        .filter(is_active=True)
+                        .select_related('counselor'),
+                        to_attr='active_parent_assignments',
+                    ),
+                    Prefetch(
+                        'combination_choices',
+                        queryset=LearnerCombinationChoice.objects.select_related(
+                            'combination__track__pathway',
+                            'combination__subject_one',
+                            'combination__subject_two',
+                            'combination__subject_three',
+                        ),
+                    ),
+                    'learner_plan__milestones',
+                    Prefetch(
+                        'user__counselor_notes_received',
+                        queryset=CounselorNote.objects.filter(
+                            visible_to_parent=True,
+                            deleted_at__isnull=True,
+                        ).order_by('-created_at'),
+                        to_attr='parent_visible_notes',
+                    ),
+                )
+                .get(user_id=student_id)
+            )
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', status.HTTP_404_NOT_FOUND)
 
