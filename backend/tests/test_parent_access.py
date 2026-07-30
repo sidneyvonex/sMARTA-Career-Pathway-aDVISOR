@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from parents.models import ParentStudentLink
+from system_admin.models import AuditLog
 from tests.factories import (
     ParentFactory,
     ParentStudentLinkFactory,
@@ -63,6 +64,10 @@ class TestStudentParentAccessFlow:
         assert self.link.status == ParentStudentLink.STATUS_ACTIVE
         assert self.link.learner_approved_at is not None
         assert self.link.revoked_at is None
+        event = AuditLog.objects.get(action='parent_link_approved')
+        assert event.actor == self.profile.user
+        assert event.target_type == 'parent_link'
+        assert event.target_id == self.link.pk
 
     def test_learner_can_revoke_access(self):
         self.link.status = ParentStudentLink.STATUS_ACTIVE
@@ -78,6 +83,10 @@ class TestStudentParentAccessFlow:
         assert response.status_code == 200
         assert self.link.status == ParentStudentLink.STATUS_REVOKED
         assert self.link.revoked_at is not None
+        event = AuditLog.objects.get(action='parent_link_revoked')
+        assert event.actor == self.profile.user
+        assert event.target_type == 'parent_link'
+        assert event.target_id == self.link.pk
 
     def test_other_learner_cannot_change_access(self):
         other = StudentProfileFactory(

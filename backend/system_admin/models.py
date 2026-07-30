@@ -25,6 +25,15 @@ ACTION_CHOICES = [
         'framework_combination_status_changed',
         'Framework combination status changed',
     ),
+    ('parent_link_approved', 'Parent link approved'),
+    ('parent_link_revoked', 'Parent link revoked'),
+    (
+        'provisional_combination_changed',
+        'Provisional combination changed',
+    ),
+    ('plan_review_status_changed', 'Plan review status changed'),
+    ('report_downloaded', 'Report downloaded'),
+    ('school_offerings_changed', 'School offerings changed'),
 ]
 
 TARGET_TYPE_CHOICES = [
@@ -33,6 +42,11 @@ TARGET_TYPE_CHOICES = [
     ('assignment', 'Assignment'),
     ('grade', 'Grade'),
     ('combination', 'Combination'),
+    ('parent_link', 'Parent link'),
+    ('choice', 'Choice'),
+    ('plan', 'Plan'),
+    ('report', 'Report'),
+    ('offering', 'Offering'),
 ]
 
 

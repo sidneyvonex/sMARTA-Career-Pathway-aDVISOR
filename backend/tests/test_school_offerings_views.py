@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from guidance.models import FrameworkVersion, SchoolOffering, SubjectCombination
+from system_admin.models import AuditLog
 from tests.factories import (
     FrameworkVersionFactory,
     PathwayTrackFactory,
@@ -141,6 +142,16 @@ class TestSchoolOfferingsReplace:
                 flat=True,
             )
         ) == {item.id for item in replacements}
+        event = AuditLog.objects.get(action='school_offerings_changed')
+        assert event.actor == self.admin
+        assert event.target_type == 'offering'
+        assert event.target_id == self.school.id
+        assert set(event.details['previous_combination_ids']) == {
+            item.id for item in self.original
+        }
+        assert set(event.details['combination_ids']) == {
+            item.id for item in replacements
+        }
 
     def test_empty_list_clears_all_offerings(self):
         response = self.client.put(

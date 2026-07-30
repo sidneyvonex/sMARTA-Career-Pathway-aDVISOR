@@ -419,6 +419,21 @@ export const handlers = [
     })
   }),
 
+  http.put('/api/v1/counselors/students/:id/plan-review/', async ({ request }) => {
+    const body = await request.json() as { reviewed: boolean }
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        status: body.reviewed ? 'reviewed' : 'ready_for_review',
+        reviewed_at: body.reviewed ? '2026-07-30T16:00:00Z' : null,
+      },
+      error: null,
+      message: body.reviewed
+        ? 'Learner plan marked reviewed.'
+        : 'Learner plan reopened for review.',
+    })
+  }),
+
   http.get('/api/v1/counselors/stats/', () => {
     return HttpResponse.json({
       data: {

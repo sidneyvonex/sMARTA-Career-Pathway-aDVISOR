@@ -13,6 +13,7 @@ from students.models import Subject
 from counselors.models import CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from guidance.models import PlanMilestone
+from system_admin.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
@@ -42,6 +43,112 @@ def assigned_student(counselor, school):
         counselor=counselor, student_profile=profile, school=school,
     )
     return profile
+
+
+class TestCounselorPlanReview:
+    def test_assigned_counselor_can_review_and_reopen_ready_plan(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        combination = SubjectCombinationFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=assigned_student,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=assigned_student,
+            provisional_choice=choice,
+            review_status=LearnerPlan.STATUS_READY,
+        )
+        _auth(client, counselor)
+        url = reverse(
+            'counselor-student-plan-review',
+            kwargs={'student_id': assigned_student.user_id},
+        )
+
+        reviewed = client.put(
+            url,
+            {'reviewed': True},
+            content_type='application/json',
+        )
+        reopened = client.put(
+            url,
+            {'reviewed': False},
+            content_type='application/json',
+        )
+
+        assert reviewed.status_code == 200
+        assert reviewed.json()['data']['status'] == 'reviewed'
+        assert reviewed.json()['data']['reviewed_at'] is not None
+        assert reopened.status_code == 200
+        assert reopened.json()['data']['status'] == 'ready_for_review'
+        assert reopened.json()['data']['reviewed_at'] is None
+        events = AuditLog.objects.filter(action='plan_review_status_changed')
+        assert events.count() == 2
+        assert all(event.target_type == 'plan' for event in events)
+        assert all(event.target_id == plan.id for event in events)
+
+    def test_draft_plan_and_non_boolean_request_are_rejected(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        combination = SubjectCombinationFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=assigned_student,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        LearnerPlan.objects.create(
+            student_profile=assigned_student,
+            provisional_choice=choice,
+            review_status=LearnerPlan.STATUS_DRAFT,
+        )
+        _auth(client, counselor)
+        url = reverse(
+            'counselor-student-plan-review',
+            kwargs={'student_id': assigned_student.user_id},
+        )
+
+        invalid = client.put(
+            url,
+            {'reviewed': 'true'},
+            content_type='application/json',
+        )
+        not_submitted = client.put(
+            url,
+            {'reviewed': True},
+            content_type='application/json',
+        )
+
+        assert invalid.status_code == 400
+        assert not_submitted.status_code == 409
+        assert not AuditLog.objects.filter(
+            action='plan_review_status_changed',
+        ).exists()
+
+    def test_unassigned_counselor_cannot_review_plan(
+        self,
+        client,
+        assigned_student,
+    ):
+        counselor = CounselorFactory()
+        _auth(client, counselor)
+
+        response = client.put(
+            reverse(
+                'counselor-student-plan-review',
+                kwargs={'student_id': assigned_student.user_id},
+            ),
+            {'reviewed': True},
+            content_type='application/json',
+        )
+
+        assert response.status_code == 404
 
 
 class TestCounselorStudentsView:

@@ -112,6 +112,12 @@ class SchoolOfferingsView(APIView):
 
         with transaction.atomic():
             School.objects.select_for_update().get(pk=school.pk)
+            previous_ids = sorted(
+                SchoolOffering.objects.filter(school=school).values_list(
+                    'combination_id',
+                    flat=True,
+                )
+            )
             SchoolOffering.objects.filter(school=school).delete()
             SchoolOffering.objects.bulk_create(
                 [
@@ -123,6 +129,20 @@ class SchoolOfferingsView(APIView):
                     for combination_id in combination_ids
                 ]
             )
+            updated_ids = sorted(combination_ids)
+            if previous_ids != updated_ids:
+                log_action(
+                    actor=request.user,
+                    action='school_offerings_changed',
+                    target_type='offering',
+                    target_id=school.id,
+                    details={
+                        'school_id': school.id,
+                        'previous_combination_ids': previous_ids,
+                        'combination_ids': updated_ids,
+                    },
+                    request=request,
+                )
 
         return _success(
             data=self._response_data(school),

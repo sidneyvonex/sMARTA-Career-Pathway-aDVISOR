@@ -13,6 +13,7 @@ from counselors.models import CounselorAssignment
 from parents.models import ParentStudentLink
 from students.models import StudentSubject, GRADE_LEVEL_CHOICES
 from riasec.models import RIASECAssessment
+from system_admin.utils import log_action
 from .pdf_builder import build_student_report
 
 GRADE_LABELS = dict(GRADE_LEVEL_CHOICES)
@@ -63,6 +64,19 @@ class StudentReportView(APIView):
         safe_first = re.sub(r'[^\w-]', '', student.first_name)
         safe_last = re.sub(r'[^\w-]', '', student.last_name)
         filename = f'smarta-shauri-report-{safe_first}-{safe_last}-{today}.pdf'
+
+        log_action(
+            actor=request.user,
+            action='report_downloaded',
+            target_type='report',
+            target_id=student.id,
+            details={
+                'student_id': student.id,
+                'requester_role': request.user.role,
+                'filename': filename,
+            },
+            request=request,
+        )
 
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'

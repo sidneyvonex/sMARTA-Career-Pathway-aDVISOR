@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from guidance.models import FrameworkVersion, LearnerCombinationChoice, SubjectCombination
+from system_admin.models import AuditLog
 from tests.factories import StudentProfileFactory, UserFactory, VerifiedUserFactory
 
 
@@ -120,6 +121,13 @@ class TestLearnerCombinationChoiceFlow:
         assert LearnerCombinationChoice.objects.get(
             pk=second_choice['id']
         ).status == 'provisional'
+        event = AuditLog.objects.filter(
+            action='provisional_combination_changed',
+        ).latest('created_at')
+        assert event.actor == self.profile.user
+        assert event.target_type == 'choice'
+        assert event.target_id == second_choice['id']
+        assert event.details['previous_choice_id'] == first_choice['id']
 
     def test_saved_choice_can_be_removed(self):
         choice = self.save(current_combinations()[0]).data['data']

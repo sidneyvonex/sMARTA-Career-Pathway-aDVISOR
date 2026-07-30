@@ -21,6 +21,7 @@ from guidance.models import (
 )
 from counselors.models import CounselorIntervention
 from counselors.serializers import CounselorInterventionSerializer
+from system_admin.utils import log_action
 from guidance.selectors import active_combination_queryset
 from guidance.serializers import (
     LearnerCombinationChoiceCreateSerializer,
@@ -250,6 +251,20 @@ class LearnerCombinationChoiceProvisionalView(APIView):
                 learner_choice_queryset(profile).select_for_update(),
                 pk=choice_id,
             )
+            previous_choice_id = (
+                LearnerCombinationChoice.objects
+                .filter(
+                    student_profile=profile,
+                    status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+                )
+                .exclude(pk=choice.pk)
+                .values_list('pk', flat=True)
+                .first()
+            )
+            status_changed = (
+                choice.status != LearnerCombinationChoice.STATUS_PROVISIONAL
+                or previous_choice_id is not None
+            )
             (
                 LearnerCombinationChoice.objects
                 .filter(
@@ -267,6 +282,19 @@ class LearnerCombinationChoiceProvisionalView(APIView):
                 review_status=LearnerPlan.STATUS_DRAFT,
                 reviewed_at=None,
             )
+            if status_changed:
+                log_action(
+                    actor=request.user,
+                    action='provisional_combination_changed',
+                    target_type='choice',
+                    target_id=choice.id,
+                    details={
+                        'previous_choice_id': previous_choice_id,
+                        'choice_id': choice.id,
+                        'combination_id': choice.combination_id,
+                    },
+                    request=request,
+                )
 
         return _success(
             data=LearnerCombinationChoiceSerializer(choice).data,

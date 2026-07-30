@@ -157,6 +157,22 @@ describe('StudentDetailPage', () => {
     expect(screen.getByLabelText('Follow-up date')).toBeInTheDocument()
     expect(screen.getByText('Bring the latest mathematics evidence.')).toBeInTheDocument()
   })
+
+  it('lets the counsellor mark a submitted learner plan reviewed', async () => {
+    renderPage()
+
+    const reviewButton = await screen.findByRole('button', {
+      name: 'Mark learner plan reviewed',
+    })
+    fireEvent.click(reviewButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('reviewed')).toBeInTheDocument()
+      expect(screen.getByRole('button', {
+        name: 'Reopen learner plan review',
+      })).toBeInTheDocument()
+    })
+  })
 })
 
 describe('NotesListPage', () => {

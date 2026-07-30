@@ -16,6 +16,7 @@ from guidance.models import LearnerCombinationChoice
 from riasec.models import RIASECAssessment
 from students.models import StudentSubject
 from parents.models import ParentStudentLink
+from system_admin.utils import log_action
 from parents.serializers import (
     ChildDetailSerializer,
     LinkedChildSerializer,
@@ -162,6 +163,7 @@ class StudentParentAccessApproveView(APIView):
             if link.status == ParentStudentLink.STATUS_REVOKED:
                 return _error('A revoked request cannot be approved. Send a new invitation.')
             if link.status != ParentStudentLink.STATUS_ACTIVE:
+                previous_status = link.status
                 link.status = ParentStudentLink.STATUS_ACTIVE
                 link.learner_approved_at = timezone.now()
                 link.revoked_at = None
@@ -170,6 +172,18 @@ class StudentParentAccessApproveView(APIView):
                     'learner_approved_at',
                     'revoked_at',
                 ])
+                log_action(
+                    actor=request.user,
+                    action='parent_link_approved',
+                    target_type='parent_link',
+                    target_id=link.id,
+                    details={
+                        'parent_id': link.parent_id,
+                        'previous_status': previous_status,
+                        'status': link.status,
+                    },
+                    request=request,
+                )
         return _success(
             data=ParentAccessSerializer(link).data,
             message='Parent access approved.',
@@ -191,9 +205,22 @@ class StudentParentAccessRevokeView(APIView):
             if link is None:
                 return _error('Parent access request not found.', status.HTTP_404_NOT_FOUND)
             if link.status != ParentStudentLink.STATUS_REVOKED:
+                previous_status = link.status
                 link.status = ParentStudentLink.STATUS_REVOKED
                 link.revoked_at = timezone.now()
                 link.save(update_fields=['status', 'revoked_at'])
+                log_action(
+                    actor=request.user,
+                    action='parent_link_revoked',
+                    target_type='parent_link',
+                    target_id=link.id,
+                    details={
+                        'parent_id': link.parent_id,
+                        'previous_status': previous_status,
+                        'status': link.status,
+                    },
+                    request=request,
+                )
         return _success(
             data=ParentAccessSerializer(link).data,
             message='Parent access revoked.',

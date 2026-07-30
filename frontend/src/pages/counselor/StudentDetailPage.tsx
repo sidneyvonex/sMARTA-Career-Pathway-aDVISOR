@@ -112,6 +112,33 @@ export default function StudentDetailPage() {
     onError: () => toast.error('Could not update the intervention.'),
   })
 
+  const reviewPlan = useMutation({
+    mutationFn: (reviewed: boolean) => counselorApi.reviewPlan(studentId, reviewed)
+      .then((response) => response.data.data),
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        ['counselor', 'student', studentId],
+        (current: typeof studentQuery.data) => current?.plan
+          ? {
+              ...current,
+              plan: {
+                ...current.plan,
+                status: result.status,
+              },
+            }
+          : current,
+      )
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'students'] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'stats'] })
+      toast.success(
+        result.status === 'reviewed'
+          ? 'Learner plan marked reviewed.'
+          : 'Learner plan reopened for review.',
+      )
+    },
+    onError: () => toast.error('Could not update the learner plan review.'),
+  })
+
   if (studentQuery.isLoading) {
     return (
       <div className="counselor-page">
@@ -233,10 +260,31 @@ export default function StudentDetailPage() {
             {plan ? (
               <>
                 <div className="detail-plan-head">
-                  <StatusBadge tone={plan.status === 'reviewed' ? 'positive' : 'attention'}>
-                  {plan.status.replace(/_/g, ' ')}
-                  </StatusBadge>
-                  <span>{plan.milestones.filter((item) => item.is_complete).length} of {plan.milestones.length} milestones complete</span>
+                  <div>
+                    <StatusBadge tone={plan.status === 'reviewed' ? 'positive' : 'attention'}>
+                      {plan.status.replace(/_/g, ' ')}
+                    </StatusBadge>
+                    <span>{plan.milestones.filter((item) => item.is_complete).length} of {plan.milestones.length} milestones complete</span>
+                  </div>
+                  {plan.status !== 'draft' && (
+                    <button
+                      type="button"
+                      className={plan.status === 'reviewed' ? 'btn-ghost' : 'btn-primary'}
+                      onClick={() => reviewPlan.mutate(plan.status !== 'reviewed')}
+                      disabled={reviewPlan.isPending}
+                      aria-label={
+                        plan.status === 'reviewed'
+                          ? 'Reopen learner plan review'
+                          : 'Mark learner plan reviewed'
+                      }
+                    >
+                      {reviewPlan.isPending
+                        ? 'Updating...'
+                        : plan.status === 'reviewed'
+                          ? 'Reopen review'
+                          : 'Mark reviewed'}
+                    </button>
+                  )}
                 </div>
                 {plan.learner_reason && <blockquote>{plan.learner_reason}</blockquote>}
                 <ul className="detail-milestones">

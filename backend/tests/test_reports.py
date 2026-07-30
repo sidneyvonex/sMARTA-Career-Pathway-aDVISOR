@@ -2,6 +2,7 @@ import io
 import pytest
 from pypdf import PdfReader
 from reports.pdf_builder import build_student_report
+from system_admin.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
@@ -161,6 +162,11 @@ class TestStudentReportViewPermissions:
         assert response.status_code == 200
         assert response['Content-Type'] == 'application/pdf'
         assert response.content[:5] == b'%PDF-'
+        event = AuditLog.objects.get(action='report_downloaded')
+        assert event.actor == self.student
+        assert event.target_type == 'report'
+        assert event.target_id == self.student.id
+        assert event.details['student_id'] == self.student.id
 
     def test_student_cannot_download_other_report(self):
         other = VerifiedUserFactory(role='student')

@@ -111,12 +111,24 @@ export interface InterventionInput {
   parent_visible?: boolean
 }
 
+export interface PlanReviewResult {
+  id: number
+  status: 'ready_for_review' | 'reviewed'
+  reviewed_at: string | null
+}
+
 export const counselorApi = {
   getStudents: () =>
     api.get<{ data: AssignedStudent[] }>('/counselors/students/'),
 
   getStudent: (studentId: number) =>
     api.get<{ data: StudentDetail }>(`/counselors/students/${studentId}/`),
+
+  reviewPlan: (studentId: number, reviewed: boolean) =>
+    api.put<{ data: PlanReviewResult }>(
+      `/counselors/students/${studentId}/plan-review/`,
+      { reviewed },
+    ),
 
   getStats: () =>
     api.get<{ data: CounselorStats }>('/counselors/stats/'),

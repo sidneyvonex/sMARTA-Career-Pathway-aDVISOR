@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +11,7 @@ from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
+from system_admin.utils import log_action
 from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorIntervention, CounselorNote
 from .serializers import (
@@ -25,6 +27,89 @@ def _get_assigned_profiles(counselor):
         counselor_assignments__counselor=counselor,
         counselor_assignments__is_active=True,
     ).select_related('user', 'school')
+
+
+class CounselorPlanReviewView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
+
+    @transaction.atomic
+    def put(self, request, student_id):
+        reviewed = request.data.get('reviewed')
+        if type(reviewed) is not bool:
+            return _error('reviewed must be a boolean.')
+
+        profile = (
+            StudentProfile.objects
+            .select_for_update()
+            .filter(
+                user_id=student_id,
+                counselor_assignments__counselor=request.user,
+                counselor_assignments__is_active=True,
+            )
+            .first()
+        )
+        if profile is None:
+            return _error(
+                'Assigned learner not found.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        plan = (
+            LearnerPlan.objects.select_for_update()
+            .filter(student_profile=profile)
+            .first()
+        )
+        if plan is None:
+            return _error('Learner plan not found.', status.HTTP_404_NOT_FOUND)
+        if reviewed and plan.review_status == LearnerPlan.STATUS_DRAFT:
+            return _error(
+                'The learner must submit the plan for review first.',
+                status.HTTP_409_CONFLICT,
+            )
+
+        previous_status = plan.review_status
+        new_status = (
+            LearnerPlan.STATUS_REVIEWED
+            if reviewed
+            else LearnerPlan.STATUS_READY
+        )
+        if previous_status != new_status:
+            plan.review_status = new_status
+            plan.reviewed_at = timezone.now() if reviewed else None
+            plan.save(update_fields=[
+                'review_status',
+                'reviewed_at',
+                'updated_at',
+            ])
+            log_action(
+                actor=request.user,
+                action='plan_review_status_changed',
+                target_type='plan',
+                target_id=plan.id,
+                details={
+                    'student_id': profile.user_id,
+                    'previous_status': previous_status,
+                    'status': new_status,
+                },
+                request=request,
+            )
+
+        return _success(
+            data={
+                'id': plan.id,
+                'status': plan.review_status,
+                'reviewed_at': (
+                    plan.reviewed_at.isoformat()
+                    if plan.reviewed_at
+                    else None
+                ),
+            },
+            message=(
+                'Learner plan marked reviewed.'
+                if reviewed
+                else 'Learner plan reopened for review.'
+            ),
+        )
 
 
 class CounselorStudentsView(APIView):
