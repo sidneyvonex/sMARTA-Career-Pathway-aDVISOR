@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 3 - Pilot framework and combination domain
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.2 guidance domain and curated catalogue
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.3 guidance domain, catalogue and public APIs
 
-**Next:** Task 3.3 guidance read APIs
+**Next:** Task 3.4 school offerings API
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -31,6 +31,7 @@
 | `2897357` | Application and route error boundaries with retryable query recovery |
 | `ea4e7ab` | Source-dated guidance framework, pathway tracks, three-subject combinations and school offerings |
 | `cce4907` | Curated Ministry-code pilot catalogue and representative five-county demonstration offerings |
+| `9b84c28` | Public source-dated guidance APIs with catalogue filters and bounded query counts |
 
 ## 1. How to use this plan
 
@@ -634,6 +635,18 @@ Tests:
 - filter correctness;
 - source metadata;
 - query-count sanity.
+
+Verification:
+
+- Guidance API contract: 19 tests passed.
+- All four reference endpoints are public even when a stale invalid authentication cookie is present.
+- Combination filters cover pathway, track, county, school and search.
+- Inactive combinations and records outside the current active framework return no public data.
+- Pathway and combination list endpoints remain bounded at three database queries each.
+- Combined guidance and RIASEC view regressions: 67 tests passed.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Commit: `9b84c28`.
 
 ### Task 3.4 - Add school offerings API
 
