@@ -1,0 +1,59 @@
+/* Shared composition contract for authenticated role and management pages. */
+.role-page {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(var(--space-5), 2vw, var(--space-8));
+}
+
+.role-page__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-5);
+}
+
+.role-page__heading {
+  max-width: 24ch;
+  font-family: var(--font-family-display);
+  font-size: clamp(var(--font-size-2xl), 3vw, var(--font-size-3xl));
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.035em;
+  line-height: var(--line-height-tight);
+  text-wrap: balance;
+}
+
+.role-page__description {
+  max-width: 65ch;
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  text-wrap: pretty;
+}
+
+.role-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.role-page__section {
+  min-width: 0;
+}
+
+@media (max-width: 680px) {
+  .role-page__header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .role-page__actions {
+    justify-content: flex-start;
+  }
+
+  .role-page__actions > * {
+    min-height: var(--min-touch-target);
+  }
+}

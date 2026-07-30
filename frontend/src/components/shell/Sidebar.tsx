@@ -89,6 +89,12 @@ const LOGOUT_ICON = (
   </svg>
 )
 
+const CLOSE_ICON = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)
+
 export default function Sidebar() {
   const { user, clearUser } = useAuthStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
@@ -114,6 +120,7 @@ export default function Sidebar() {
 
   return (
     <aside
+      id="app-navigation"
       className={[
         'sidebar',
         collapsed ? 'sidebar--collapsed' : '',
@@ -126,6 +133,14 @@ export default function Sidebar() {
         <img src="/logo.png" alt="" className="sidebar__logo" aria-hidden="true" />
         <span className="sidebar__app-name">Smarta Shauri</span>
         <button
+          type="button"
+          className="sidebar__mobile-close"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close navigation"
+        >
+          {CLOSE_ICON}
+        </button>
+        <button
           className="sidebar__toggle"
           onClick={() => { toggleSidebar(); setMobileSidebarOpen(false) }}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -136,7 +151,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="sidebar__nav">
+      <nav className="sidebar__nav" aria-label="Primary">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
