@@ -7,7 +7,7 @@ describe('LandingHero', () => {
   it('renders the Discover/Plan/Choose/Succeed heading as the page h1', () => {
     render(<LandingHero />, { wrapper: MemoryRouter })
     const heading = screen.getByRole('heading', { level: 1 })
-    expect(heading).toHaveTextContent(/discover\.\s*plan\.\s*choose\.\s*succeed\./i)
+    expect(heading).toHaveTextContent(/discover\.\s+plan\.\s+choose\.\s+succeed\./i)
   })
 
   it('renders a "Get Started" CTA linking to /register', () => {

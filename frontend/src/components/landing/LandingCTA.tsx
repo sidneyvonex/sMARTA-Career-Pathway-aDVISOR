@@ -7,7 +7,7 @@ export default function LandingCTA() {
         <span className="landing-eyebrow">Last step</span>
         <p className="landing-cta-band__heading">
           Your next pathway conversation starts here.
-          <span className="landing-script">Let&apos;s explore the options.</span>
+          <span className="landing-script"> Let&apos;s explore the options.</span>
         </p>
         <p className="landing-cta-band__sub">Free forever. Takes about 15 minutes.</p>
         <Link to="/register" className="mk-btn mk-btn-dark">

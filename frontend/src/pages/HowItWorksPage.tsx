@@ -111,7 +111,7 @@ export default function HowItWorksPage() {
             <span className="mk-eyebrow">The process</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               From confused
-              <span className="mk-script">to confident.</span>
+              <span className="mk-script"> to confident.</span>
             </h1>
           </div>
           <div className="mk-hero__side">
@@ -190,7 +190,7 @@ export default function HowItWorksPage() {
             <span className="mk-eyebrow">Last step</span>
             <p className="mk-cta-band__heading">
               Ready to see
-              <span className="mk-script">what could you explore?</span>
+              <span className="mk-script"> what could you explore?</span>
             </p>
             <p className="mk-cta-band__sub">Free forever. No credit card, ever.</p>
             <Link className="mk-btn mk-btn-dark" to="/register">

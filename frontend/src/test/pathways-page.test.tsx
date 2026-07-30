@@ -17,6 +17,12 @@ function renderPage() {
 
 test('Pathways page shows all three current pathway names', async () => {
   renderPage()
+  expect(
+    screen.getByRole('heading', {
+      level: 1,
+      name: /STEM\. Social Sciences\. Arts & Sports\./i,
+    }),
+  ).toBeInTheDocument()
   expect(await screen.findByRole('heading', { name: 'STEM' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Social Sciences' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Arts & Sports Science' })).toBeInTheDocument()
@@ -33,4 +39,6 @@ test('Pathways page shows current tracks and source provenance', async () => {
     'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
   )
   expect(screen.getAllByText(/five-county pilot/i).length).toBeGreaterThan(0)
+  expect(screen.getByText(/what to explore next/i)).toBeInTheDocument()
+  expect(screen.queryByText(/which one is yours/i)).not.toBeInTheDocument()
 })

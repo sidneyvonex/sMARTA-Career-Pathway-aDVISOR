@@ -73,7 +73,7 @@ export default function AboutPage() {
             <span className="mk-eyebrow">Our story</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               Every learner deserves
-              <span className="mk-script">a real answer.</span>
+              <span className="mk-script"> a real answer.</span>
             </h1>
           </div>
           <div className="mk-hero__side">
@@ -114,7 +114,7 @@ export default function AboutPage() {
         <div className="mk-statement">
           <h2 className="mk-statement__heading">
             Guesswork
-            <span className="mk-script">isn&apos;t a plan.</span>
+            <span className="mk-script"> isn&apos;t a plan.</span>
           </h2>
           <div className="mk-statement__side">
             <p className="mk-section__lede">
@@ -167,7 +167,7 @@ export default function AboutPage() {
             <span className="mk-eyebrow">Try it now</span>
             <p className="mk-cta-band__heading">
               Curious what this
-              <span className="mk-script">actually feels like?</span>
+              <span className="mk-script"> actually feels like?</span>
             </p>
             <p className="mk-cta-band__sub">Free forever. Takes about 15 minutes.</p>
             <Link className="mk-btn mk-btn-cream" to="/register">

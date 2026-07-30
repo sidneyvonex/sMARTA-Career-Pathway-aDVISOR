@@ -5,7 +5,7 @@ export default function LandingPurpose() {
       <div className="landing-statement">
         <h2 className="landing-statement__heading">
           Three pathways.
-          <span className="landing-script">One decision.</span>
+          <span className="landing-script"> One decision.</span>
         </h2>
         <div className="landing-statement__side">
           <p className="landing-section__lede">

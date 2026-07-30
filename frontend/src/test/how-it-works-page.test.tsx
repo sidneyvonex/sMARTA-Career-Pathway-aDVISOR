@@ -8,6 +8,12 @@ test('How It Works shows the six RIASEC dimensions', () => {
       <HowItWorksPage />
     </MemoryRouter>
   )
+  expect(
+    screen.getByRole('heading', {
+      level: 1,
+      name: /from confused to confident/i,
+    }),
+  ).toBeInTheDocument()
   ;['Realistic', 'Investigative', 'Artistic', 'Social', 'Enterprising', 'Conventional'].forEach((d) =>
     expect(screen.getByRole('heading', { name: d })).toBeInTheDocument()
   )

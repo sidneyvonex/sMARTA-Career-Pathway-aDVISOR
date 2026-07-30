@@ -9,7 +9,7 @@ export default function LandingHero() {
             <span className="landing-eyebrow">Five-county pilot · Form 2–4 learners</span>
             <h1 className="landing-hero__heading">
               Discover. Plan. Choose.
-              <span className="landing-script">Succeed.</span>
+              <span className="landing-script"> Succeed.</span>
             </h1>
           </div>
           <div className="landing-hero__side">

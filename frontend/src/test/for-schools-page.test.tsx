@@ -4,6 +4,12 @@ import ForSchoolsPage from '../pages/ForSchoolsPage'
 
 test('For Schools shows the implemented pilot operating workflow', () => {
   render(<MemoryRouter><ForSchoolsPage /></MemoryRouter>)
+  expect(
+    screen.getByRole('heading', {
+      level: 1,
+      name: /one journey\. clear handoffs\./i,
+    }),
+  ).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Approve learner links' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Assign counsellors' })).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Configure offerings' })).toBeInTheDocument()

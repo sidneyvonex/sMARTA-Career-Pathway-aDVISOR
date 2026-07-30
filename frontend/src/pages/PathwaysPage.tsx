@@ -82,7 +82,7 @@ export default function PathwaysPage() {
             <span className="mk-eyebrow">The three pathways</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               STEM. Social Sciences.
-              <span className="mk-script">Arts &amp; Sports.</span>
+              <span className="mk-script"> Arts &amp; Sports.</span>
             </h1>
           </div>
           <div className="mk-hero__side">
@@ -205,9 +205,11 @@ export default function PathwaysPage() {
             <span className="mk-eyebrow">Find out</span>
             <p className="mk-cta-band__heading">
               Not sure
-              <span className="mk-script">which one is yours?</span>
+              <span className="mk-script"> what to explore next?</span>
             </p>
-            <p className="mk-cta-band__sub">One free assessment. Three ranked pathways.</p>
+            <p className="mk-cta-band__sub">
+              One free assessment. Three pathways ranked by interest alignment.
+            </p>
             <Link className="mk-btn mk-btn-cream" to="/register">
               Take the free assessment
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">

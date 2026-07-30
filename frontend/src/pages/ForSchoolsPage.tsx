@@ -104,7 +104,7 @@ export default function ForSchoolsPage() {
             <span className="mk-eyebrow">For pilot schools</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               One journey.
-              <span className="mk-script">Clear handoffs.</span>
+              <span className="mk-script"> Clear handoffs.</span>
             </h1>
           </div>
           <div className="mk-hero__side">
@@ -195,7 +195,7 @@ export default function ForSchoolsPage() {
             <span className="mk-eyebrow">Pilot conversation</span>
             <p className="mk-cta-band__heading">
               Bring an explainable workflow
-              <span className="mk-script">to your school.</span>
+              <span className="mk-script"> to your school.</span>
             </p>
             <p className="mk-cta-band__sub">
               Tell us how your school currently handles subject guidance and learner review.
