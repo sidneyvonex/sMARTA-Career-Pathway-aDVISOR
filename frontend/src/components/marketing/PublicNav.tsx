@@ -16,7 +16,7 @@ export default function PublicNav() {
             <path d="M12 8v5M12 16h.01" />
           </svg>
           <span>
-            Smarta Shauri helps you decide — it doesn&apos;t submit your official Senior School
+            Smarta Shauri helps you decide. It doesn&apos;t submit your official Senior School
             choices. That&apos;s done at{' '}
             <a href="https://placements.education.go.ke" target="_blank" rel="noopener noreferrer">
               placements.education.go.ke

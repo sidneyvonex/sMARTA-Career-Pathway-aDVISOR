@@ -1155,22 +1155,26 @@ export const handlers = [
   }),
 
   http.get('/api/v1/guidance/pathways/', () => {
-    const pathways = [
-      ['STEM', 'PURE-SCIENCES'],
-      ['Social Sciences', 'HUMANITIES-BUSINESS'],
-      ['Arts & Sports Science', 'ARTS'],
-    ].map(([name, trackCode], index) => ({
+    const pathwayTracks = [
+      ['STEM', ['PURE-SCIENCES', 'APPLIED-SCIENCES']],
+      ['Social Sciences', ['HUMANITIES-BUSINESS']],
+      ['Arts & Sports Science', ['ARTS']],
+    ] as const
+    const pathways = pathwayTracks.map(([name, trackCodes], index) => ({
       id: index + 1,
       name,
       description: `${name} pathway`,
-      tracks: [{
-        id: index + 1,
+      tracks: trackCodes.map((trackCode, trackIndex) => ({
+        id: (index * 10) + trackIndex + 1,
         code: trackCode,
-        name: trackCode.replace(/-/g, ' '),
+        name: trackCode
+          .toLowerCase()
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, character => character.toUpperCase()),
         description: 'Pilot track',
         is_active: true,
         pathway: { id: index + 1, name, description: `${name} pathway` },
-      }],
+      })),
     }))
     return HttpResponse.json({ data: pathways, error: null, message: '' })
   }),

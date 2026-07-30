@@ -16,49 +16,57 @@ const STEPS: Step[] = [
   {
     number: '01',
     icon: 'flame',
-    tag: '~15 minutes',
-    title: 'Discover',
-    body: 'Take the RIASEC interest assessment: 24 short statements, rated on how much they sound like you. No wrong answers, no time pressure.',
+    tag: 'Your records',
+    title: 'Evidence',
+    body: 'Complete your profile and add term grades. School-linked learners can have evidence verified by their school.',
   },
   {
     number: '02',
     icon: 'forest',
-    tag: 'Automatic',
-    title: 'Plan',
-    body: "Your responses are scored across all 6 RIASEC dimensions, then compared with each CBC pathway's interest profile. The ranking is an exploration aid, not a placement or prediction.",
+    tag: 'About 15 minutes',
+    title: 'Interests',
+    body: 'Complete the RIASEC assessment. The result describes stated interests and pathways to explore, not success or placement.',
     alt: true,
   },
   {
     number: '03',
     icon: 'forest',
-    tag: 'Your choice',
-    title: 'Choose',
-    body: 'See exactly which subjects sit inside each pathway before you commit — Pure Sciences and Technical Studies under STEM, Languages and Humanities under Social Sciences, and so on.',
+    tag: 'Two or three options',
+    title: 'Compare',
+    body: 'Save current subject combinations and compare subjects, school availability, academic evidence and interest alignment side by side.',
     alt: true,
   },
   {
     number: '04',
     icon: 'flame',
-    tag: 'Every term',
-    title: 'Succeed',
-    body: 'Log your grades every term. Your teacher, counselor, and — if your school enables it — your parent can see the same picture you do.',
+    tag: 'Your provisional choice',
+    title: 'Plan',
+    body: 'Choose one provisional combination, explain your reason and add practical milestones. You can revise it before official selection.',
+  },
+  {
+    number: '05',
+    icon: 'forest',
+    tag: 'Supported decision',
+    title: 'Review',
+    body: 'Submit the plan for review. An assigned counsellor can review it, agree next steps and record follow-up actions.',
+    alt: true,
   },
 ]
 
 const DIMENSIONS = [
-  { letter: 'R', title: 'Realistic', body: 'Hands-on and practical — building, fixing, working with tools or outdoors.' },
-  { letter: 'I', title: 'Investigative', body: 'Curious and analytical — asking why, testing ideas, solving problems.' },
-  { letter: 'A', title: 'Artistic', body: 'Expressive and original — music, art, design, performance.' },
-  { letter: 'S', title: 'Social', body: 'People-focused — teaching, helping, guiding, listening.' },
-  { letter: 'E', title: 'Enterprising', body: 'Persuasive and driven — leading, organizing, taking initiative.' },
-  { letter: 'C', title: 'Conventional', body: 'Structured and detail-oriented — organizing data, following procedure.' },
+  { letter: 'R', title: 'Realistic', body: 'Hands-on and practical: building, fixing, working with tools or outdoors.' },
+  { letter: 'I', title: 'Investigative', body: 'Curious and analytical: asking why, testing ideas and solving problems.' },
+  { letter: 'A', title: 'Artistic', body: 'Expressive and original: music, art, design and performance.' },
+  { letter: 'S', title: 'Social', body: 'People-focused: teaching, helping, guiding and listening.' },
+  { letter: 'E', title: 'Enterprising', body: 'Persuasive and driven: leading, organizing and taking initiative.' },
+  { letter: 'C', title: 'Conventional', body: 'Structured and detail-oriented: organizing data and following procedure.' },
 ]
 
 const FAQS = [
   {
     question: 'Is the RIASEC model actually reliable?',
     answer:
-      'RIASEC is a well-established framework used in career guidance worldwide. We use it as a strong starting point for a conversation about your interests — not a verdict carved in stone.',
+      'RIASEC is a well-established framework used in career guidance worldwide. We use it as a starting point for a conversation about your interests, not a verdict.',
   },
   {
     question: 'Can I retake the assessment?',
@@ -72,7 +80,7 @@ const FAQS = [
   },
   {
     question: "What if my top pathway isn't what I expected?",
-    answer: "That's normal — and useful. It's a data point, not a decision. The final subject choice is always yours.",
+    answer: 'That is normal and useful. It is a data point, not a decision. The final subject choice is always yours.',
   },
 ]
 
@@ -107,7 +115,7 @@ export default function HowItWorksPage() {
             </h1>
           </div>
           <div className="mk-hero__side">
-            <p>Four steps, spread across a school year. No fees, no sales calls, no fine print.</p>
+            <p>Five practical stages from evidence to a reviewed plan in the five-county pilot.</p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Get Started</Link>
               <Link className="mk-btn mk-btn-outline" to="/pathways">See the pathways</Link>
@@ -120,7 +128,7 @@ export default function HowItWorksPage() {
       <div className="mk-band mk-band--ink">
         <section className="mk-section">
           <span className="mk-eyebrow">The process</span>
-          <h2 className="mk-section__heading" style={{ marginTop: '0.75rem' }}>Four steps. One school year.</h2>
+          <h2 className="mk-section__heading" style={{ marginTop: '0.75rem' }}>Five stages. One explainable decision.</h2>
 
           <div className="mk-step-grid">
             {STEPS.map((step) => (
@@ -144,7 +152,7 @@ export default function HowItWorksPage() {
           <span className="mk-eyebrow">Behind the assessment</span>
           <h2 className="mk-section__heading" style={{ marginTop: '0.75rem' }}>The 6 RIASEC dimensions.</h2>
           <p className="mk-section__lede" style={{ marginTop: '1rem' }}>
-            RIASEC — also called the Holland Code — is a well-established framework used in career guidance
+            RIASEC, also called the Holland Code, is a well-established framework used in career guidance
             worldwide. Every question you answer scores against one of these six.
           </p>
 
