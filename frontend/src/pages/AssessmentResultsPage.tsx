@@ -112,6 +112,18 @@ export default function AssessmentResultsPage() {
           </button>
         </div>
       </section>
+
+      <aside className="results-method" aria-label="Assessment method record">
+        <div>
+          <span>Interest instrument</span>
+          <strong>{result.instrument_version ?? 'Legacy version not recorded'}</strong>
+        </div>
+        <div>
+          <span>Recommendation method</span>
+          <strong>{firstSuggestion?.algorithm_version ?? 'Legacy version not recorded'}</strong>
+        </div>
+        <p>These versions are saved with this assessment so its explanation remains traceable.</p>
+      </aside>
     </div>
   )
 }

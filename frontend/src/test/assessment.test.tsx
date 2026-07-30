@@ -163,6 +163,12 @@ describe('AssessmentResultsPage', () => {
     expect(screen.getByRole('heading', { name: 'Missing evidence' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Your next step' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Review my evidence' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Assessment method record' })).toHaveTextContent(
+      'riasec-pilot-1.0',
+    )
+    expect(screen.getByRole('complementary', { name: 'Assessment method record' })).toHaveTextContent(
+      'interest-alignment-1.0',
+    )
     expect(screen.queryByText(/chance of success|success probability/i)).not.toBeInTheDocument()
   })
 })

@@ -67,7 +67,8 @@ Show the pilot notice, pathway explanation and public “how it works” languag
 Sign in as `learner.ready@demo.smartashauri.test`.
 
 1. Dashboard: point to the single next action and real evidence/plan metrics.
-2. Grades (`/grades`): show Grade 9 performance levels, source and verification.
+2. Grades (`/grades`): select one seeded subject, then show its Grade 9 performance
+   level, school source and verification.
 3. Results (`/assessment/results`): show the Holland interest profile, explanation,
    version and limitation language.
 4. Explorer (`/explore`): filter school-available combinations and open details.

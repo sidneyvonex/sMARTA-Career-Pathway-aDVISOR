@@ -293,12 +293,13 @@ export const handlers = [
       data: {
         id: 1,
         submitted_at: '2026-06-15T10:30:00Z',
+        instrument_version: 'riasec-pilot-1.0',
         holland_code: 'IRE',
         scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
         recommendations: [
-          { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
-          { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-          { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          { rank: 1, fit_score: 18.25, fit_pct: 73, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, fit_score: 14.75, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, fit_score: 14.65, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
         ],
       },
       error: null,
@@ -315,12 +316,13 @@ export const handlers = [
       data: {
         id: 1,
         submitted_at: '2026-06-15T10:30:00Z',
+        instrument_version: 'riasec-pilot-1.0',
         holland_code: 'IRE',
         scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
         recommendations: [
-          { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
-          { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-          { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          { rank: 1, fit_score: 18.25, fit_pct: 73, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, fit_score: 14.75, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, fit_score: 14.65, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
         ],
       },
       error: null,
