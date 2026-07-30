@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
 
-**Next:** Task 7.1 school-link approval queue
+**Next:** Task 7.2 school dashboard redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -50,6 +50,7 @@
 | `b0c5f52` | Reason-led counsellor priority dashboard with due follow-ups and recent interventions |
 | `578f7b0` | Learner intervention context and visibility-filtered counsellor, learner and parent APIs |
 | `8fdfd46` | Responsive counsellor caseload, intervention workspace and shared agreed-action views |
+| `da44227` | School-scoped learner-link approval queue with audit history and notifications |
 
 ## 1. How to use this plan
 
@@ -1228,16 +1229,31 @@ School administrators can operate the pilot without relying on shared-code trust
 
 API and UI:
 
-- list pending requests;
-- approve;
-- reject;
-- audit decision;
-- notify learner.
+- [x] list pending requests;
+- [x] approve;
+- [x] reject;
+- [x] audit decision;
+- [x] notify learner.
 
 Acceptance:
 
-- Shared code creates a pending request.
-- Only the learner's school administrator can decide.
+- [x] Shared code creates a pending request.
+- [x] Only the learner's school administrator can decide.
+
+Verification:
+
+- School-link requests remain pending after registration until a school administrator makes an explicit decision.
+- The pending queue returns only learners linked to the authenticated administrator's school.
+- Approval and rejection atomically update membership, create a dedicated audit event and notify the learner.
+- Invalid decisions, cross-school attempts and replayed decisions are rejected without changing the learner.
+- Pending learners cannot be assigned to a counsellor until approved.
+- New membership decision acceptance class: 5 tests passed.
+- Complete existing school-admin backend regression: 42 tests passed across two bounded groups.
+- School-admin, learner-membership and notification frontend regression: 42 tests passed.
+- Django system check and migration drift check: passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `da44227`.
 
 ### Task 7.2 - Redesign school dashboard
 
