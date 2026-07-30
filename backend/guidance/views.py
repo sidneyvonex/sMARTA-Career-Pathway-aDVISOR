@@ -9,44 +9,13 @@ from riasec.models import Pathway
 from .models import (
     FrameworkVersion,
     PathwayTrack,
-    SchoolOffering,
-    SubjectCombination,
 )
+from .selectors import active_combination_queryset
 from .serializers import (
     FrameworkVersionSerializer,
     PathwayCatalogueSerializer,
     SubjectCombinationSerializer,
 )
-
-
-def _active_combination_queryset(framework):
-    active_offerings = (
-        SchoolOffering.objects.filter(is_active=True, school__is_active=True)
-        .select_related('school')
-        .order_by('school__name')
-    )
-    return (
-        SubjectCombination.objects.filter(
-            framework_version=framework,
-            is_active=True,
-            track__is_active=True,
-        )
-        .select_related(
-            'framework_version',
-            'track__pathway',
-            'subject_one',
-            'subject_two',
-            'subject_three',
-        )
-        .prefetch_related(
-            Prefetch(
-                'school_offerings',
-                queryset=active_offerings,
-                to_attr='active_school_offerings',
-            )
-        )
-    )
-
 
 class PublicGuidanceView(APIView):
     authentication_classes = []
@@ -99,7 +68,7 @@ class CombinationListView(PublicGuidanceView):
         if framework is None:
             return _success(data=[])
 
-        combinations = _active_combination_queryset(framework)
+        combinations = active_combination_queryset(framework)
         pathway = request.query_params.get('pathway', '').strip()
         track = request.query_params.get('track', '').strip()
         county = request.query_params.get('county', '').strip()
@@ -155,7 +124,7 @@ class CombinationDetailView(PublicGuidanceView):
         if framework is None:
             return _error('No active guidance framework found.', 404)
         combination = get_object_or_404(
-            _active_combination_queryset(framework),
+            active_combination_queryset(framework),
             pk=combination_id,
         )
         return _success(data=SubjectCombinationSerializer(combination).data)

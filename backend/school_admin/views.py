@@ -9,14 +9,120 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsSchoolAdmin, IsEmailVerified
-from accounts.models import User, StudentProfile
+from accounts.models import School, User, StudentProfile
 from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
+from guidance.models import FrameworkVersion, SchoolOffering, SubjectCombination
+from guidance.selectors import active_combination_queryset
+from guidance.serializers import (
+    SchoolOfferingReplaceSerializer,
+    SchoolSummarySerializer,
+    SubjectCombinationSerializer,
+)
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
+
+
+class SchoolOfferingsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def _get_school(self, request):
+        school = request.user.school
+        if school is None:
+            return None, _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+        if not school.is_active:
+            return None, _error(
+                'Your school is inactive.',
+                status.HTTP_403_FORBIDDEN,
+            )
+        return school, None
+
+    def _response_data(self, school):
+        framework = FrameworkVersion.objects.current()
+        if framework is None:
+            combinations = SubjectCombination.objects.none()
+        else:
+            combinations = (
+                active_combination_queryset(framework)
+                .filter(
+                    school_offerings__school=school,
+                    school_offerings__is_active=True,
+                )
+                .distinct()
+            )
+        combination_list = list(combinations)
+        return {
+            'school': SchoolSummarySerializer(school).data,
+            'combination_ids': [
+                combination.id for combination in combination_list
+            ],
+            'offerings': SubjectCombinationSerializer(
+                combination_list,
+                many=True,
+            ).data,
+        }
+
+    def get(self, request):
+        school, error = self._get_school(request)
+        if error:
+            return error
+        return _success(data=self._response_data(school))
+
+    def put(self, request):
+        school, error = self._get_school(request)
+        if error:
+            return error
+
+        serializer = SchoolOfferingReplaceSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        combination_ids = serializer.validated_data['combination_ids']
+
+        framework = FrameworkVersion.objects.current()
+        if framework is None:
+            return _error(
+                'No active guidance framework found.',
+                status.HTTP_409_CONFLICT,
+            )
+
+        eligible_ids = set(
+            SubjectCombination.objects.filter(
+                pk__in=combination_ids,
+                framework_version=framework,
+                is_active=True,
+                track__is_active=True,
+            ).values_list('pk', flat=True)
+        )
+        if eligible_ids != set(combination_ids):
+            return _error(
+                'Only active combinations from the current pilot framework '
+                'can be selected.'
+            )
+
+        with transaction.atomic():
+            School.objects.select_for_update().get(pk=school.pk)
+            SchoolOffering.objects.filter(school=school).delete()
+            SchoolOffering.objects.bulk_create(
+                [
+                    SchoolOffering(
+                        school=school,
+                        combination_id=combination_id,
+                        is_active=True,
+                    )
+                    for combination_id in combination_ids
+                ]
+            )
+
+        return _success(
+            data=self._response_data(school),
+            message='School offerings updated.',
+        )
 
 
 class SchoolProfileView(APIView):

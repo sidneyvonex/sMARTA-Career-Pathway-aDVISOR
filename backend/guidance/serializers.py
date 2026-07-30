@@ -65,6 +65,20 @@ class SchoolSummarySerializer(serializers.ModelSerializer):
         fields = ('id', 'school_code', 'name', 'county')
 
 
+class SchoolOfferingReplaceSerializer(serializers.Serializer):
+    combination_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=True,
+    )
+
+    def validate_combination_ids(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError(
+                'Combination IDs must be unique.'
+            )
+        return value
+
+
 class SubjectCombinationSerializer(serializers.ModelSerializer):
     framework = FrameworkSummarySerializer(
         source='framework_version',
