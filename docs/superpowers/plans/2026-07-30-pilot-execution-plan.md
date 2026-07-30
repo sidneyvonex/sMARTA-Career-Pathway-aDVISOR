@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.4 learner summaries, grade verification, explainable assessment and combination choices
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.5 learner summaries, grade verification, explainable assessment, combination choices and explorer
 
-**Next:** Task 4.5 learner combination explorer
+**Next:** Task 4.6 learner combination comparison
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -38,6 +38,7 @@
 | `457c21e` | Audited school verification and immutable provenance for learner grades |
 | `eee1684` | Versioned assessment attempts, explanation snapshots and expiring learner-scoped drafts |
 | `a9219f2` | Learner-saved and provisional combinations with pilot limits and summary integration |
+| `3d2db97` | Responsive five-county learner combination explorer with save actions |
 
 ## 1. How to use this plan
 
@@ -861,6 +862,19 @@ Reuse:
 - shared cards/status badges;
 - React Query;
 - existing toast system.
+
+Verification:
+
+- `/explore` is available only in the authenticated learner shell and has route-aware navigation context.
+- Learners can filter by pathway, track, any of the five pilot counties, school offering and free-text catalogue search.
+- Every result displays its pathway, track, exact three subjects, pilot-school availability and source catalogue code.
+- The current framework title, effective date and official source link remain visible above the results.
+- Saving uses the learner-choice API, reports the three-choice limit and updates the comparison count immediately.
+- Responsive two-column and single-column layouts include accessible loading skeletons, a filter-reset empty state and retryable errors.
+- Explorer, guidance-client, shell and root-route suite: 16 tests passed.
+- Strict TypeScript check: passed.
+- Frontend design pre-flight: visible copy contains no predictive-success language or dash typography; filters are labelled, CTA contrast is preserved, motion respects reduced-motion and mobile collapse is explicit.
+- Commit: `3d2db97`.
 
 ### Task 4.6 - Build comparison
 
