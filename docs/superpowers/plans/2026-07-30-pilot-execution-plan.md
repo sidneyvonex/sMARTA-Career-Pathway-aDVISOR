@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 3 - Pilot framework and combination domain
+**Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.4 guidance domain, catalogue and APIs
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain
 
-**Next:** Task 3.5 typed guidance frontend client
+**Next:** Task 4.1 learner evidence and grade summary endpoints
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -33,6 +33,7 @@
 | `cce4907` | Curated Ministry-code pilot catalogue and representative five-county demonstration offerings |
 | `9b84c28` | Public source-dated guidance APIs with catalogue filters and bounded query counts |
 | `d7ab5e1` | Permission-tested school offering reads and atomic full-replacement updates |
+| `88f2109` | Typed guidance frontend client, unified query keys and complete MSW contracts |
 
 ## 1. How to use this plan
 
@@ -677,16 +678,27 @@ Verification:
 
 Create `frontend/src/api/guidance.ts`.
 
-- [ ] Add types for framework, track, combination and offering.
-- [ ] Add MSW handlers.
-- [ ] Add React Query keys in one consistent namespace.
+- [x] Add types for framework, track, combination and offering.
+- [x] Add MSW handlers.
+- [x] Add React Query keys in one consistent namespace.
+
+Verification:
+
+- Typed guidance client contract: 5 tests passed.
+- Client covers current framework, pathways, filtered combination list, combination detail, school offerings and full-replacement updates.
+- Framework, track, pathway, exact three-elective combination, school and offering response types match the backend contract.
+- All React Query key factories share the `guidance` root namespace.
+- Strict TypeScript check: passed.
+- Bounded full frontend run: 29 files and 174 tests passed; one dashboard test timed out under worker contention, and its complete 5-test suite passed independently.
+- Production PWA bundling transformed 846 modules and generated the application and service-worker files; the host command remained open after successful generation and exceeded its command window.
+- Commit: `88f2109`.
 
 Exit gate:
 
-- Seed command/migration is repeatable.
-- Public read APIs return source-dated data.
-- School offering updates are permission-tested.
-- No N+1 query regression in list endpoints.
+- [x] Seed command/migration is repeatable.
+- [x] Public read APIs return source-dated data.
+- [x] School offering updates are permission-tested.
+- [x] No N+1 query regression in list endpoints.
 
 ## 10. Sprint 4 - Complete learner decision-and-plan journey
 
