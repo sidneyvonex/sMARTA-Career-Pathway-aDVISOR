@@ -67,7 +67,36 @@ export interface CBCGrade {
   updated_at: string
 }
 
+export interface EvidenceSummary {
+  profile_completion: {
+    status: 'complete' | 'incomplete'
+    percent: number
+    missing_fields: string[]
+  }
+  academic_evidence: {
+    status: 'not_started' | 'in_progress' | 'ready'
+    total_subjects: number
+    subjects_with_evidence: number
+    total_grade_records: number
+  }
+  assessment: {
+    status: 'not_started' | 'complete'
+    instrument_version: string | null
+    submitted_at: string | null
+  }
+  saved_combination_count: number
+  plan_status: string
+  next_action: {
+    code: string
+    title: string
+    href: string
+  }
+}
+
 export const studentsApi = {
+  getEvidenceSummary: () =>
+    api.get<{ data: EvidenceSummary }>('/students/evidence-summary/'),
+
   getProfile: () =>
     api.get<{ data: StudentProfile }>('/students/profile/'),
 

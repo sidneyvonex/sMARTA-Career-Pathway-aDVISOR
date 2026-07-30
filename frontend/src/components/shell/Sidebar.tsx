@@ -48,6 +48,7 @@ function getNavItems(role: User['role']): NavItem[] {
       { to: '/', label: 'Dashboard', icon: ICONS.grid },
       { to: '/grades', label: 'My Grades', icon: ICONS.bar },
       { to: '/explore', label: 'Explore Choices', icon: ICONS.grid },
+      { to: '/compare', label: 'Compare Choices', icon: ICONS.clipboard },
       { to: '/assessment/results', label: 'Career Profile', icon: ICONS.clock },
       { to: '/assessment', label: 'Career Quiz', icon: ICONS.clipboard },
       { to: '/profile', label: 'My Profile', icon: ICONS.person },

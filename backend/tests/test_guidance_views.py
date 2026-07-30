@@ -119,6 +119,7 @@ class TestCombinationListView:
             'code',
             'title',
             'description',
+            'related_routes',
             'framework',
             'track',
             'subjects',
@@ -127,6 +128,7 @@ class TestCombinationListView:
         assert len(combination['subjects']) == 3
         assert combination['track']['pathway']['name']
         assert combination['framework']['source_url'].startswith('https://')
+        assert combination['related_routes']
 
     @pytest.mark.parametrize(
         ('params', 'expected_codes'),

@@ -97,6 +97,34 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/evidence-summary/', () => {
+    return HttpResponse.json({
+      data: {
+        profile_completion: { status: 'complete', percent: 100, missing_fields: [] },
+        academic_evidence: {
+          status: 'ready',
+          total_subjects: 3,
+          subjects_with_evidence: 3,
+          total_grade_records: 6,
+        },
+        assessment: {
+          status: 'complete',
+          instrument_version: 'riasec-pilot-1.0',
+          submitted_at: '2026-07-30T10:00:00Z',
+        },
+        saved_combination_count: 2,
+        plan_status: 'not_started',
+        next_action: {
+          code: 'compare_combinations',
+          title: 'Compare your saved combinations',
+          href: '/compare',
+        },
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
   http.post('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
       data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
@@ -687,6 +715,7 @@ export const handlers = [
         code: 'ST1042',
         title: 'Agriculture, Biology & Chemistry',
         description: 'Curated pilot option.',
+        related_routes: ['Agricultural science', 'Biological science', 'Laboratory technology'],
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
@@ -720,6 +749,7 @@ export const handlers = [
         code: 'ST1042',
         title: 'Agriculture, Biology & Chemistry',
         description: 'Curated pilot option.',
+        related_routes: ['Agricultural science', 'Biological science', 'Laboratory technology'],
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
@@ -764,6 +794,7 @@ export const handlers = [
           code: 'ST1042',
           title: 'Agriculture, Biology & Chemistry',
           description: 'Curated pilot option.',
+          related_routes: ['Agricultural science', 'Biological science', 'Laboratory technology'],
           framework: {
             code: 'CBC-SS-PILOT-2026',
             title: 'CBC Senior School Pilot Catalogue 2026',

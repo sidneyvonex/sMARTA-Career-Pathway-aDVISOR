@@ -86,6 +86,7 @@ class SubjectCombination(models.Model):
     code = models.CharField(max_length=40)
     title = models.CharField(max_length=160)
     description = models.TextField(blank=True, default='')
+    related_routes = models.JSONField(default=list)
     subject_one = models.ForeignKey(
         'students.Subject',
         on_delete=models.PROTECT,

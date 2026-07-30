@@ -77,6 +77,14 @@ class TestSubjectCombination:
         assert all(subject.grade == 10 for subject in subjects)
         assert all(subject.category == 'Elective' for subject in subjects)
 
+    def test_seeded_pilot_combination_has_related_routes(self):
+        combination = SubjectCombination.objects.get(code='ST1042')
+        assert combination.related_routes == [
+            'Agricultural science',
+            'Biological science',
+            'Laboratory technology',
+        ]
+
     def test_duplicate_subjects_violate_database_constraint(self):
         combination = SubjectCombinationFactory()
         combination.subject_two = combination.subject_one

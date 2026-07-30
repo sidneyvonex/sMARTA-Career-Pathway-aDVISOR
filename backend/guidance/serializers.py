@@ -100,6 +100,7 @@ class SubjectCombinationSerializer(serializers.ModelSerializer):
             'code',
             'title',
             'description',
+            'related_routes',
             'framework',
             'track',
             'subjects',

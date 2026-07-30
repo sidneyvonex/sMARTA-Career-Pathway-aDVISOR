@@ -55,6 +55,7 @@ export interface GuidanceCombination {
   code: string
   title: string
   description: string
+  related_routes: string[]
   framework: GuidanceFrameworkSummary
   track: GuidanceTrack
   subjects: [GuidanceSubject, GuidanceSubject, GuidanceSubject]
