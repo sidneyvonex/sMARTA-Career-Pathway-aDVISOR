@@ -7,7 +7,7 @@ Prompt for one presentation-only password without putting it in shell history:
 ```powershell
 $pilotDemoCredential = Get-Credential -UserName "pilot-demo" -Message "Enter the temporary demo password"
 $env:PILOT_DEMO_PASSWORD = $pilotDemoCredential.GetNetworkCredential().Password
-.\venv\Scripts\python.exe manage.py seed_pilot_demo
+.\venv\Scripts\python.exe manage.py seed_pilot_demo --settings=config.settings.presentation
 Remove-Item Env:PILOT_DEMO_PASSWORD
 ```
 

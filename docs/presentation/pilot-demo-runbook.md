@@ -13,13 +13,18 @@ From the repository root:
 
 ```powershell
 cd backend
-.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py migrate --settings=config.settings.presentation
 $pilotDemoCredential = Get-Credential -UserName "pilot-demo" -Message "Enter the temporary demo password"
 $env:PILOT_DEMO_PASSWORD = $pilotDemoCredential.GetNetworkCredential().Password
-.\venv\Scripts\python.exe manage.py seed_pilot_demo
+.\venv\Scripts\python.exe manage.py seed_pilot_demo --settings=config.settings.presentation
 Remove-Item Env:PILOT_DEMO_PASSWORD
-.\venv\Scripts\python.exe manage.py runserver
+.\venv\Scripts\python.exe manage.py runserver --settings=config.settings.presentation
 ```
+
+The presentation profile uses `backend/pilot_demo.sqlite3`, which is ignored by Git.
+It avoids external MySQL, email and object-storage credentials and persists between
+the three commands above. Delete that local database only when an intentional clean
+rehearsal dataset is required; the normal seed command is idempotent.
 
 In a second terminal:
 
@@ -139,7 +144,7 @@ authority.”
 
 | Problem | Recovery |
 |---|---|
-| Login fails | Rerun `seed_pilot_demo` with the same temporary password; the command is idempotent. |
+| Login fails | Rerun `seed_pilot_demo --settings=config.settings.presentation` with the same temporary password; the command is idempotent. |
 | API is unavailable | Confirm backend terminal, then open `/health/`; use the visible retry action after recovery. |
 | Old frontend is shown | Hard refresh once; if an update banner appears, apply it. |
 | Network drops during assessment | Show the offline banner and saved draft; reconnect before submitting. |
