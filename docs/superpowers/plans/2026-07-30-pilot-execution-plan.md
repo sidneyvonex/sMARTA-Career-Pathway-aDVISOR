@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 1 - Correctness and safety blockers
 
-**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.3
+**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.4
 
-**Next:** Task 1.4 active-school and pending-membership validation
+**Next:** Task 1.5 high-risk recommendation language correction
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
 | Commit | Delivered change |
@@ -23,6 +23,7 @@
 | `ab53d07` | Canonical CBE grade ordering, labels, points, chart and PDF fixtures |
 | `2e3d9cf` | Current Grade 10 pilot catalogue with safe retirement of obsolete records |
 | `3eec101` | Authenticated API cache exclusion and logout data cleanup |
+| `f30a99a` | Active-school validation and pending learner membership |
 
 ## 1. How to use this plan
 
@@ -379,9 +380,18 @@ Files:
 
 Work:
 
-- [ ] Reject inactive school codes.
-- [ ] Store school-linked registration as pending approval rather than silently trusted.
-- [ ] Preserve self-guided registration.
+- [x] Reject inactive school codes.
+- [x] Store school-linked registration as pending approval rather than silently trusted.
+- [x] Preserve self-guided registration.
+
+Verification:
+
+- Active-code, pending-state, profile and access-control backend tests pass.
+- Broad affected backend run: 143 tests passed; its one stale active-membership fixture was corrected and the 3 focused permission checks then passed.
+- Frontend profile/auth/dashboard suites: 23 passed.
+- Production build: passed; main JS gzip 136.12 kB, CSS gzip 21.03 kB.
+- Pending learners cannot be assigned to counsellors or accessed through school-admin report authorization.
+- Commit: `f30a99a`.
 
 Acceptance:
 
