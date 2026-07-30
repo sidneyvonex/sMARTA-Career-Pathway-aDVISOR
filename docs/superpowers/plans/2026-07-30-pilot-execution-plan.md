@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.1 PDF report context and provenance
+**Next:** Task 9.2 limited offline behavior
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1491,17 +1491,24 @@ The pilot can be demonstrated repeatedly on desktop and mobile with reliable dat
 
 Include:
 
-- evidence sources;
-- interest profile;
-- interest alignment explanation;
-- academic readiness;
-- provisional combination;
-- milestones;
-- framework/algorithm version;
-- generated date;
-- advisory disclaimer.
+- [x] evidence sources;
+- [x] interest profile;
+- [x] interest alignment explanation;
+- [x] academic readiness;
+- [x] provisional combination;
+- [x] milestones;
+- [x] framework/algorithm version;
+- [x] generated date;
+- [x] advisory disclaimer.
 
-Audit every report download.
+- [x] Audit every report download.
+
+Verification:
+
+- Complete report builder, endpoint permission and audit suite: 32 tests passed.
+- Django system check and migration drift check: passed.
+- Diff whitespace check: passed.
+- Commit: `e796ec3`.
 
 ### Task 9.2 - Limited offline behavior
 
