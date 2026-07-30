@@ -134,14 +134,26 @@ class CounselorStatsView(APIView):
         needing_attention = sum(
             bool(attention_reasons_for(profile)) for profile in profiles
         )
+        journeys_reviewed = sum(
+            getattr(profile, 'learner_plan', None) is not None
+            and profile.learner_plan.review_status == 'reviewed'
+            for profile in profiles
+        )
         notes = CounselorNote.objects.filter(
             counselor=request.user, deleted_at__isnull=True,
+        ).count()
+        follow_ups_due = CounselorIntervention.objects.filter(
+            counselor=request.user,
+            status=CounselorIntervention.STATUS_OPEN,
+            follow_up_date__lte=timezone.localdate(),
         ).count()
 
         return _success(data={
             'total_students': total,
             'assessments_done': assessed,
             'students_needing_attention': needing_attention,
+            'follow_ups_due': follow_ups_due,
+            'journeys_reviewed': journeys_reviewed,
             'notes_written': notes,
         })
 

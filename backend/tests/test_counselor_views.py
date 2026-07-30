@@ -1,4 +1,5 @@
 import pytest
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
@@ -6,8 +7,11 @@ from tests.factories import (
     VerifiedUserFactory, CounselorAssignmentFactory, CounselorNoteFactory,
     SubjectFactory, StudentSubjectFactory, CBCGradeFactory,
     RIASECAssessmentFactory,
+    SubjectCombinationFactory,
 )
 from students.models import Subject
+from counselors.models import CounselorIntervention
+from guidance.models import LearnerCombinationChoice, LearnerPlan
 
 pytestmark = pytest.mark.django_db
 
@@ -134,6 +138,40 @@ class TestCounselorStatsView:
         assert data['notes_written'] == 1
         assert data['students_needing_attention'] == 1
         assert data['assessments_done'] == 0
+        assert data['follow_ups_due'] == 0
+        assert data['journeys_reviewed'] == 0
+
+    def test_counts_due_follow_ups_and_reviewed_journeys(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        combination = SubjectCombinationFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=assigned_student,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        LearnerPlan.objects.create(
+            student_profile=assigned_student,
+            provisional_choice=choice,
+            review_status=LearnerPlan.STATUS_REVIEWED,
+        )
+        CounselorIntervention.objects.create(
+            counselor=counselor,
+            student=assigned_student.user,
+            category=CounselorIntervention.CATEGORY_FOLLOW_UP,
+            action_agreed='Review the agreed action.',
+            follow_up_date=timezone.localdate(),
+        )
+        _auth(client, counselor)
+
+        response = client.get(reverse('counselor-stats'))
+        data = response.json()['data']
+
+        assert data['follow_ups_due'] == 1
+        assert data['journeys_reviewed'] == 1
 
 
 class TestCounselorNotesView:

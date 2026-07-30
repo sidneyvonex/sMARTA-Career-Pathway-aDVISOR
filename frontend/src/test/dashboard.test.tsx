@@ -65,6 +65,20 @@ describe('DashboardPage', () => {
     const hero = await screen.findByRole('region', { name: /Good .+, Jane/i })
     expect(hero).toHaveClass('db-hero--counsellor')
     expect(screen.getByLabelText(/Total students:/i)).toHaveClass('db-metric')
+    expect(screen.getByLabelText(/Follow-ups due:/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Journeys reviewed:/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Priority queue' })).toBeInTheDocument()
+    expect(screen.getByText('Academic evidence incomplete')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recent interventions' })).toBeInTheDocument()
+    expect(screen.getByText('Bring the latest mathematics evidence.')).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Open full caseload' })[0]).toHaveAttribute(
+      'href',
+      '/counselor/students',
+    )
+    expect(screen.getAllByRole('link', { name: 'Manage interventions' })[0]).toHaveAttribute(
+      'href',
+      '/counselor/students',
+    )
   })
 
   it('renders ParentDashboard for parent role', async () => {

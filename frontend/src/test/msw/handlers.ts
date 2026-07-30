@@ -282,11 +282,32 @@ export const handlers = [
           id: 5, first_name: 'Jane', last_name: 'Doe', grade: 9,
           county: 'kiambu', photo_url: null, top_pathway: 'STEM',
           fit_pct: 73, quiz_status: 'done', last_active: '2026-06-17T08:00:00Z',
+          needs_attention: true,
+          attention_reasons: [
+            {
+              code: 'academic_evidence_missing',
+              label: 'Academic evidence incomplete',
+              guidance: 'Review the enrolled subjects and add missing grade evidence.',
+            },
+          ],
         },
         {
           id: 6, first_name: 'Brian', last_name: 'Kamau', grade: 10,
           county: 'nyeri', photo_url: null, top_pathway: null,
           fit_pct: null, quiz_status: 'pending', last_active: null,
+          needs_attention: true,
+          attention_reasons: [
+            {
+              code: 'assessment_missing',
+              label: 'Interest assessment missing',
+              guidance: 'Invite the learner to complete the interest assessment.',
+            },
+            {
+              code: 'no_plan',
+              label: 'No learner plan',
+              guidance: 'Support the learner to turn a provisional choice into a plan.',
+            },
+          ],
         },
       ],
       error: null, message: '',
@@ -321,7 +342,14 @@ export const handlers = [
 
   http.get('/api/v1/counselors/stats/', () => {
     return HttpResponse.json({
-      data: { total_students: 12, assessments_done: 8, students_needing_attention: 4, notes_written: 23 },
+      data: {
+        total_students: 12,
+        assessments_done: 8,
+        students_needing_attention: 4,
+        follow_ups_due: 2,
+        journeys_reviewed: 3,
+        notes_written: 23,
+      },
       error: null, message: '',
     })
   }),
@@ -355,6 +383,29 @@ export const handlers = [
   http.delete('/api/v1/counselors/notes/:id/', () => {
     return HttpResponse.json({
       data: null, error: null, message: 'Note removed.',
+    })
+  }),
+
+  http.get('/api/v1/counselors/interventions/', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 91,
+          student: 5,
+          student_name: 'Jane Doe',
+          category: 'academic_evidence',
+          action_agreed: 'Bring the latest mathematics evidence.',
+          follow_up_date: '2026-08-04',
+          status: 'open',
+          learner_visible: true,
+          parent_visible: true,
+          completed_at: null,
+          created_at: '2026-07-29T09:00:00Z',
+          updated_at: '2026-07-29T09:00:00Z',
+        },
+      ],
+      error: null,
+      message: '',
     })
   }),
 

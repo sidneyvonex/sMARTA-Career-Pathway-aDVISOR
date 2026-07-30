@@ -41,6 +41,8 @@ export interface CounselorStats {
   total_students: number
   assessments_done: number
   students_needing_attention: number
+  follow_ups_due: number
+  journeys_reviewed: number
   notes_written: number
 }
 
