@@ -4,7 +4,12 @@ from accounts.models import School
 from riasec.models import Pathway
 from students.models import Subject
 
-from .models import FrameworkVersion, PathwayTrack, SubjectCombination
+from .models import (
+    FrameworkVersion,
+    LearnerCombinationChoice,
+    PathwayTrack,
+    SubjectCombination,
+)
 
 
 class FrameworkVersionSerializer(serializers.ModelSerializer):
@@ -108,3 +113,28 @@ class SubjectCombinationSerializer(serializers.ModelSerializer):
         offerings = getattr(obj, 'active_school_offerings', ())
         schools = [offering.school for offering in offerings]
         return SchoolSummarySerializer(schools, many=True).data
+
+
+class LearnerCombinationChoiceCreateSerializer(serializers.Serializer):
+    combination_id = serializers.IntegerField(min_value=1)
+    learner_reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+        default='',
+    )
+
+
+class LearnerCombinationChoiceSerializer(serializers.ModelSerializer):
+    combination = SubjectCombinationSerializer(read_only=True)
+
+    class Meta:
+        model = LearnerCombinationChoice
+        fields = (
+            'id',
+            'combination',
+            'status',
+            'learner_reason',
+            'created_at',
+            'updated_at',
+        )

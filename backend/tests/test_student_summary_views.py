@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from riasec.models import RIASECAssessment
+from guidance.models import FrameworkVersion, LearnerCombinationChoice, SubjectCombination
 from tests.factories import (
     CBCGradeFactory,
     StudentProfileFactory,
@@ -122,6 +123,23 @@ class TestEvidenceSummaryView:
 
         assert response.data['data']['academic_evidence']['status'] == 'ready'
         assert response.data['data']['next_action']['code'] == 'explore_combinations'
+
+    def test_saved_choice_count_is_included_without_extra_summary_queries(
+        self,
+        django_assert_num_queries,
+    ):
+        combination = SubjectCombination.objects.filter(
+            framework_version=FrameworkVersion.objects.current()
+        ).first()
+        LearnerCombinationChoice.objects.create(
+            student_profile=self.profile,
+            combination=combination,
+        )
+
+        with django_assert_num_queries(3):
+            response = self.client.get(EVIDENCE_URL)
+
+        assert response.data['data']['saved_combination_count'] == 1
 
     def test_query_count_is_bounded(self, django_assert_num_queries):
         for index in range(5):

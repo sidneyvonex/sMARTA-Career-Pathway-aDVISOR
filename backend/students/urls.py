@@ -4,11 +4,29 @@ from .views import (
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
     StudentCounselorView, EvidenceSummaryView, GradeSummaryView,
+    LearnerCombinationChoiceDetailView,
+    LearnerCombinationChoiceListCreateView,
+    LearnerCombinationChoiceProvisionalView,
 )
 
 urlpatterns = [
     path('evidence-summary/', EvidenceSummaryView.as_view(), name='student-evidence-summary'),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
+    path(
+        'combination-choices/',
+        LearnerCombinationChoiceListCreateView.as_view(),
+        name='learner-combination-choice-list',
+    ),
+    path(
+        'combination-choices/<int:choice_id>/',
+        LearnerCombinationChoiceDetailView.as_view(),
+        name='learner-combination-choice-detail',
+    ),
+    path(
+        'combination-choices/<int:choice_id>/provisional/',
+        LearnerCombinationChoiceProvisionalView.as_view(),
+        name='learner-combination-choice-provisional',
+    ),
     path('profile/', StudentProfileView.as_view(), name='student-profile'),
     path('profile/photo/', PhotoUploadView.as_view(), name='student-photo'),
     path('subjects/', SubjectListView.as_view(), name='subject-list'),

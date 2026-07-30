@@ -1,6 +1,9 @@
 from io import BytesIO
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.shortcuts import get_object_or_404
 from PIL import Image
 from rest_framework.views import APIView
 from rest_framework import status
@@ -8,6 +11,16 @@ from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsStudent, IsEmailVerified
 from accounts.models import StudentProfile
 from accounts.response import _success, _error
+from guidance.models import (
+    FrameworkVersion,
+    LearnerCombinationChoice,
+    SchoolOffering,
+)
+from guidance.selectors import active_combination_queryset
+from guidance.serializers import (
+    LearnerCombinationChoiceCreateSerializer,
+    LearnerCombinationChoiceSerializer,
+)
 from .models import Subject, StudentSubject, CBCGrade
 from .serializers import (
     StudentProfileSerializer, SubjectSerializer,
@@ -28,15 +41,57 @@ FORMAT_TO_MIME = {'JPEG': 'image/jpeg', 'PNG': 'image/png'}
 FORMAT_TO_EXT = {'JPEG': 'jpg', 'PNG': 'png'}
 
 
+def learner_choice_queryset(profile):
+    active_offerings = (
+        SchoolOffering.objects
+        .filter(is_active=True, school__is_active=True)
+        .select_related('school')
+        .order_by('school__name')
+    )
+    return (
+        LearnerCombinationChoice.objects
+        .filter(student_profile=profile)
+        .select_related(
+            'combination__framework_version',
+            'combination__track__pathway',
+            'combination__subject_one',
+            'combination__subject_two',
+            'combination__subject_three',
+        )
+        .prefetch_related(
+            Prefetch(
+                'combination__school_offerings',
+                queryset=active_offerings,
+                to_attr='active_school_offerings',
+            )
+        )
+    )
+
+
 class EvidenceSummaryView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
 
     def get(self, request):
-        profile = StudentProfile.objects.get(user=request.user)
+        profile = (
+            StudentProfile.objects
+            .annotate(
+                saved_combination_count=Count('combination_choices'),
+                provisional_combination_count=Count(
+                    'combination_choices',
+                    filter=Q(
+                        combination_choices__status=(
+                            LearnerCombinationChoice.STATUS_PROVISIONAL
+                        )
+                    ),
+                ),
+            )
+            .get(user=request.user)
+        )
         profile_completion = profile_completion_summary(profile)
         academic_evidence = academic_evidence_summary(profile)
         assessment = assessment_summary(profile)
-        saved_combination_count = 0
+        saved_combination_count = profile.saved_combination_count
+        has_provisional_choice = profile.provisional_combination_count > 0
         plan_status = 'not_started'
         return _success(
             data={
@@ -50,9 +105,109 @@ class EvidenceSummaryView(APIView):
                     academic_evidence,
                     assessment,
                     saved_combination_count,
+                    has_provisional_choice=has_provisional_choice,
                     plan_status=plan_status,
                 ),
             }
+        )
+
+
+class LearnerCombinationChoiceListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        choices = learner_choice_queryset(profile)
+        return _success(
+            data=LearnerCombinationChoiceSerializer(choices, many=True).data
+        )
+
+    def post(self, request):
+        serializer = LearnerCombinationChoiceCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+
+        framework = FrameworkVersion.objects.current()
+        if framework is None:
+            return _error('No active guidance framework found.')
+        combination = get_object_or_404(
+            active_combination_queryset(framework),
+            pk=serializer.validated_data['combination_id'],
+        )
+
+        with transaction.atomic():
+            profile = StudentProfile.objects.select_for_update().get(
+                user=request.user
+            )
+            choices = LearnerCombinationChoice.objects.filter(
+                student_profile=profile
+            )
+            if choices.filter(combination=combination).exists():
+                return _error('This combination is already saved.')
+            if choices.count() >= 3:
+                return _error('You can save a maximum of three combinations.')
+            choice = LearnerCombinationChoice.objects.create(
+                student_profile=profile,
+                combination=combination,
+                learner_reason=serializer.validated_data['learner_reason'],
+            )
+
+        return _success(
+            data=LearnerCombinationChoiceSerializer(choice).data,
+            message='Combination saved.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class LearnerCombinationChoiceDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def delete(self, request, choice_id):
+        profile = StudentProfile.objects.get(user=request.user)
+        choice = get_object_or_404(
+            LearnerCombinationChoice,
+            pk=choice_id,
+            student_profile=profile,
+        )
+        if choice.status == LearnerCombinationChoice.STATUS_PROVISIONAL:
+            return _error(
+                'Change the provisional choice before removing this combination.'
+            )
+        choice.delete()
+        return _success(
+            message='Saved combination removed.',
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
+
+class LearnerCombinationChoiceProvisionalView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def put(self, request, choice_id):
+        with transaction.atomic():
+            profile = StudentProfile.objects.select_for_update().get(
+                user=request.user
+            )
+            choice = get_object_or_404(
+                learner_choice_queryset(profile).select_for_update(),
+                pk=choice_id,
+            )
+            (
+                LearnerCombinationChoice.objects
+                .filter(
+                    student_profile=profile,
+                    status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+                )
+                .exclude(pk=choice.pk)
+                .update(status=LearnerCombinationChoice.STATUS_SAVED)
+            )
+            if choice.status != LearnerCombinationChoice.STATUS_PROVISIONAL:
+                choice.status = LearnerCombinationChoice.STATUS_PROVISIONAL
+                choice.save(update_fields=['status', 'updated_at'])
+
+        return _success(
+            data=LearnerCombinationChoiceSerializer(choice).data,
+            message='Provisional combination updated.',
         )
 
 

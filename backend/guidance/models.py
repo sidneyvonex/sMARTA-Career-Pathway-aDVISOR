@@ -195,3 +195,64 @@ class SchoolOffering(models.Model):
 
     def __str__(self):
         return f'{self.school.name} — {self.combination.title}'
+
+
+class LearnerCombinationChoice(models.Model):
+    STATUS_SAVED = 'saved'
+    STATUS_PROVISIONAL = 'provisional'
+    STATUS_CHOICES = [
+        (STATUS_SAVED, 'Saved'),
+        (STATUS_PROVISIONAL, 'Provisional'),
+    ]
+
+    student_profile = models.ForeignKey(
+        'accounts.StudentProfile',
+        on_delete=models.CASCADE,
+        related_name='combination_choices',
+    )
+    combination = models.ForeignKey(
+        SubjectCombination,
+        on_delete=models.PROTECT,
+        related_name='learner_choices',
+    )
+    status = models.CharField(
+        max_length=12,
+        choices=STATUS_CHOICES,
+        default=STATUS_SAVED,
+    )
+    learner_reason = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student_profile', 'combination'],
+                name='guidance_learner_combo_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['student_profile'],
+                condition=Q(status='provisional'),
+                name='guidance_one_provisional_choice',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if not self.combination_id:
+            return
+        combination = self.combination
+        current_framework = FrameworkVersion.objects.current()
+        if (
+            current_framework is None
+            or combination.framework_version_id != current_framework.pk
+            or not combination.is_active
+            or not combination.track.is_active
+        ):
+            raise ValidationError({
+                'combination': 'Choose an active combination from the current pilot framework.'
+            })
+
+    def __str__(self):
+        return f'{self.student_profile} - {self.combination.code} ({self.status})'

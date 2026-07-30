@@ -4,12 +4,17 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from guidance.models import FrameworkVersion
+from guidance.models import (
+    FrameworkVersion,
+    LearnerCombinationChoice,
+    SubjectCombination,
+)
 from tests.factories import (
     FrameworkVersionFactory,
     PathwayTrackFactory,
     SchoolFactory,
     SchoolOfferingFactory,
+    StudentProfileFactory,
     SubjectCombinationFactory,
     SubjectFactory,
 )
@@ -140,3 +145,54 @@ class TestSchoolOffering:
         second = SchoolOfferingFactory(school=school)
 
         assert first.combination_id != second.combination_id
+
+
+class TestLearnerCombinationChoice:
+    def test_same_combination_cannot_be_saved_twice(self):
+        profile = StudentProfileFactory()
+        combination = SubjectCombination.objects.filter(
+            framework_version=FrameworkVersion.objects.current()
+        ).first()
+        LearnerCombinationChoice.objects.create(
+            student_profile=profile,
+            combination=combination,
+        )
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            LearnerCombinationChoice.objects.create(
+                student_profile=profile,
+                combination=combination,
+            )
+
+    def test_only_one_provisional_choice_per_learner(self):
+        profile = StudentProfileFactory()
+        current = FrameworkVersion.objects.current()
+        first = SubjectCombination.objects.filter(framework_version=current).first()
+        second = SubjectCombination.objects.filter(
+            framework_version=current
+        ).exclude(pk=first.pk).first()
+        LearnerCombinationChoice.objects.create(
+            student_profile=profile,
+            combination=first,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            LearnerCombinationChoice.objects.create(
+                student_profile=profile,
+                combination=second,
+                status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+            )
+
+    def test_inactive_combination_fails_model_validation(self):
+        profile = StudentProfileFactory()
+        combination = SubjectCombination.objects.first()
+        combination.is_active = False
+        combination.save(update_fields=['is_active'])
+        choice = LearnerCombinationChoice(
+            student_profile=profile,
+            combination=combination,
+        )
+
+        with pytest.raises(ValidationError, match='active combination'):
+            choice.full_clean()
