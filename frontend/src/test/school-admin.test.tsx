@@ -10,6 +10,7 @@ import SchoolAdminDashboard from '../components/dashboard/admin/SchoolAdminDashb
 import SchoolProfilePage from '../pages/admin/SchoolProfilePage'
 import CounselorManagementPage from '../pages/admin/CounselorManagementPage'
 import SchoolStudentsPage from '../pages/admin/SchoolStudentsPage'
+import SchoolOfferingsPage from '../pages/admin/SchoolOfferingsPage'
 
 vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
@@ -314,5 +315,47 @@ describe('SchoolStudentsPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('student list could not load')
     expect(screen.getByRole('button', { name: 'Retry students' })).toBeInTheDocument()
+  })
+})
+
+describe('SchoolOfferingsPage', () => {
+  it('groups the catalogue, shows three subjects and warns before removal', async () => {
+    const qc = makeClient()
+    setSchoolAdmin()
+    let savedIds: number[] | null = null
+    server.use(
+      http.put('/api/v1/school-admin/offerings/', async ({ request }) => {
+        const body = await request.json() as { combination_ids: number[] }
+        savedIds = body.combination_ids
+        return HttpResponse.json({
+          data: {
+            school: { id: 1, school_code: 'PILOT-KIA-001', name: 'Pilot School', county: 'kiambu' },
+            combination_ids: body.combination_ids,
+            offerings: [],
+          },
+          error: null,
+          message: 'School offerings updated.',
+        })
+      }),
+    )
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <SchoolOfferingsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'School subject offerings' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'STEM' })).toBeInTheDocument()
+    expect(screen.getByText('Pure Sciences')).toBeInTheDocument()
+    expect(screen.getByText('Agriculture')).toBeInTheDocument()
+    expect(screen.getByText('Biology')).toBeInTheDocument()
+    expect(screen.getByText('Chemistry')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Offer Agriculture, Biology & Chemistry' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Removing an offering can affect learners')
+    await userEvent.click(screen.getByRole('button', { name: 'Save offering set' }))
+    await waitFor(() => expect(savedIds).toEqual([]))
   })
 })

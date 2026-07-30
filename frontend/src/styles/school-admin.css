@@ -564,3 +564,127 @@
     flex: 1;
   }
 }
+
+.school-offerings-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-6) 0 var(--space-8);
+}
+
+.school-offerings-page__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  margin: var(--space-5) 0;
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--color-primary-dark);
+  color: var(--color-text-on-primary);
+}
+
+.school-offerings-page__summary > div {
+  display: grid;
+}
+
+.school-offerings-page__summary strong {
+  font-size: var(--font-size-3xl);
+}
+
+.school-offerings-page__summary p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.school-offerings-warning {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-surface);
+}
+
+.school-offerings-warning p {
+  margin: var(--space-1) 0 0;
+}
+
+.offering-pathway {
+  margin-top: var(--space-7);
+}
+
+.offering-pathway > h2 {
+  margin-bottom: var(--space-4);
+}
+
+.offering-track {
+  margin-bottom: var(--space-6);
+}
+
+.offering-track h3 {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.offering-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.offering-card {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.offering-card--selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-surface);
+}
+
+.offering-card > input {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+}
+
+.offering-card__code {
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.offering-card__subjects {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.offering-card__subjects > span {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 700px) {
+  .school-offerings-page__summary,
+  .offering-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .school-offerings-page__summary {
+    align-items: stretch;
+  }
+}

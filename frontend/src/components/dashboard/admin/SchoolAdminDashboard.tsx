@@ -137,6 +137,7 @@ export default function SchoolAdminDashboard() {
             eyebrow="Curriculum readiness"
             title="School offerings"
             titleId="school-offerings-title"
+            action={{ label: 'Configure offerings', to: '/admin/offerings' }}
           />
           <div className="school-offerings-status">
             <StatusBadge tone={stats?.offerings_configured ? 'positive' : 'warning'}>

@@ -24,6 +24,7 @@ import NotesListPage from './pages/counselor/NotesListPage'
 import SchoolProfilePage from './pages/admin/SchoolProfilePage'
 import CounselorManagementPage from './pages/admin/CounselorManagementPage'
 import SchoolStudentsPage from './pages/admin/SchoolStudentsPage'
+import SchoolOfferingsPage from './pages/admin/SchoolOfferingsPage'
 import ChildDetailPage from './pages/parent/ChildDetailPage'
 import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
@@ -107,6 +108,7 @@ function AppRoutes() {
             <Route path="/admin/school" element={<SchoolProfilePage />} />
             <Route path="/admin/counselors" element={<CounselorManagementPage />} />
             <Route path="/admin/students" element={<SchoolStudentsPage />} />
+            <Route path="/admin/offerings" element={<SchoolOfferingsPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['parent']} />}>

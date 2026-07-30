@@ -69,6 +69,7 @@ function getNavItems(role: User['role']): NavItem[] {
       { to: '/admin/school', label: 'School Profile', icon: ICONS.school },
       { to: '/admin/counselors', label: 'Counselors', icon: ICONS.users },
       { to: '/admin/students', label: 'Students', icon: ICONS.users },
+      { to: '/admin/offerings', label: 'Offerings', icon: ICONS.clipboard },
     ]
   }
   if (role === 'system_admin') {
