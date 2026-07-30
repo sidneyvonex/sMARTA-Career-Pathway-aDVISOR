@@ -806,10 +806,38 @@ export const handlers = [
   http.get('/api/v1/school-admin/students/', () => {
     return HttpResponse.json({
       data: [
-        { id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', counselor_id: 10, counselor_name: 'Alice Wanjiku' },
-        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', counselor_id: null, counselor_name: null },
+        { id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', school_membership_status: 'active', counselor_id: 10, counselor_name: 'Alice Wanjiku' },
+        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', school_membership_status: 'active', counselor_id: null, counselor_name: null },
       ],
       error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/school-admin/membership-requests/', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          student_id: 22,
+          first_name: 'Mary',
+          last_name: 'Wanjiru',
+          email: 'mary@student.co.ke',
+          grade: 10,
+          requested_at: '2026-07-30T08:00:00+00:00',
+        },
+      ],
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.put('/api/v1/school-admin/membership-requests/:studentId/decision/', ({ params }) => {
+    return HttpResponse.json({
+      data: {
+        student_id: Number(params.studentId),
+        school_membership_status: 'active',
+      },
+      error: null,
+      message: 'Learner school link approved.',
     })
   }),
 

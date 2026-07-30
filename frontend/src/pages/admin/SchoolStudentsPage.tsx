@@ -24,6 +24,10 @@ export default function SchoolStudentsPage() {
     queryKey: ['school-admin', 'counselors'],
     queryFn: () => schoolAdminApi.getCounselors().then(r => r.data.data),
   })
+  const membershipRequestsQ = useQuery({
+    queryKey: ['school-admin', 'membership-requests'],
+    queryFn: () => schoolAdminApi.getMembershipRequests().then(r => r.data.data),
+  })
   const students = studentsQ.data
   const counselors = counselorsQ.data
 
@@ -38,6 +42,25 @@ export default function SchoolStudentsPage() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message ?? 'Failed to assign student.')
+    },
+  })
+
+  const decisionMutation = useMutation({
+    mutationFn: ({
+      studentId,
+      decision,
+    }: {
+      studentId: number
+      decision: 'approve' | 'reject'
+    }) => schoolAdminApi.decideMembershipRequest(studentId, decision),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['school-admin', 'membership-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['school-admin', 'students'] })
+      queryClient.invalidateQueries({ queryKey: ['school-admin', 'stats'] })
+      toast.success(res.data.message)
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message ?? 'Could not decide this school-link request.')
     },
   })
 
@@ -87,6 +110,87 @@ export default function SchoolStudentsPage() {
   return (
     <div className="school-students-page">
       <h1>Students</h1>
+
+      <section className="membership-queue" aria-labelledby="membership-queue-title">
+        <div className="membership-queue__heading">
+          <div>
+            <p className="membership-queue__eyebrow">Identity and access</p>
+            <h2 id="membership-queue-title">School-link approval requests</h2>
+          </div>
+          {!membershipRequestsQ.isLoading && !membershipRequestsQ.isError && (
+            <span className="membership-queue__count">
+              {membershipRequestsQ.data?.length ?? 0} pending
+            </span>
+          )}
+        </div>
+        <p className="membership-queue__notice">
+          Confirm that each learner belongs to your school before approving access.
+        </p>
+
+        {membershipRequestsQ.isLoading ? (
+          <p className="loading-text">Loading school-link requests…</p>
+        ) : membershipRequestsQ.isError ? (
+          <div className="membership-queue__error" role="alert">
+            <p>School-link requests could not load.</p>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => membershipRequestsQ.refetch()}
+            >
+              Retry requests
+            </button>
+          </div>
+        ) : membershipRequestsQ.data?.length ? (
+          <div className="membership-queue__list">
+            {membershipRequestsQ.data.map(request => {
+              const name = `${request.first_name} ${request.last_name}`
+              const decidingThisLearner = (
+                decisionMutation.isPending
+                && decisionMutation.variables?.studentId === request.student_id
+              )
+              return (
+                <article className="membership-request-card" key={request.student_id}>
+                  <div>
+                    <h3>{name}</h3>
+                    <p>{request.email}</p>
+                    <span>Grade {request.grade}</span>
+                  </div>
+                  <div className="membership-request-card__actions">
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      aria-label={`Approve ${name}`}
+                      disabled={decisionMutation.isPending}
+                      onClick={() => decisionMutation.mutate({
+                        studentId: request.student_id,
+                        decision: 'approve',
+                      })}
+                    >
+                      {decidingThisLearner ? 'Saving…' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      aria-label={`Reject ${name}`}
+                      disabled={decisionMutation.isPending}
+                      onClick={() => decisionMutation.mutate({
+                        studentId: request.student_id,
+                        decision: 'reject',
+                      })}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="membership-queue__empty">
+            No school-link requests are waiting for review.
+          </p>
+        )}
+      </section>
 
       <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
         <label htmlFor="student-search" className="sr-only">Search students</label>
@@ -144,7 +248,7 @@ export default function SchoolStudentsPage() {
                       const val = e.target.value
                       if (val) handleAssign(s.id, Number(val))
                     }}
-                    disabled={assignMutation.isPending}
+                    disabled={assignMutation.isPending || s.school_membership_status !== 'active'}
                   >
                     <option value="">Unassigned</option>
                     {counselors?.map(c => (

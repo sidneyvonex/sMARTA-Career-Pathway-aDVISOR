@@ -29,8 +29,18 @@ export interface SchoolStudent {
   grade: number
   photo_url: string | null
   quiz_status: 'done' | 'pending'
+  school_membership_status: 'pending' | 'active' | 'rejected'
   counselor_id: number | null
   counselor_name: string | null
+}
+
+export interface SchoolMembershipRequest {
+  student_id: number
+  first_name: string
+  last_name: string
+  email: string
+  grade: number
+  requested_at: string
 }
 
 export interface SchoolStats {
@@ -67,6 +77,18 @@ export const schoolAdminApi = {
 
   getStudents: () =>
     api.get<{ data: SchoolStudent[] }>('/school-admin/students/'),
+
+  getMembershipRequests: () =>
+    api.get<{ data: SchoolMembershipRequest[] }>('/school-admin/membership-requests/'),
+
+  decideMembershipRequest: (studentId: number, decision: 'approve' | 'reject') =>
+    api.put<{
+      data: {
+        student_id: number
+        school_membership_status: 'active' | 'rejected'
+      }
+      message: string
+    }>(`/school-admin/membership-requests/${studentId}/decision/`, { decision }),
 
   getStats: () =>
     api.get<{ data: SchoolStats }>('/school-admin/stats/'),

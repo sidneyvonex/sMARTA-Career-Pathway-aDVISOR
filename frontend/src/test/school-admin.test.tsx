@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -230,6 +231,31 @@ describe('SchoolStudentsPage', () => {
     await screen.findByText('Jane Muthoni')
     const selects = screen.getAllByRole('combobox')
     expect(selects.length).toBe(2)
+  })
+
+  it('shows pending school-link requests and lets the administrator approve', async () => {
+    let receivedDecision = ''
+    server.use(
+      http.put(
+        '/api/v1/school-admin/membership-requests/:studentId/decision/',
+        async ({ request }) => {
+          const body = await request.json() as { decision: string }
+          receivedDecision = body.decision
+          return HttpResponse.json({
+            data: { student_id: 22, school_membership_status: 'active' },
+            error: null,
+            message: 'Learner school link approved.',
+          })
+        },
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'School-link approval requests' })).toBeInTheDocument()
+    expect(screen.getByText('Mary Wanjiru')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Approve Mary Wanjiru' }))
+
+    await waitFor(() => expect(receivedDecision).toBe('approve'))
   })
 
   it('shows a retryable error when the student query fails', async () => {

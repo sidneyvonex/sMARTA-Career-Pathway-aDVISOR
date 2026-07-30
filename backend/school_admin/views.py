@@ -25,6 +25,7 @@ from guidance.serializers import (
 from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
 from system_admin.models import AuditLog
+from notifications.models import Notification
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
@@ -491,6 +492,126 @@ class SchoolStudentsView(APIView):
                 ),
             })
         return _success(data=data)
+
+
+class SchoolMembershipRequestsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def get(self, request):
+        school = request.user.school
+        if not school:
+            return _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        profiles = (
+            StudentProfile.objects.filter(
+                school=school,
+                mode='school_linked',
+                school_membership_status='pending',
+            )
+            .select_related('user')
+            .order_by('created_at', 'user__first_name', 'user__last_name')
+        )
+        return _success(data=[
+            {
+                'student_id': profile.user_id,
+                'first_name': profile.user.first_name,
+                'last_name': profile.user.last_name,
+                'email': profile.user.email,
+                'grade': profile.grade,
+                'requested_at': profile.created_at.isoformat(),
+            }
+            for profile in profiles
+        ])
+
+
+class SchoolMembershipDecisionView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def put(self, request, student_id):
+        school = request.user.school
+        if not school:
+            return _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        decision = request.data.get('decision')
+        if decision not in {'approve', 'reject'}:
+            return _error('decision must be either approve or reject.')
+
+        with transaction.atomic():
+            try:
+                profile = (
+                    StudentProfile.objects.select_for_update()
+                    .select_related('user')
+                    .get(
+                        user_id=student_id,
+                        school=school,
+                        mode='school_linked',
+                    )
+                )
+            except StudentProfile.DoesNotExist:
+                return _error(
+                    'Pending membership request not found.',
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            if profile.school_membership_status != 'pending':
+                return _error(
+                    'This membership request has already been decided.',
+                    status.HTTP_409_CONFLICT,
+                )
+
+            membership_status = 'active' if decision == 'approve' else 'rejected'
+            profile.school_membership_status = membership_status
+            profile.save(update_fields=['school_membership_status'])
+
+            action = (
+                'school_membership_approved'
+                if decision == 'approve'
+                else 'school_membership_rejected'
+            )
+            forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_address = (
+                forwarded.split(',')[0].strip()
+                if forwarded
+                else request.META.get('REMOTE_ADDR')
+            )
+            AuditLog.objects.create(
+                actor=request.user,
+                action=action,
+                target_type='user',
+                target_id=profile.user_id,
+                details={
+                    'school_id': school.id,
+                    'school_name': school.name,
+                    'decision': decision,
+                },
+                ip_address=ip_address,
+            )
+            Notification.objects.create(
+                user=profile.user,
+                type='school_membership_decided',
+                message=(
+                    f'Your school link to {school.name} is now '
+                    f'{membership_status}.'
+                ),
+            )
+
+        return _success(
+            data={
+                'student_id': profile.user_id,
+                'school_membership_status': membership_status,
+            },
+            message=(
+                'Learner school link approved.'
+                if decision == 'approve'
+                else 'Learner school link rejected.'
+            ),
+        )
 
 
 class SchoolStatsView(APIView):

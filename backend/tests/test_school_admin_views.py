@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 from tests.factories import SchoolAdminFactory, SchoolFactory, StudentProfileFactory, CounselorFactory, CounselorAssignmentFactory
 from riasec.models import RIASECAssessment
 from counselors.models import CounselorAssignment
+from notifications.models import Notification
+from system_admin.models import AuditLog
 
 pytestmark = pytest.mark.django_db
 
@@ -254,6 +256,123 @@ class TestSchoolStudentsView:
         response = self.client.get('/api/v1/school-admin/students/')
         student = response.data['data'][0]
         assert student['quiz_status'] == 'done'
+
+
+class TestSchoolMembershipRequests:
+    def setup_method(self):
+        self.client = APIClient()
+        self.school = SchoolFactory(
+            name='Starehe Boys',
+            county='kiambu',
+            school_code='KIA004',
+        )
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client.force_authenticate(self.admin)
+
+    def test_lists_only_pending_requests_for_admin_school(self):
+        pending = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+        StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentProfileFactory(
+            school=SchoolFactory(),
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+
+        response = self.client.get('/api/v1/school-admin/membership-requests/')
+
+        assert response.status_code == 200
+        assert response.data['data'] == [{
+            'student_id': pending.user_id,
+            'first_name': pending.user.first_name,
+            'last_name': pending.user.last_name,
+            'email': pending.user.email,
+            'grade': pending.grade,
+            'requested_at': pending.created_at.isoformat(),
+        }]
+
+    @pytest.mark.parametrize(
+        ('decision', 'expected_status', 'action'),
+        [
+            ('approve', 'active', 'school_membership_approved'),
+            ('reject', 'rejected', 'school_membership_rejected'),
+        ],
+    )
+    def test_decides_request_audits_and_notifies_learner(
+        self,
+        decision,
+        expected_status,
+        action,
+    ):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+
+        response = self.client.put(
+            f'/api/v1/school-admin/membership-requests/{profile.user_id}/decision/',
+            {'decision': decision},
+        )
+
+        assert response.status_code == 200
+        assert response.data['data']['school_membership_status'] == expected_status
+        profile.refresh_from_db()
+        assert profile.school_membership_status == expected_status
+        audit = AuditLog.objects.get(action=action, target_id=profile.user_id)
+        assert audit.actor == self.admin
+        assert audit.details['school_id'] == self.school.id
+        notification = Notification.objects.get(
+            user=profile.user,
+            type='school_membership_decided',
+        )
+        assert self.school.name in notification.message
+        assert expected_status in notification.message.lower()
+
+    def test_cannot_decide_request_for_another_school(self):
+        profile = StudentProfileFactory(
+            school=SchoolFactory(),
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+
+        response = self.client.put(
+            f'/api/v1/school-admin/membership-requests/{profile.user_id}/decision/',
+            {'decision': 'approve'},
+        )
+
+        assert response.status_code == 404
+        profile.refresh_from_db()
+        assert profile.school_membership_status == 'pending'
+
+    def test_rejects_invalid_or_replayed_decision(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+        invalid = self.client.put(
+            f'/api/v1/school-admin/membership-requests/{profile.user_id}/decision/',
+            {'decision': 'later'},
+        )
+        assert invalid.status_code == 400
+
+        self.client.put(
+            f'/api/v1/school-admin/membership-requests/{profile.user_id}/decision/',
+            {'decision': 'approve'},
+        )
+        replayed = self.client.put(
+            f'/api/v1/school-admin/membership-requests/{profile.user_id}/decision/',
+            {'decision': 'reject'},
+        )
+        assert replayed.status_code == 409
 
 
 class TestSchoolStatsView:

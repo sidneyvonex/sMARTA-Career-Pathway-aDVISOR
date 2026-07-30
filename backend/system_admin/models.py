@@ -19,6 +19,8 @@ ACTION_CHOICES = [
     ('counselor_assigned', 'Counselor assigned to student'),
     ('grade_verified', 'Grade verified'),
     ('grade_verification_removed', 'Grade verification removed'),
+    ('school_membership_approved', 'School membership approved'),
+    ('school_membership_rejected', 'School membership rejected'),
 ]
 
 TARGET_TYPE_CHOICES = [
