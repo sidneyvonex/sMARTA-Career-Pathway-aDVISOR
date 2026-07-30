@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail
 
-**Next:** Task 6.1 explicit attention reasons
+**Next:** Task 6.2 pilot intervention fields and follow-ups
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -45,6 +45,7 @@
 | `dac4407` | Learner-approved parent access, revocation and pilot identity notice |
 | `257b981` | Parent support dashboard with learner plan and next-action context |
 | `681d874` | Learner-approved parent child summary with evidence, plan, notes and report access |
+| `80d27ec` | Explicit, non-predictive counsellor attention reasons with bounded caseload loading |
 
 ## 1. How to use this plan
 
@@ -1114,9 +1115,21 @@ Do not create a predictive risk score.
 
 Tests:
 
-- every reason independently;
-- no false flag when complete;
-- query-count threshold.
+- [x] every reason independently;
+- [x] no false flag when complete;
+- [x] query-count threshold.
+
+Verification:
+
+- Seven stable attention reasons cover assessment, academic evidence, saved choices, plans, requested review, overdue follow-up and school-offering availability.
+- Each reason returns plain-language guidance without a severity, probability or predictive score.
+- Counsellor caseload responses expose `needs_attention` and the complete reason list.
+- Counsellor stats count learners with any derived reason rather than treating every completed assessment as complete support.
+- Attention service and counsellor API suite: 28 tests passed.
+- Affected counsellor, learner-summary and guidance backend suite: 75 tests passed.
+- Six-learner attention context remains bounded at seven database queries or fewer.
+- Strict TypeScript check: passed.
+- Commit: `80d27ec`.
 
 ### Task 6.2 - Extend notes into pilot interventions
 
