@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail
 
-**Next:** Task 6.2 pilot intervention fields and follow-ups
+**Next:** Task 6.3 counsellor priority dashboard redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -46,6 +46,7 @@
 | `257b981` | Parent support dashboard with learner plan and next-action context |
 | `681d874` | Learner-approved parent child summary with evidence, plan, notes and report access |
 | `80d27ec` | Explicit, non-predictive counsellor attention reasons with bounded caseload loading |
+| `6de164d` | Pilot interventions with agreed actions, follow-ups and explicit visibility |
 
 ## 1. How to use this plan
 
@@ -1135,14 +1136,28 @@ Verification:
 
 Extend `CounselorNote` or add a narrow related model:
 
-- category;
-- action agreed;
-- follow-up date;
-- status: open/completed;
-- learner-visible;
-- parent-visible.
+- [x] category;
+- [x] action agreed;
+- [x] follow-up date;
+- [x] status: open/completed;
+- [x] learner-visible;
+- [x] parent-visible.
 
 Keep safeguarding/private-note behavior separate.
+
+Verification:
+
+- `CounselorIntervention` is separate from confidential `CounselorNote` records.
+- Assigned-caseload-only endpoints list, create and update agreed actions and follow-ups.
+- Completion status sets or clears a server-managed completion timestamp.
+- Learner visibility defaults on for agreed actions; parent visibility remains explicit and defaults off.
+- Open past-due interventions feed the existing attention service through an `EXISTS` annotation without increasing the seven-query caseload ceiling.
+- Focused intervention and attention suite: 17 tests passed.
+- Complete counsellor and parent-access regression suite: 77 tests passed.
+- Django system check: no issues.
+- Counsellor migration drift check: no changes detected.
+- Strict TypeScript check: passed.
+- Commit: `6de164d`.
 
 ### Task 6.3 - Redesign counsellor dashboard
 
