@@ -9,11 +9,11 @@
 
 **Active sprint:** Sprint 3 - Pilot framework and combination domain
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Task 3.1 guidance domain foundation
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.2 guidance domain and curated catalogue
 
-**Next:** Task 3.2 curated pilot catalogue seed
+**Next:** Task 3.3 guidance read APIs
 
-**Outstanding baseline check:** Full backend regression suite (Task 3.1 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests)
+**Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
 | Commit | Delivered change |
 |---|---|
@@ -30,6 +30,7 @@
 | `3204ce1` | Standardized authenticated shell, route context, mobile navigation and offline status |
 | `2897357` | Application and route error boundaries with retryable query recovery |
 | `ea4e7ab` | Source-dated guidance framework, pathway tracks, three-subject combinations and school offerings |
+| `cce4907` | Curated Ministry-code pilot catalogue and representative five-county demonstration offerings |
 
 ## 1. How to use this plan
 
@@ -582,12 +583,12 @@ Verification:
 
 ### Task 3.2 - Seed the curated pilot catalogue
 
-- [ ] Seed the three pathways.
-- [ ] Seed their current tracks.
-- [ ] Seed a manageable, presentation-quality set of combinations covering all pathways.
-- [ ] Include source URL and effective date.
-- [ ] Seed at least one demonstration school per pilot county.
-- [ ] Seed representative school offerings.
+- [x] Seed the three pathways.
+- [x] Seed their current tracks.
+- [x] Seed a manageable, presentation-quality set of combinations covering all pathways.
+- [x] Include source URL and effective date.
+- [x] Seed at least one demonstration school per pilot county.
+- [x] Seed representative school offerings.
 
 Recommended presentation catalogue:
 
@@ -596,6 +597,18 @@ Recommended presentation catalogue:
 - 2-3 Arts and Sports Science combinations.
 
 Do not claim the curated set is the complete national catalogue.
+
+Verification:
+
+- Curated catalogue: 10 Ministry-coded combinations across seven tracks and all three pathways.
+- Presentation distribution: four STEM, three Social Sciences and three Arts & Sports Science combinations.
+- Pilot boundary: one clearly labelled synthetic demonstration school in each of Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua; 20 representative offerings cover all 10 combinations.
+- Source metadata: current Ministry/KEMIS subject-combination catalogue URL, effective 2026-01-01 and verified 2026-07-30; framework copy states that the set is not the complete national catalogue.
+- Guidance seed/model contract: 25 tests passed, including idempotent forward seed and reversible cleanup that preserves unrelated schools.
+- Affected accounts, students, RIASEC, school-admin and shared-factory regressions: 76 tests passed including the guidance contract.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Commit: `cce4907`.
 
 ### Task 3.3 - Add read APIs
 
