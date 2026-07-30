@@ -1,0 +1,96 @@
+from rest_framework import serializers
+
+from accounts.models import School
+from riasec.models import Pathway
+from students.models import Subject
+
+from .models import FrameworkVersion, PathwayTrack, SubjectCombination
+
+
+class FrameworkVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FrameworkVersion
+        fields = (
+            'id',
+            'code',
+            'title',
+            'description',
+            'source_url',
+            'effective_date',
+            'is_active',
+        )
+
+
+class FrameworkSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FrameworkVersion
+        fields = ('code', 'title', 'source_url', 'effective_date')
+
+
+class PathwaySummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pathway
+        fields = ('id', 'name', 'description')
+
+
+class PathwayTrackSerializer(serializers.ModelSerializer):
+    pathway = PathwaySummarySerializer(read_only=True)
+
+    class Meta:
+        model = PathwayTrack
+        fields = ('id', 'code', 'name', 'description', 'is_active', 'pathway')
+
+
+class PathwayCatalogueSerializer(serializers.ModelSerializer):
+    tracks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pathway
+        fields = ('id', 'name', 'description', 'tracks')
+
+    def get_tracks(self, obj):
+        tracks = getattr(obj, 'active_framework_tracks', ())
+        return PathwayTrackSerializer(tracks, many=True).data
+
+
+class SubjectSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = ('id', 'code', 'name', 'grade', 'category')
+
+
+class SchoolSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = School
+        fields = ('id', 'school_code', 'name', 'county')
+
+
+class SubjectCombinationSerializer(serializers.ModelSerializer):
+    framework = FrameworkSummarySerializer(
+        source='framework_version',
+        read_only=True,
+    )
+    track = PathwayTrackSerializer(read_only=True)
+    subjects = serializers.SerializerMethodField()
+    offered_schools = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SubjectCombination
+        fields = (
+            'id',
+            'code',
+            'title',
+            'description',
+            'framework',
+            'track',
+            'subjects',
+            'offered_schools',
+        )
+
+    def get_subjects(self, obj):
+        return SubjectSummarySerializer(obj.subjects, many=True).data
+
+    def get_offered_schools(self, obj):
+        offerings = getattr(obj, 'active_school_offerings', ())
+        schools = [offering.school for offering in offerings]
+        return SchoolSummarySerializer(schools, many=True).data
