@@ -75,6 +75,10 @@ def test_seed_creates_a_complete_five_county_demo():
         'kirinyaga',
         'nyandarua',
     }
+    assert all(
+        school.name.startswith('Smarta Shauri ')
+        for school in schools
+    )
     assert User.objects.filter(email__endswith=f'@{DEMO_DOMAIN}').count() == len(
         DEMO_USERS
     )

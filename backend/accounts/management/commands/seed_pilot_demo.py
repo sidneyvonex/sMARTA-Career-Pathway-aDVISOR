@@ -211,7 +211,7 @@ class Command(BaseCommand):
             school, _ = School.objects.update_or_create(
                 school_code=f'{DEMO_SCHOOL_PREFIX}{code}-001',
                 defaults={
-                    'name': f'Smart Ashauri {county_label} Demo School',
+                    'name': f'Smarta Shauri {county_label} Demo School',
                     'county': county,
                     'email': f'{county}@schools.{DEMO_DOMAIN}',
                     'phone': '+254700000000',
