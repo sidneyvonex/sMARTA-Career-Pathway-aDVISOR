@@ -1,8 +1,9 @@
 import { useAuthStore } from '../../store/authStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useLayoutStore } from '../../store/layoutStore'
-import { greeting, todayLabel } from '../../lib/greeting'
-import { initials } from '../../lib/format'
+import { useLocation } from 'react-router-dom'
+import { todayLabel } from '../../lib/greeting'
+import Avatar from '../common/Avatar'
 
 const BELL_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -20,8 +21,24 @@ export default function Topbar() {
   const { user } = useAuthStore()
   const { unreadCount, drawerOpen, setDrawerOpen } = useNotificationStore()
   const { setMobileSidebarOpen } = useLayoutStore()
+  const location = useLocation()
 
   if (!user) return <header className="topbar" role="banner" />
+
+  const pageTitle = location.pathname === '/'
+    ? 'Dashboard'
+    : location.pathname.startsWith('/grades')
+      ? 'My grades'
+      : location.pathname.startsWith('/assessment/results')
+        ? 'Career profile'
+        : location.pathname.startsWith('/assessment')
+          ? 'Career quiz'
+          : location.pathname.startsWith('/profile')
+            ? 'My profile'
+            : 'Smarta Shauri'
+  const pageSub = location.pathname === '/'
+    ? 'Your future, your choice. Tuko pamoja.'
+    : todayLabel()
 
   return (
     <header className="topbar" role="banner">
@@ -34,8 +51,8 @@ export default function Topbar() {
       </button>
 
       <div className="topbar__greeting">
-        <div className="topbar__greeting-main">{greeting(user.first_name)}</div>
-        <div className="topbar__greeting-sub">{todayLabel()}</div>
+        <div className="topbar__greeting-main">{pageTitle}</div>
+        <div className="topbar__greeting-sub">{pageSub}</div>
       </div>
 
       <div className="topbar__actions">
@@ -54,13 +71,12 @@ export default function Topbar() {
           )}
         </button>
 
-        <div
+        <Avatar
+          seed={`${user.first_name} ${user.last_name}`}
+          size={36}
+          shape="squircle"
           className="topbar__avatar"
-          role="img"
-          aria-label={`${user.first_name} ${user.last_name}`}
-        >
-          {initials(user.first_name, user.last_name)}
-        </div>
+        />
       </div>
     </header>
   )

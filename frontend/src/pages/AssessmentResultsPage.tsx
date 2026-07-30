@@ -14,26 +14,17 @@ export default function AssessmentResultsPage() {
   })
 
   if (isLoading) {
-    return (
-      <div className="assessment-page">
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading your results…</p>
-      </div>
-    )
+    return <div className="assessment-state">Building your career profile…</div>
   }
 
   if (isError || !data?.data.data) {
     return (
-      <div className="assessment-page">
-        <div className="assessment-card" style={{ textAlign: 'center' }}>
-          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>
-            No assessment results found.
-          </p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => navigate('/assessment')}
-            style={{ minHeight: 'var(--min-touch-target, 44px)' }}
-          >
+      <div className="assessment-page assessment-page--results">
+        <div className="assessment-empty">
+          <span aria-hidden="true">✦</span>
+          <h1>Your career profile starts here</h1>
+          <p>Complete the quiz to reveal your interest shape and best-fit CBC pathways.</p>
+          <button type="button" className="assessment-button" onClick={() => navigate('/assessment')}>
             Take the Assessment
           </button>
         </div>
@@ -42,46 +33,59 @@ export default function AssessmentResultsPage() {
   }
 
   const result = data.data.data
+  const topMatch = result.recommendations[0]
 
   return (
-    <div className="assessment-page">
-      <div className="assessment-card">
-        <h1 style={{
-          fontSize: 'var(--font-size-xl, 1.25rem)',
-          fontWeight: 700,
-          color: 'var(--color-text)',
-          marginBottom: 'var(--space-6, 1.5rem)',
-          textAlign: 'center',
-        }}>
-          Your Results
-        </h1>
+    <div className="assessment-page assessment-page--results">
+      <header className="results-hero">
+        <div>
+          <span className="assessment-eyebrow">Your career profile</span>
+          <h1>Your interests have a shape.</h1>
+          <p>
+            {topMatch
+              ? `${topMatch.pathway.name} is currently your strongest pathway match.`
+              : 'Your RIASEC scores show the kinds of work and learning that may suit you.'}
+          </p>
+        </div>
+        <div className="results-hero__code">
+          <span>Holland code</span>
+          <strong>{result.holland_code}</strong>
+        </div>
+      </header>
 
-        <RecommendationCards
-          recommendations={result.recommendations}
-          hollandCode={result.holland_code}
-        />
+      <div className="results-layout">
+        <section className="results-panel results-panel--matches">
+          <div className="results-panel__heading">
+            <div>
+              <span className="assessment-eyebrow">Direction</span>
+              <h2>Best-fit pathways</h2>
+            </div>
+            <span className="results-panel__spark" aria-hidden="true">✦</span>
+          </div>
+          <RecommendationCards
+            recommendations={result.recommendations}
+            hollandCode={result.holland_code}
+            hideCode
+          />
+        </section>
 
-        <hr style={{ border: 'none', borderTop: '1px solid var(--color-border, #e5e7eb)', margin: 'var(--space-6, 1.5rem) 0' }} />
-
-        <h2 style={{
-          fontSize: 'var(--font-size-base, 1rem)',
-          fontWeight: 700,
-          color: 'var(--color-text)',
-          marginBottom: 'var(--space-4, 1rem)',
-        }}>
-          Your Dimension Scores
-        </h2>
-        <ScoreBars scores={result.scores} />
-
-        <div style={{ marginTop: 'var(--space-6, 1.5rem)', display: 'flex', gap: 'var(--space-3, 0.75rem)', justifyContent: 'center' }}>
+        <section className="results-panel results-panel--scores">
+          <div className="results-panel__heading">
+            <div>
+              <span className="assessment-eyebrow">Personality</span>
+              <h2>Your dimension scores</h2>
+            </div>
+          </div>
+          <p className="results-panel__intro">These six dimensions combine to form your personal interest pattern.</p>
+          <ScoreBars scores={result.scores} />
           <button
             type="button"
-            className="btn-ghost"
+            className="assessment-button assessment-button--secondary assessment-button--wide"
             onClick={() => navigate('/assessment')}
           >
-            Retake Assessment
+            Retake assessment
           </button>
-        </div>
+        </section>
       </div>
     </div>
   )

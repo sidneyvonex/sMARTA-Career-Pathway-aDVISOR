@@ -5,6 +5,7 @@ import { studentsApi, StudentSubject } from '../api/students'
 import SubjectList from '../components/students/SubjectList'
 import GradeEntryForm from '../components/students/GradeEntryForm'
 import GradeHistory from '../components/students/GradeHistory'
+import '../styles/student-pages.css'
 
 export default function GradesPage() {
   const qc = useQueryClient()
@@ -54,79 +55,109 @@ export default function GradesPage() {
   const enrolled = subjectsQ.data ?? []
   const catalog = catalogQ.data ?? []
   const enrolledIds = new Set(enrolled.map((ss: StudentSubject) => ss.subject.id))
-  const unenrolled = catalog.filter((s) => !enrolledIds.has(s.id))
+  const unenrolled = catalog.filter((subject) => !enrolledIds.has(subject.id))
+  const activeSubject = enrolled.find((subject: StudentSubject) => subject.id === activeSubjectId)
 
   return (
-    <main style={{ maxWidth: '760px', margin: '0 auto', padding: '2rem 1rem' }}>
-      <h1 style={{ fontFamily: 'Inter, sans-serif', color: 'var(--color-text)', marginBottom: '1.5rem' }}>
-        My Subjects & Grades
-      </h1>
+    <div className="student-page student-page--grades">
+      <header className="student-page__hero">
+        <div>
+          <span className="student-page__eyebrow">Your learning record</span>
+          <h1>My subjects &amp; grades</h1>
+          <p>Build a clear picture of how you are growing, one subject and one term at a time.</p>
+        </div>
+        <div className="student-page__hero-stat" aria-label={`${enrolled.length} subjects enrolled`}>
+          <strong>{enrolled.length}</strong>
+          <span>subjects enrolled</span>
+        </div>
+      </header>
 
-      <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Enrolled Subjects</h2>
-        {subjectsQ.isLoading ? <p>Loading…</p> : (
-          <SubjectList
-            enrolledSubjects={enrolled}
-            onRemove={(id) => removeMutation.mutate(id)}
-          />
-        )}
-      </section>
-
-      {unenrolled.length > 0 && (
-        <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Add a Subject</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {unenrolled.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => enrollMutation.mutate(s.id)}
-                disabled={enrollMutation.isPending}
-                style={{ padding: '0.4rem 0.9rem', background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '20px', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                + {s.name}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {enrolled.length > 0 && (
-        <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Enter Grades</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-            {enrolled.map((ss: StudentSubject) => (
-              <button
-                key={ss.id}
-                type="button"
-                onClick={() => setActiveSubjectId(ss.id)}
-                style={{
-                  padding: '0.4rem 0.9rem',
-                  background: activeSubjectId === ss.id ? 'var(--color-primary)' : 'var(--color-background)',
-                  color: activeSubjectId === ss.id ? '#fff' : 'var(--color-text)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '20px',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                {ss.subject.name}
-              </button>
-            ))}
-          </div>
-
-          {activeSubjectId !== null && (
-            <>
-              <GradeEntryForm studentSubjectId={activeSubjectId} />
-              <div style={{ marginTop: '1rem' }}>
-                {gradesQ.isLoading ? <p>Loading grades…</p> : (
-                  <GradeHistory grades={gradesQ.data ?? []} />
-                )}
+      <div className="student-page__grid student-page__grid--grades">
+        <div className="student-page__column">
+          <section className="student-panel student-panel--tinted">
+            <div className="student-panel__heading">
+              <div>
+                <span className="student-panel__kicker">Your collection</span>
+                <h2>Enrolled subjects</h2>
               </div>
-            </>
+              <span className="student-panel__count">{enrolled.length}</span>
+            </div>
+            {subjectsQ.isLoading ? <p>Loading…</p> : (
+              <SubjectList
+                enrolledSubjects={enrolled}
+                onRemove={(id) => removeMutation.mutate(id)}
+              />
+            )}
+          </section>
+
+          {unenrolled.length > 0 && (
+            <section className="student-panel student-panel--compact">
+              <div className="student-panel__heading">
+                <div>
+                  <span className="student-panel__kicker">Explore</span>
+                  <h2>Add a subject</h2>
+                </div>
+              </div>
+              <div className="subject-picker">
+                {unenrolled.map((subject) => (
+                  <button
+                    key={subject.id}
+                    type="button"
+                    onClick={() => enrollMutation.mutate(subject.id)}
+                    disabled={enrollMutation.isPending}
+                    className="subject-picker__button"
+                  >
+                    <span aria-hidden="true">+</span> {subject.name}
+                  </button>
+                ))}
+              </div>
+            </section>
           )}
-        </section>
-      )}
-    </main>
+        </div>
+
+        {enrolled.length > 0 && (
+          <section className="student-panel student-panel--workspace">
+            <div className="student-panel__heading">
+              <div>
+                <span className="student-panel__kicker">Term tracker</span>
+                <h2>{activeSubject ? activeSubject.subject.name : 'Enter grades'}</h2>
+              </div>
+              <span className="student-panel__mark" aria-hidden="true">↗</span>
+            </div>
+
+            <div className="subject-tabs" aria-label="Choose a subject">
+              {enrolled.map((subject: StudentSubject) => (
+                <button
+                  key={subject.id}
+                  type="button"
+                  onClick={() => setActiveSubjectId(subject.id)}
+                  className={`subject-tabs__button${activeSubjectId === subject.id ? ' is-active' : ''}`}
+                >
+                  {subject.subject.name}
+                </button>
+              ))}
+            </div>
+
+            {activeSubjectId === null ? (
+              <div className="student-empty-state">
+                <span className="student-empty-state__icon" aria-hidden="true">◎</span>
+                <strong>Choose a subject</strong>
+                <p>Select one above to add a term result and review its history.</p>
+              </div>
+            ) : (
+              <>
+                <GradeEntryForm studentSubjectId={activeSubjectId} />
+                <div className="grade-history-wrap">
+                  <h3>Grade history</h3>
+                  {gradesQ.isLoading ? <p>Loading grades…</p> : (
+                    <GradeHistory grades={gradesQ.data ?? []} />
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
   )
 }

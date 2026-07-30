@@ -10,77 +10,73 @@ interface Props {
 
 export default function ProfileForm({ profile, onSaved }: Props) {
   const [bio, setBio] = useState(profile.bio)
-  const [dob, setDob] = useState(profile.date_of_birth ?? '')
+  const [dateOfBirth, setDateOfBirth] = useState(profile.date_of_birth ?? '')
   const [interests, setInterests] = useState(profile.career_interests)
 
   const mutation = useMutation({
     mutationFn: () =>
       studentsApi.updateProfile({
         bio,
-        date_of_birth: dob || null,
+        date_of_birth: dateOfBirth || null,
         career_interests: interests,
       }),
-    onSuccess: (res) => {
+    onSuccess: (response) => {
       toast.success('Profile saved.')
-      onSaved(res.data.data)
+      onSaved(response.data.data)
     },
     onError: () => toast.error('Failed to save profile.'),
   })
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}
-      style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '480px' }}
+      onSubmit={(event) => { event.preventDefault(); mutation.mutate() }}
+      className="profile-form"
     >
-      <div>
-        <label htmlFor="bio" style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-          Bio
-        </label>
+      <div className="student-field">
+        <div className="student-field__label-row">
+          <label htmlFor="bio">Bio — a little about you</label>
+          <small>{bio.length}/500</small>
+        </div>
         <textarea
           id="bio"
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          rows={4}
+          onChange={(event) => setBio(event.target.value)}
+          rows={5}
           maxLength={500}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          className="student-field__control"
+          placeholder="What are you proud of? What are you working towards?"
         />
-        <small style={{ color: 'var(--color-text-secondary)' }}>{bio.length}/500</small>
       </div>
 
-      <div>
-        <label htmlFor="dob" style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-          Date of Birth
-        </label>
+      <div className="student-field">
+        <label htmlFor="dob">Date of birth</label>
         <input
           id="dob"
           type="date"
-          value={dob}
-          onChange={(e) => setDob(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          value={dateOfBirth}
+          onChange={(event) => setDateOfBirth(event.target.value)}
+          className="student-field__control"
         />
       </div>
 
-      <div>
-        <label htmlFor="interests" style={{ display: 'block', fontWeight: 600, marginBottom: '4px' }}>
-          Career Interests
-        </label>
+      <div className="student-field">
+        <div className="student-field__label-row">
+          <label htmlFor="interests">Career interests</label>
+          <small>{interests.length}/500</small>
+        </div>
         <textarea
           id="interests"
           value={interests}
-          onChange={(e) => setInterests(e.target.value)}
-          rows={3}
+          onChange={(event) => setInterests(event.target.value)}
+          rows={4}
           maxLength={500}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          className="student-field__control"
+          placeholder="Examples: architecture, health, coding, teaching, music…"
         />
-        <small style={{ color: 'var(--color-text-secondary)' }}>{interests.length}/500</small>
       </div>
 
-      <button
-        type="submit"
-        disabled={mutation.isPending}
-        style={{ padding: '0.75rem', background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer' }}
-      >
-        {mutation.isPending ? 'Saving…' : 'Save Profile'}
+      <button type="submit" disabled={mutation.isPending} className="student-action student-action--wide">
+        {mutation.isPending ? 'Saving…' : 'Save profile'}
       </button>
     </form>
   )

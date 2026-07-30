@@ -3,19 +3,18 @@ import type { AssessmentRecommendation } from '../../api/assessment'
 interface Props {
   recommendations: AssessmentRecommendation[]
   hollandCode: string
+  hideCode?: boolean
 }
 
-export default function RecommendationCards({ recommendations, hollandCode }: Props) {
+export default function RecommendationCards({ recommendations, hollandCode, hideCode = false }: Props) {
   return (
     <div>
-      <div className="results-holland-code">
+      {!hideCode && <div className="results-holland-code">
         <div className="results-holland-badge" aria-label={`Holland Code: ${hollandCode}`}>
           {hollandCode}
         </div>
-        <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-          Your Holland Code
-        </p>
-      </div>
+        <p>Your Holland Code</p>
+      </div>}
 
       <div className="recommendation-cards">
         {recommendations.map((rec) => (

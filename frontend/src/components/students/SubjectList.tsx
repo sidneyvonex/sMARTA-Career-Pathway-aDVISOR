@@ -7,29 +7,37 @@ interface Props {
 
 export default function SubjectList({ enrolledSubjects, onRemove }: Props) {
   if (enrolledSubjects.length === 0) {
-    return <p style={{ color: 'var(--color-text-secondary)' }}>No subjects added yet.</p>
+    return (
+      <div className="student-empty-state student-empty-state--small">
+        <span className="student-empty-state__icon" aria-hidden="true">＋</span>
+        <strong>No subjects added yet</strong>
+        <p>Choose from the subject list below to begin tracking.</p>
+      </div>
+    )
   }
+
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-      {enrolledSubjects.map((ss) => (
-        <li
-          key={ss.id}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0', borderBottom: '1px solid var(--color-border)' }}
-        >
-          <span>
-            <strong>{ss.subject.name}</strong>{' '}
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>({ss.subject.category})</span>
+    <ul className="subject-list">
+      {enrolledSubjects.map((studentSubject) => (
+        <li key={studentSubject.id} className="subject-list__item">
+          <span className="subject-list__monogram" aria-hidden="true">
+            {studentSubject.subject.name.charAt(0)}
+          </span>
+          <span className="subject-list__copy">
+            <strong>{studentSubject.subject.name}</strong>
+            <small>{studentSubject.subject.category}</small>
           </span>
           <button
             type="button"
             onClick={() => {
-              if (window.confirm(`Remove ${ss.subject.name}? All grades for this subject will be deleted.`)) {
-                onRemove(ss.id)
+              if (window.confirm(`Remove ${studentSubject.subject.name}? All grades for this subject will be deleted.`)) {
+                onRemove(studentSubject.id)
               }
             }}
-            style={{ color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
+            className="subject-list__remove"
+            aria-label={`Remove ${studentSubject.subject.name}`}
           >
-            Remove
+            ×
           </button>
         </li>
       ))}

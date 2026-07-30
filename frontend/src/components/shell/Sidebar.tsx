@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { authApi, type User } from '../../api/auth'
-import { initials } from '../../lib/format'
+import Avatar from '../common/Avatar'
 
 interface NavItem {
   to: string
@@ -43,9 +43,9 @@ const ICONS = {
 function getNavItems(role: User['role']): NavItem[] {
   if (role === 'student') {
     return [
-      { to: '/', label: 'Home', icon: ICONS.grid },
+      { to: '/', label: 'Dashboard', icon: ICONS.grid },
       { to: '/grades', label: 'My Grades', icon: ICONS.bar },
-      { to: '/assessment/results', label: 'My Results', icon: ICONS.clock },
+      { to: '/assessment/results', label: 'Career Profile', icon: ICONS.clock },
       { to: '/assessment', label: 'Career Quiz', icon: ICONS.clipboard },
       { to: '/profile', label: 'My Profile', icon: ICONS.person },
     ]
@@ -124,6 +124,7 @@ export default function Sidebar() {
           className="sidebar__toggle"
           onClick={() => { toggleSidebar(); setMobileSidebarOpen(false) }}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? CHEVRON_RIGHT : CHEVRON_LEFT}
         </button>
@@ -150,9 +151,12 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="sidebar__footer">
-        <div className="sidebar__avatar" aria-hidden="true">
-          {initials(user.first_name, user.last_name)}
-        </div>
+        <Avatar
+          seed={`${user.first_name} ${user.last_name}`}
+          size={40}
+          shape="squircle"
+          className="sidebar__avatar"
+        />
         <div className="sidebar__user-info">
           <div className="sidebar__user-name">{user.first_name} {user.last_name}</div>
           <div className="sidebar__user-role">{roleLabel}</div>

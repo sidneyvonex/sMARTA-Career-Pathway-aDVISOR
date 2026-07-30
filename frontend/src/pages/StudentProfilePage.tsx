@@ -3,45 +3,89 @@ import { useQuery } from '@tanstack/react-query'
 import { studentsApi, StudentProfile } from '../api/students'
 import ProfileForm from '../components/students/ProfileForm'
 import PhotoUpload from '../components/students/PhotoUpload'
+import Avatar from '../components/common/Avatar'
+import '../styles/student-pages.css'
 
 export default function StudentProfilePage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['student-profile'],
-    queryFn: () => studentsApi.getProfile().then((r) => r.data.data),
+    queryFn: () => studentsApi.getProfile().then((response) => response.data.data),
   })
   const [profile, setProfile] = useState<StudentProfile | null>(null)
 
-  if (isLoading) return <p style={{ padding: '2rem' }}>Loading…</p>
-  if (isError || !data) return <p style={{ padding: '2rem', color: 'var(--color-error)' }}>Failed to load profile.</p>
+  if (isLoading) {
+    return <div className="student-page-state">Loading your profile…</div>
+  }
+
+  if (isError || !data) {
+    return <div className="student-page-state student-page-state--error">We could not load your profile. Please try again.</div>
+  }
 
   const current = profile ?? data
+  const fullName = `${current.first_name} ${current.last_name}`
 
   return (
-    <main style={{ maxWidth: '640px', margin: '0 auto', padding: '2rem 1rem' }}>
-      <h1 style={{ fontFamily: 'Inter, sans-serif', color: 'var(--color-text)', marginBottom: '1.5rem' }}>
-        My Profile
-      </h1>
+    <div className="student-page student-page--profile">
+      <header className="profile-hero">
+        <div className="profile-hero__avatar">
+          <Avatar seed={fullName} size={116} shape="squircle" />
+        </div>
+        <div className="profile-hero__copy">
+          <span className="student-page__eyebrow">Your student identity</span>
+          <h1>{fullName}</h1>
+          <p>{current.email}</p>
+          <div className="profile-hero__chips">
+            <span>Grade {current.grade}</span>
+            <span>{current.county || 'County not set'}</span>
+            <span>{current.mode === 'self_guided' ? 'Self-guided' : 'School-linked'}</span>
+          </div>
+        </div>
+        <div className="profile-hero__spark" aria-hidden="true">✦</div>
+      </header>
 
-      <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <p><strong>Name:</strong> {current.first_name} {current.last_name}</p>
-        <p><strong>Email:</strong> {current.email}</p>
-        <p><strong>County:</strong> {current.county}</p>
-        <p><strong>Grade:</strong> {current.grade}</p>
-        <p><strong>Mode:</strong> {current.mode === 'self_guided' ? 'Self-Guided' : 'School-Linked'}</p>
-      </section>
+      <div className="student-page__grid student-page__grid--profile">
+        <section className="student-panel profile-photo-panel">
+          <div className="student-panel__heading">
+            <div>
+              <span className="student-panel__kicker">Make it yours</span>
+              <h2>Profile photo</h2>
+            </div>
+          </div>
+          <p className="student-panel__intro">Add a photo so your counselor and school team can recognise you quickly.</p>
+          <PhotoUpload
+            photoUrl={current.photo_url}
+            fallbackName={fullName}
+            onUploaded={(url) => setProfile({ ...current, photo_url: url || null })}
+          />
 
-      <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Profile Photo</h2>
-        <PhotoUpload
-          photoUrl={current.photo_url}
-          onUploaded={(url) => setProfile({ ...current, photo_url: url || null })}
-        />
-      </section>
+          <dl className="profile-facts">
+            <div>
+              <dt>Grade</dt>
+              <dd>{current.grade}</dd>
+            </div>
+            <div>
+              <dt>County</dt>
+              <dd>{current.county || 'Not set'}</dd>
+            </div>
+            <div>
+              <dt>Learning mode</dt>
+              <dd>{current.mode === 'self_guided' ? 'Self-guided' : 'School-linked'}</dd>
+            </div>
+          </dl>
+        </section>
 
-      <section style={{ background: 'var(--color-surface)', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>About Me</h2>
-        <ProfileForm profile={current} onSaved={(updated) => setProfile(updated)} />
-      </section>
-    </main>
+        <section className="student-panel student-panel--workspace">
+          <div className="student-panel__heading">
+            <div>
+              <span className="student-panel__kicker">Your story</span>
+              <h2>About me</h2>
+            </div>
+            <span className="student-panel__mark" aria-hidden="true">✎</span>
+          </div>
+          <p className="student-panel__intro">Tell us what matters to you. This helps make your pathway guidance more personal.</p>
+          <ProfileForm profile={current} onSaved={(updated) => setProfile(updated)} />
+        </section>
+      </div>
+    </div>
   )
 }

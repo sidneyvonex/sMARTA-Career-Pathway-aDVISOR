@@ -191,12 +191,13 @@
   flex: 1;
   min-width: 120px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-stat__value {
@@ -226,12 +227,13 @@
 /* ── Locked/teaser section ────────────────────────── */
 .locked-section {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .locked-section__icon {
@@ -278,9 +280,10 @@
 /* ── Dashboard card (reusable) ────────────────────── */
 .dash-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .dash-card__header {
@@ -340,10 +343,11 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .trait-bar__track {
-  height: 6px;
+  height: 8px;
   background: var(--color-divider);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -384,7 +388,7 @@
 .pathway-item__rank {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   background: var(--color-primary-surface);
   color: var(--color-primary);
   font-size: var(--font-size-xs);
@@ -397,7 +401,7 @@
 
 .pathway-item--first .pathway-item__rank {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .pathway-item__info {
@@ -419,7 +423,7 @@
 }
 
 .pathway-item--first .pathway-item__pct {
-  color: var(--color-accent);
+  color: var(--color-accent-hover);
 }
 
 /* ── Counselor card ───────────────────────────────── */

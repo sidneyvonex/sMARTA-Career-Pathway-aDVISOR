@@ -44,9 +44,11 @@ describe('DashboardPage', () => {
   it('renders StudentDashboard for student role', async () => {
     setUser('student')
     render(<DashboardPage />, { wrapper })
-    await waitFor(() => {
-      expect(screen.queryByText(/Dashboard not yet available/i)).not.toBeInTheDocument()
-    })
+    expect(await screen.findByRole('heading', { name: 'Karibu, Jane' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Career insights' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'This week' })).toBeInTheDocument()
+    expect(screen.getByText('Your strength shape')).toBeInTheDocument()
+    expect(screen.getByText('Best-fit pathways')).toBeInTheDocument()
   })
 
   it('renders CounselorDashboard for counselor role', async () => {

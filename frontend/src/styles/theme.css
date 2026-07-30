@@ -6,6 +6,7 @@
   --color-primary: #1A5C38;
   --color-primary-hover: #22743F;
   --color-primary-dark: #0F3B22;
+  --color-sidebar-deep: #092C1A;
   --color-primary-surface: #E8F5EE;
 
   /* Brand secondary — light green */
@@ -46,6 +47,24 @@
   --color-info-surface: #EFF6FF;
   --color-purple: #7C3AED;
   --color-purple-surface: #F3E8FF;
+
+  /* Illustrated people */
+  --avatar-bg-1: #E8F5EE;
+  --avatar-bg-2: #FEF6DD;
+  --avatar-bg-3: #FDECE8;
+  --avatar-bg-4: #EAF3FF;
+  --avatar-bg-5: #EDE9FB;
+  --avatar-bg-6: #E6F6F3;
+  --avatar-teal: #0E9F8E;
+  --avatar-skin-1: #8D5524;
+  --avatar-skin-2: #A9673B;
+  --avatar-skin-3: #9A5D33;
+  --avatar-skin-4: #6B4423;
+  --avatar-skin-5: #7A4E2D;
+  --avatar-skin-shadow: #6F3F24;
+  --avatar-hair: #21150F;
+  --avatar-hair-2: #2A2320;
+  --avatar-hair-3: #3A2A1A;
 
   /* Typography — Poppins for display, DM Sans for body */
   --font-family-display: 'Poppins', system-ui, -apple-system, sans-serif;
