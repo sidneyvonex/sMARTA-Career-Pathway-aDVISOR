@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 2 - Shared authenticated design system
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 Task 2.1 shared dashboard primitives
 
-**Next:** Task 2.1 reusable dashboard primitives
+**Next:** Task 2.2 standardized authenticated page layout
 
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
@@ -26,6 +26,7 @@
 | `3eec101` | Authenticated API cache exclusion and logout data cleanup |
 | `f30a99a` | Active-school validation and pending learner membership |
 | `b24ba8d` | Advisory interest-alignment language across learner, parent, counsellor, public and PDF surfaces |
+| `ba721c6` | Shared, role-aware dashboard primitives with parent and counsellor adoption |
 
 ## 1. How to use this plan
 
@@ -456,16 +457,26 @@ Create:
 
 Work:
 
-- [ ] Extract stable concepts from `lively/*`.
-- [ ] Accept role-specific color/accent variants through props/classes.
-- [ ] Keep visual tokens in `theme.css`.
-- [ ] Remove hardcoded inline layout/color styles from migrated areas.
-- [ ] Add component tests for interactive behavior and accessibility labels.
+- [x] Extract stable concepts from `lively/*`.
+- [x] Accept role-specific color/accent variants through props/classes.
+- [x] Keep visual values connected to the shared theme tokens.
+- [x] Remove hardcoded inline layout/color styles from migrated areas.
+- [x] Add component tests for interactive behavior and accessibility labels.
 
 Acceptance:
 
-- Student dashboard still looks intentional after extraction.
-- At least parent and counsellor prototypes can render using the same primitives.
+- [x] Student dashboard retains its specialized hero and card composition while reusing the shared section-header contract.
+- [x] Parent and counsellor dashboards render with the same hero, state, section and action/metric primitives.
+
+Verification:
+
+- Shared primitive contract suite: 6 tests passed.
+- Focused dashboard, parent and counsellor integration suites: 30 tests passed.
+- Full frontend regression suite: 26 files and 160 tests passed.
+- Production PWA build: passed; main JS gzip 137.17 kB, CSS gzip 23.32 kB.
+- Static review: migrated parent/counsellor areas have no inline layout or color styles; student inline styles only set existing animation-order custom properties.
+- Authenticated live-browser review was unavailable because the local Django/MySQL connection rejected TLS credentials. The public shell loaded successfully; no database configuration was changed.
+- Commit: `ba721c6`.
 
 ### Task 2.2 - Standardize authenticated page layout
 
