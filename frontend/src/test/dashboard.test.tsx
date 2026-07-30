@@ -45,8 +45,14 @@ describe('DashboardPage', () => {
     setUser('student')
     render(<DashboardPage />, { wrapper })
     expect(await screen.findByRole('heading', { name: 'Karibu, Jane' })).toBeInTheDocument()
+    expect(screen.getByText('Compare your saved combinations')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/compare')
     expect(screen.getByRole('heading', { name: 'Career insights' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'This week' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Evidence to action' })).toBeInTheDocument()
+    for (const stage of ['Evidence', 'Interests', 'Compare', 'Plan']) {
+      expect(screen.getByText(stage)).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('progressbar', { name: 'Career journey progress' })).not.toBeInTheDocument()
     expect(screen.getByText('Your strength shape')).toBeInTheDocument()
     expect(screen.getByText('Interest-aligned pathways')).toBeInTheDocument()
     expect(screen.getByText(/suggestions are starting points for exploration/i)).toBeInTheDocument()

@@ -18,9 +18,13 @@ export interface LivelyData {
   photoUrl?: string | null
   gradeLabel?: string
   county?: string | null
-  profileComplete: boolean
   quizDone: boolean
   subjectsCount: number
+  academicReady: boolean
+  savedChoicesCount: number
+  hasProvisionalChoice: boolean
+  planStatus: string
+  nextAction: { title: string; href: string }
   topPathway: { name: string } | null
   topStrength: string | null
   radar: RadarDatum[] | null
@@ -34,38 +38,65 @@ export interface LivelyData {
 }
 
 const TASK_ICONS = {
-  profile: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M5 21c0-4 3-7 7-7s7 3 7 7" /></svg>,
   subjects: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 5a3 3 0 0 1 3-3h13v17H7a3 3 0 0 0-3 3V5z" /><path d="M4 19h16" /></svg>,
   quiz: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 17v.01M9.8 9a2.4 2.4 0 1 1 3.4 2.2c-.8.4-1.2.9-1.2 1.8" /></svg>,
   explore: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="m15 9-2 4-4 2 2-4 4-2z" /></svg>,
+  plan: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3h12v18H6z" /><path d="m9 8 1.5 1.5L14 6M9 14h6M9 18h4" /></svg>,
 }
 
 function JourneyPanel({ data }: { data: LivelyData }) {
   const tasks = [
-    data.profileComplete
-      ? { to: '/profile', label: 'Refresh your profile', detail: 'Keep your interests and goals current', icon: TASK_ICONS.profile }
-      : { to: '/profile', label: 'Complete your profile', detail: 'Help us personalise your guidance', icon: TASK_ICONS.profile },
-    data.subjectsCount > 0
-      ? { to: '/grades', label: 'Update your grades', detail: `${data.subjectsCount} subjects are ready to track`, icon: TASK_ICONS.subjects }
-      : { to: '/grades', label: 'Add your subjects', detail: 'Start tracking your CBC progress', icon: TASK_ICONS.subjects },
-    data.quizDone
-      ? { to: '/assessment/results', label: 'Explore career ideas', detail: data.topPathway ? `Start with ${data.topPathway.name}` : 'See your interest-aligned pathways', icon: TASK_ICONS.explore }
-      : { to: '/assessment', label: 'Take the career quiz', detail: 'Discover your natural strengths', icon: TASK_ICONS.quiz },
+    {
+      to: '/grades',
+      label: 'Evidence',
+      detail: data.academicReady ? 'Academic evidence ready' : 'Add subjects and current grades',
+      complete: data.academicReady,
+      icon: TASK_ICONS.subjects,
+    },
+    {
+      to: data.quizDone ? '/assessment/results' : '/assessment',
+      label: 'Interests',
+      detail: data.quizDone ? 'Interest profile complete' : 'Complete the career interest quiz',
+      complete: data.quizDone,
+      icon: TASK_ICONS.quiz,
+    },
+    {
+      to: data.savedChoicesCount >= 2 ? '/compare' : '/explore',
+      label: 'Compare',
+      detail: data.savedChoicesCount >= 2
+        ? `${data.savedChoicesCount} choices ready to compare`
+        : `Save ${2 - data.savedChoicesCount} more choice${data.savedChoicesCount === 1 ? '' : 's'}`,
+      complete: data.hasProvisionalChoice,
+      icon: TASK_ICONS.explore,
+    },
+    {
+      to: '/plan',
+      label: 'Plan',
+      detail: data.planStatus === 'not_started'
+        ? 'Turn a provisional choice into actions'
+        : data.planStatus === 'draft'
+          ? 'Build milestones and prepare for review'
+          : data.planStatus === 'ready_for_review'
+            ? 'Plan is ready for counsellor review'
+            : 'Plan reviewed',
+      complete: data.planStatus === 'reviewed',
+      icon: TASK_ICONS.plan,
+    },
   ]
 
   return (
     <aside className="lv-journey lv-anim" style={{ ['--i' as string]: 1 }} aria-labelledby="journey-title">
       <SectionHeader
         className="lv-section-head"
-        eyebrow="Keep moving"
-        title="This week"
+        eyebrow="Decision journey"
+        title="Evidence to action"
         titleId="journey-title"
         aside={<span className="lv-journey__count">{tasks.length} steps</span>}
       />
       <div className="lv-journey__tasks">
         {tasks.map((task, index) => (
           <Link to={task.to} className="lv-task" key={task.label}>
-            <span className={`lv-task__icon lv-task__icon--${index}`}>{task.icon}</span>
+            <span className={`lv-task__icon lv-task__icon--${index}${task.complete ? ' lv-task__icon--complete' : ''}`}>{task.icon}</span>
             <span className="lv-task__copy">
               <strong>{task.label}</strong>
               <small>{task.detail}</small>
@@ -113,9 +144,7 @@ export default function LivelyStudentDashboard(data: LivelyData) {
             photoUrl={data.photoUrl}
             gradeLabel={data.gradeLabel}
             county={data.county}
-            quizDone={data.quizDone}
-            subjectsCount={data.subjectsCount}
-            topPathway={data.topPathway}
+            nextAction={data.nextAction}
           />
         </div>
         <JourneyPanel data={data} />
@@ -147,7 +176,13 @@ export default function LivelyStudentDashboard(data: LivelyData) {
           </article>
 
           <article className="lv-card lv-card--pathway lv-anim" style={{ ['--i' as string]: 3 }}>
-            <SectionHeader className="lv-card__head" eyebrow="Direction" title="Interest-aligned pathways" titleAs="h3" />
+            <SectionHeader
+              className="lv-card__head"
+              eyebrow="Direction"
+              title="Interest-aligned pathways"
+              titleAs="h3"
+              action={{ label: 'Explore choices', to: '/explore' }}
+            />
             {data.pathways && data.topPathway ? (
               <div>
                 <p className="lv-pathway-advisory">

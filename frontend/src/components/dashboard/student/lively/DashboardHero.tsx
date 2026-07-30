@@ -7,9 +7,7 @@ interface Props {
   photoUrl?: string | null
   gradeLabel?: string
   county?: string | null
-  quizDone: boolean
-  subjectsCount: number
-  topPathway: { name: string } | null
+  nextAction: { title: string; href: string }
 }
 
 function StudentCharacter() {
@@ -54,14 +52,8 @@ export default function DashboardHero({
   photoUrl,
   gradeLabel,
   county,
-  quizDone,
-  subjectsCount,
-  topPathway,
+  nextAction,
 }: Props) {
-  const progress = quizDone ? (subjectsCount > 0 ? 86 : 72) : subjectsCount > 0 ? 48 : 24
-  const ctaTo = quizDone ? '/assessment/results' : '/assessment'
-  const ctaLabel = quizDone ? 'Explore your pathway' : 'Continue self-discovery'
-
   return (
     <section className="lv-hero" aria-labelledby="student-dashboard-title">
       <div className="lv-hero__landscape" aria-hidden="true" />
@@ -80,31 +72,17 @@ export default function DashboardHero({
           Karibu, {firstName}
         </h1>
         <p className="lv-hero__sub">
-          {topPathway
-            ? `${topPathway.name} is a useful starting point for exploration.`
-            : 'Discover the strengths, subjects and careers that interest you.'}
+          Your evidence and choices shape the next step. You can revisit every stage before review.
         </p>
 
-        <div className="lv-hero__progress">
-          <div className="lv-hero__progress-head">
-            <span>Career journey</span>
-            <strong>{progress}%</strong>
-          </div>
-          <div
-            className="lv-hero__progress-track"
-            role="progressbar"
-            aria-label="Career journey progress"
-            aria-valuenow={progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
+        <div className="lv-hero__next">
+          <span>Next action</span>
+          <strong>{nextAction.title}</strong>
         </div>
 
         <div className="lv-hero__footer">
-          <Link to={ctaTo} className="lv-hero__cta">
-            {ctaLabel}
+          <Link to={nextAction.href} className="lv-hero__cta">
+            Continue
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path d="M5 12h14M13 6l6 6-6 6" />
             </svg>

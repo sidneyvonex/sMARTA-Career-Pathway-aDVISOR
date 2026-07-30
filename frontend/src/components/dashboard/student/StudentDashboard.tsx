@@ -2,6 +2,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { GRADE_LEVEL_POINTS, studentsApi } from '../../../api/students'
 import { assessmentApi, type RIASECDimension } from '../../../api/assessment'
 import { dashboardApi } from '../../../api/dashboard'
+import { guidanceApi, guidanceKeys } from '../../../api/guidance'
 import { notificationsApi } from '../../../api/notifications'
 import { useAuthStore } from '../../../store/authStore'
 import { useNotificationStore } from '../../../store/notificationStore'
@@ -34,6 +35,16 @@ export default function StudentDashboard() {
     queryFn: () => studentsApi.getMySubjects().then((response) => response.data.data),
   })
 
+  const evidenceQ = useQuery({
+    queryKey: ['student', 'evidence-summary'],
+    queryFn: () => studentsApi.getEvidenceSummary().then((response) => response.data.data),
+  })
+
+  const choicesQ = useQuery({
+    queryKey: guidanceKeys.learnerChoices(),
+    queryFn: () => guidanceApi.getLearnerChoices().then((response) => response.data.data),
+  })
+
   const resultQ = useQuery({
     queryKey: ['riasec-latest'],
     queryFn: () => assessmentApi.getLatest().then((response) => response.data.data),
@@ -63,8 +74,15 @@ export default function StudentDashboard() {
   const result = resultQ.data ?? null
   const counselor = counselorQ.data ?? null
   const notifications = notificationsQ.data ?? []
+  const evidence = evidenceQ.data ?? null
+  const choices = choicesQ.data ?? []
 
-  if (profileQ.isLoading) {
+  if (
+    profileQ.isLoading ||
+    subjectsQ.isLoading ||
+    evidenceQ.isLoading ||
+    choicesQ.isLoading
+  ) {
     return (
       <div className="lv-loading" aria-label="Loading dashboard">
         <div className="skeleton lv-loading__hero" />
@@ -75,17 +93,28 @@ export default function StudentDashboard() {
     )
   }
 
-  if (profileQ.isError || !profile) {
+  if (
+    profileQ.isError ||
+    subjectsQ.isError ||
+    evidenceQ.isError ||
+    choicesQ.isError ||
+    !profile ||
+    !evidence
+  ) {
     return (
       <ErrorState
         title="Your dashboard could not load"
-        description="Check your connection and try loading your learner profile again."
-        onRetry={() => profileQ.refetch()}
+        description="Check your connection and try loading your learner evidence and choices again."
+        onRetry={() => {
+          profileQ.refetch()
+          subjectsQ.refetch()
+          evidenceQ.refetch()
+          choicesQ.refetch()
+        }}
       />
     )
   }
 
-  const profileComplete = Boolean(profile.bio && profile.grade)
   const quizDone = result !== null
   const topPathway = result?.recommendations[0] ?? null
   const dimensions = result ? (Object.keys(result.scores) as RIASECDimension[]) : []
@@ -125,9 +154,13 @@ export default function StudentDashboard() {
     photoUrl: profile.photo_url,
     gradeLabel: `Grade ${profile.grade}`,
     county: profile.county,
-    profileComplete,
     quizDone,
     subjectsCount: subjects.length,
+    academicReady: evidence.academic_evidence.status === 'ready',
+    savedChoicesCount: evidence.saved_combination_count,
+    hasProvisionalChoice: choices.some((choice) => choice.status === 'provisional'),
+    planStatus: evidence.plan_status,
+    nextAction: evidence.next_action,
     topPathway: topPathway
       ? { name: topPathway.pathway.name }
       : null,

@@ -94,40 +94,32 @@
   line-height: 1.6;
 }
 
-.lv-hero__progress {
+.lv-hero__next {
   max-width: 27rem;
   margin-top: var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-lg);
+  background: rgba(9, 44, 26, 0.28);
 }
 
-.lv-hero__progress-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-2);
+.lv-hero__next span,
+.lv-hero__next strong {
+  display: block;
+}
+
+.lv-hero__next span {
+  margin-bottom: var(--space-1);
   font-size: var(--font-size-xs);
   color: rgba(251, 248, 239, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.lv-hero__progress-head strong {
-  color: var(--color-accent);
+.lv-hero__next strong {
+  color: var(--color-text-on-primary);
   font-family: var(--font-family-display);
-  font-size: var(--font-size-base);
-  font-variant-numeric: tabular-nums;
-}
-
-.lv-hero__progress-track {
-  height: 0.55rem;
-  overflow: hidden;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.lv-hero__progress-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-accent);
-  box-shadow: 0 0 1.25rem rgba(255, 194, 46, 0.38);
+  font-size: var(--font-size-lg);
 }
 
 .lv-hero__footer {
@@ -266,6 +258,16 @@
 .lv-task__icon--2 {
   color: var(--color-flame);
   background: var(--color-flame-surface);
+}
+
+.lv-task__icon--3 {
+  color: var(--color-purple);
+  background: var(--color-purple-surface);
+}
+
+.lv-task__icon--complete {
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
 }
 
 .lv-task__icon svg {
