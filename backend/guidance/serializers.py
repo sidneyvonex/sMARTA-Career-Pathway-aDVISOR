@@ -7,6 +7,8 @@ from students.models import Subject
 from .models import (
     FrameworkVersion,
     LearnerCombinationChoice,
+    LearnerPlan,
+    PlanMilestone,
     PathwayTrack,
     SubjectCombination,
 )
@@ -139,3 +141,49 @@ class LearnerCombinationChoiceSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         )
+
+
+class PlanMilestoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanMilestone
+        fields = (
+            'id',
+            'title',
+            'due_date',
+            'is_complete',
+            'completed_at',
+            'position',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'completed_at', 'created_at', 'updated_at')
+
+
+class LearnerPlanSerializer(serializers.ModelSerializer):
+    provisional_choice = LearnerCombinationChoiceSerializer(read_only=True)
+    milestones = PlanMilestoneSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = LearnerPlan
+        fields = (
+            'id',
+            'provisional_choice',
+            'learner_reason',
+            'review_status',
+            'reviewed_at',
+            'milestones',
+            'created_at',
+            'updated_at',
+        )
+
+
+class LearnerPlanUpdateSerializer(serializers.Serializer):
+    learner_reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1000,
+    )
+    review_status = serializers.ChoiceField(
+        required=False,
+        choices=(LearnerPlan.STATUS_DRAFT, LearnerPlan.STATUS_READY),
+    )

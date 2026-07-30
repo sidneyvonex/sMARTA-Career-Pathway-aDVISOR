@@ -4,6 +4,7 @@ from django.db.models import Count, Prefetch, Q
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from PIL import Image
 from rest_framework.views import APIView
 from rest_framework import status
@@ -14,12 +15,17 @@ from accounts.response import _success, _error
 from guidance.models import (
     FrameworkVersion,
     LearnerCombinationChoice,
+    LearnerPlan,
+    PlanMilestone,
     SchoolOffering,
 )
 from guidance.selectors import active_combination_queryset
 from guidance.serializers import (
     LearnerCombinationChoiceCreateSerializer,
     LearnerCombinationChoiceSerializer,
+    LearnerPlanSerializer,
+    LearnerPlanUpdateSerializer,
+    PlanMilestoneSerializer,
 )
 from .models import Subject, StudentSubject, CBCGrade
 from .serializers import (
@@ -68,12 +74,41 @@ def learner_choice_queryset(profile):
     )
 
 
+def learner_plan_queryset(profile):
+    active_offerings = (
+        SchoolOffering.objects
+        .filter(is_active=True, school__is_active=True)
+        .select_related('school')
+        .order_by('school__name')
+    )
+    return (
+        LearnerPlan.objects
+        .filter(student_profile=profile)
+        .select_related(
+            'provisional_choice__combination__framework_version',
+            'provisional_choice__combination__track__pathway',
+            'provisional_choice__combination__subject_one',
+            'provisional_choice__combination__subject_two',
+            'provisional_choice__combination__subject_three',
+        )
+        .prefetch_related(
+            'milestones',
+            Prefetch(
+                'provisional_choice__combination__school_offerings',
+                queryset=active_offerings,
+                to_attr='active_school_offerings',
+            ),
+        )
+    )
+
+
 class EvidenceSummaryView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
 
     def get(self, request):
         profile = (
             StudentProfile.objects
+            .select_related('learner_plan')
             .annotate(
                 saved_combination_count=Count('combination_choices'),
                 provisional_combination_count=Count(
@@ -92,7 +127,10 @@ class EvidenceSummaryView(APIView):
         assessment = assessment_summary(profile)
         saved_combination_count = profile.saved_combination_count
         has_provisional_choice = profile.provisional_combination_count > 0
-        plan_status = 'not_started'
+        try:
+            plan_status = profile.learner_plan.review_status
+        except LearnerPlan.DoesNotExist:
+            plan_status = 'not_started'
         return _success(
             data={
                 'profile_completion': profile_completion,
@@ -173,6 +211,8 @@ class LearnerCombinationChoiceDetailView(APIView):
             return _error(
                 'Change the provisional choice before removing this combination.'
             )
+        if choice.plans.exists():
+            return _error('This combination is still linked to your learner plan.')
         choice.delete()
         return _success(
             message='Saved combination removed.',
@@ -204,10 +244,164 @@ class LearnerCombinationChoiceProvisionalView(APIView):
             if choice.status != LearnerCombinationChoice.STATUS_PROVISIONAL:
                 choice.status = LearnerCombinationChoice.STATUS_PROVISIONAL
                 choice.save(update_fields=['status', 'updated_at'])
+            LearnerPlan.objects.filter(student_profile=profile).update(
+                provisional_choice=choice,
+                review_status=LearnerPlan.STATUS_DRAFT,
+                reviewed_at=None,
+            )
 
         return _success(
             data=LearnerCombinationChoiceSerializer(choice).data,
             message='Provisional combination updated.',
+        )
+
+
+class LearnerPlanView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        plan = learner_plan_queryset(profile).first()
+        return _success(
+            data=LearnerPlanSerializer(plan).data if plan else None
+        )
+
+    def put(self, request):
+        serializer = LearnerPlanUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+
+        with transaction.atomic():
+            profile = StudentProfile.objects.select_for_update().get(
+                user=request.user
+            )
+            provisional_choice = (
+                LearnerCombinationChoice.objects
+                .select_for_update()
+                .filter(
+                    student_profile=profile,
+                    status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+                )
+                .first()
+            )
+            if provisional_choice is None:
+                return _error(
+                    'Choose a provisional combination before creating a plan.'
+                )
+
+            plan, created = LearnerPlan.objects.select_for_update().get_or_create(
+                student_profile=profile,
+                defaults={'provisional_choice': provisional_choice},
+            )
+            changed_fields = []
+            if plan.provisional_choice_id != provisional_choice.pk:
+                plan.provisional_choice = provisional_choice
+                plan.review_status = LearnerPlan.STATUS_DRAFT
+                plan.reviewed_at = None
+                changed_fields.extend([
+                    'provisional_choice',
+                    'review_status',
+                    'reviewed_at',
+                ])
+
+            for field_name in ('learner_reason', 'review_status'):
+                if field_name in serializer.validated_data:
+                    value = serializer.validated_data[field_name]
+                    if getattr(plan, field_name) != value:
+                        setattr(plan, field_name, value)
+                        changed_fields.append(field_name)
+
+            reason_changed = 'learner_reason' in changed_fields
+            status_was_explicit = 'review_status' in serializer.validated_data
+            if (
+                reason_changed
+                and not status_was_explicit
+                and plan.review_status == LearnerPlan.STATUS_REVIEWED
+            ):
+                plan.review_status = LearnerPlan.STATUS_DRAFT
+                plan.reviewed_at = None
+                changed_fields.extend(['review_status', 'reviewed_at'])
+
+            if plan.review_status != LearnerPlan.STATUS_REVIEWED and plan.reviewed_at:
+                plan.reviewed_at = None
+                changed_fields.append('reviewed_at')
+            if changed_fields:
+                plan.save(update_fields=[*set(changed_fields), 'updated_at'])
+
+        plan = learner_plan_queryset(profile).get(pk=plan.pk)
+        return _success(
+            data=LearnerPlanSerializer(plan).data,
+            message='Learner plan created.' if created else 'Learner plan updated.',
+            status_code=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class PlanMilestoneListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def post(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        plan = get_object_or_404(LearnerPlan, student_profile=profile)
+        serializer = PlanMilestoneSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        is_complete = serializer.validated_data.get('is_complete', False)
+        milestone = serializer.save(
+            plan=plan,
+            completed_at=timezone.now() if is_complete else None,
+        )
+        return _success(
+            data=PlanMilestoneSerializer(milestone).data,
+            message='Milestone added.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class PlanMilestoneDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def put(self, request, milestone_id):
+        profile = StudentProfile.objects.get(user=request.user)
+        milestone = get_object_or_404(
+            PlanMilestone,
+            pk=milestone_id,
+            plan__student_profile=profile,
+        )
+        serializer = PlanMilestoneSerializer(
+            milestone,
+            data=request.data,
+            partial=True,
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        complete_before = milestone.is_complete
+        complete_after = serializer.validated_data.get(
+            'is_complete',
+            complete_before,
+        )
+        serializer.save(
+            completed_at=(
+                timezone.now()
+                if complete_after and not complete_before
+                else None if not complete_after else milestone.completed_at
+            )
+        )
+        return _success(
+            data=serializer.data,
+            message='Milestone updated.',
+        )
+
+    def delete(self, request, milestone_id):
+        profile = StudentProfile.objects.get(user=request.user)
+        milestone = get_object_or_404(
+            PlanMilestone,
+            pk=milestone_id,
+            plan__student_profile=profile,
+        )
+        milestone.delete()
+        return _success(
+            message='Milestone removed.',
+            status_code=status.HTTP_204_NO_CONTENT,
         )
 
 

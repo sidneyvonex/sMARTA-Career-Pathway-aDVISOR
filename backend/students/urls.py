@@ -7,6 +7,9 @@ from .views import (
     LearnerCombinationChoiceDetailView,
     LearnerCombinationChoiceListCreateView,
     LearnerCombinationChoiceProvisionalView,
+    LearnerPlanView,
+    PlanMilestoneDetailView,
+    PlanMilestoneListCreateView,
 )
 
 urlpatterns = [
@@ -26,6 +29,17 @@ urlpatterns = [
         'combination-choices/<int:choice_id>/provisional/',
         LearnerCombinationChoiceProvisionalView.as_view(),
         name='learner-combination-choice-provisional',
+    ),
+    path('plan/', LearnerPlanView.as_view(), name='learner-plan'),
+    path(
+        'plan/milestones/',
+        PlanMilestoneListCreateView.as_view(),
+        name='plan-milestone-list',
+    ),
+    path(
+        'plan/milestones/<int:milestone_id>/',
+        PlanMilestoneDetailView.as_view(),
+        name='plan-milestone-detail',
     ),
     path('profile/', StudentProfileView.as_view(), name='student-profile'),
     path('profile/photo/', PhotoUploadView.as_view(), name='student-photo'),

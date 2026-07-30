@@ -257,3 +257,76 @@ class LearnerCombinationChoice(models.Model):
 
     def __str__(self):
         return f'{self.student_profile} - {self.combination.code} ({self.status})'
+
+
+class LearnerPlan(models.Model):
+    STATUS_DRAFT = 'draft'
+    STATUS_READY = 'ready_for_review'
+    STATUS_REVIEWED = 'reviewed'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, 'Draft'),
+        (STATUS_READY, 'Ready for review'),
+        (STATUS_REVIEWED, 'Reviewed'),
+    ]
+
+    student_profile = models.OneToOneField(
+        'accounts.StudentProfile',
+        on_delete=models.CASCADE,
+        related_name='learner_plan',
+    )
+    provisional_choice = models.ForeignKey(
+        LearnerCombinationChoice,
+        on_delete=models.PROTECT,
+        related_name='plans',
+    )
+    learner_reason = models.TextField(blank=True, default='')
+    review_status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if (
+            self.provisional_choice_id
+            and self.student_profile_id
+            and self.provisional_choice.student_profile_id != self.student_profile_id
+        ):
+            errors['provisional_choice'] = 'The provisional choice must belong to this learner.'
+        if (
+            self.provisional_choice_id
+            and self.provisional_choice.status
+            != LearnerCombinationChoice.STATUS_PROVISIONAL
+        ):
+            errors['provisional_choice'] = 'Select the learner\'s current provisional choice.'
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f'{self.student_profile} - {self.review_status}'
+
+
+class PlanMilestone(models.Model):
+    plan = models.ForeignKey(
+        LearnerPlan,
+        on_delete=models.CASCADE,
+        related_name='milestones',
+    )
+    title = models.CharField(max_length=160)
+    due_date = models.DateField(null=True, blank=True)
+    is_complete = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['position', 'created_at', 'pk']
+
+    def __str__(self):
+        return self.title

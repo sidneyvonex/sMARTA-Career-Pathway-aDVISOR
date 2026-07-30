@@ -7,6 +7,8 @@ from django.db import IntegrityError, transaction
 from guidance.models import (
     FrameworkVersion,
     LearnerCombinationChoice,
+    LearnerPlan,
+    PlanMilestone,
     SubjectCombination,
 )
 from tests.factories import (
@@ -204,3 +206,52 @@ class TestLearnerCombinationChoice:
 
         with pytest.raises(ValidationError, match='active combination'):
             choice.full_clean()
+
+
+class TestLearnerPlan:
+    def test_plan_requires_the_learners_provisional_choice(self):
+        learner = StudentProfileFactory()
+        other_learner = StudentProfileFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=other_learner,
+            combination=SubjectCombination.objects.first(),
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        plan = LearnerPlan(
+            student_profile=learner,
+            provisional_choice=choice,
+        )
+
+        with pytest.raises(ValidationError, match='belong to this learner'):
+            plan.full_clean()
+
+    def test_plan_rejects_a_choice_that_is_only_saved(self):
+        learner = StudentProfileFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=learner,
+            combination=SubjectCombination.objects.first(),
+        )
+        plan = LearnerPlan(
+            student_profile=learner,
+            provisional_choice=choice,
+        )
+
+        with pytest.raises(ValidationError, match='current provisional'):
+            plan.full_clean()
+
+    def test_deleting_plan_cascades_to_milestones(self):
+        learner = StudentProfileFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=learner,
+            combination=SubjectCombination.objects.first(),
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=learner,
+            provisional_choice=choice,
+        )
+        milestone = PlanMilestone.objects.create(plan=plan, title='Review choices')
+
+        plan.delete()
+
+        assert not PlanMilestone.objects.filter(pk=milestone.pk).exists()

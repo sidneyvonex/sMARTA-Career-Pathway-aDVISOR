@@ -30,6 +30,10 @@ function getPageContext(pathname: string): PageContext {
     title: 'Compare combinations',
     parent: { label: 'Explore combinations', to: '/explore' },
   }
+  if (pathname === '/plan') return {
+    title: 'My learner plan',
+    parent: { label: 'Compare combinations', to: '/compare' },
+  }
   if (pathname === '/assessment/results') return {
     title: 'Career profile',
     parent: { label: 'Career quiz', to: '/assessment' },

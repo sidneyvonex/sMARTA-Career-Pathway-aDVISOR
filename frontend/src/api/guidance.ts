@@ -77,6 +77,42 @@ export interface LearnerCombinationChoice {
   updated_at: string
 }
 
+export type LearnerPlanStatus = 'draft' | 'ready_for_review' | 'reviewed'
+
+export interface PlanMilestone {
+  id: number
+  title: string
+  due_date: string | null
+  is_complete: boolean
+  completed_at: string | null
+  position: number
+  created_at: string
+  updated_at: string
+}
+
+export interface LearnerPlan {
+  id: number
+  provisional_choice: LearnerCombinationChoice
+  learner_reason: string
+  review_status: LearnerPlanStatus
+  reviewed_at: string | null
+  milestones: PlanMilestone[]
+  created_at: string
+  updated_at: string
+}
+
+export interface LearnerPlanUpdate {
+  learner_reason?: string
+  review_status?: 'draft' | 'ready_for_review'
+}
+
+export interface PlanMilestoneInput {
+  title?: string
+  due_date?: string | null
+  is_complete?: boolean
+  position?: number
+}
+
 export interface GuidanceCombinationFilters {
   pathway?: string | number
   track?: string | number
@@ -103,6 +139,7 @@ export const guidanceKeys = {
     [...rootKey, 'combinations', 'detail', combinationId] as const,
   schoolOfferings: () => [...rootKey, 'school-offerings'] as const,
   learnerChoices: () => [...rootKey, 'learner-choices'] as const,
+  learnerPlan: () => [...rootKey, 'learner-plan'] as const,
 }
 
 export const guidanceApi = {
@@ -151,5 +188,31 @@ export const guidanceApi = {
     api.put<ApiEnvelope<LearnerCombinationChoice>>(
       `/students/combination-choices/${choiceId}/provisional/`,
       {},
+    ),
+
+  getLearnerPlan: () =>
+    api.get<ApiEnvelope<LearnerPlan | null>>('/students/plan/'),
+
+  updateLearnerPlan: (payload: LearnerPlanUpdate) =>
+    api.put<ApiEnvelope<LearnerPlan>>('/students/plan/', payload),
+
+  createPlanMilestone: (payload: PlanMilestoneInput) =>
+    api.post<ApiEnvelope<PlanMilestone>>(
+      '/students/plan/milestones/',
+      payload,
+    ),
+
+  updatePlanMilestone: (
+    milestoneId: number,
+    payload: PlanMilestoneInput,
+  ) =>
+    api.put<ApiEnvelope<PlanMilestone>>(
+      `/students/plan/milestones/${milestoneId}/`,
+      payload,
+    ),
+
+  deletePlanMilestone: (milestoneId: number) =>
+    api.delete<ApiEnvelope<null>>(
+      `/students/plan/milestones/${milestoneId}/`,
     ),
 }

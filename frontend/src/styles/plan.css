@@ -1,0 +1,469 @@
+.plan-page,
+.plan-start,
+.plan-empty,
+.plan-loading {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.plan-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.plan-header > div:first-child {
+  max-width: 720px;
+}
+
+.plan-header span,
+.plan-start > span,
+.plan-empty > span,
+.plan-eyebrow,
+.plan-section-heading span,
+.plan-next > span {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.plan-header h1,
+.plan-start h1,
+.plan-empty h1 {
+  max-width: 720px;
+  margin-bottom: var(--space-3);
+  font-family: var(--font-family-display);
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  line-height: var(--line-height-tight);
+}
+
+.plan-header p,
+.plan-start > p,
+.plan-empty p {
+  max-width: 680px;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.plan-status {
+  min-width: 180px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.plan-status small,
+.plan-status strong {
+  display: block;
+}
+
+.plan-status small {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.plan-status--ready_for_review {
+  border-color: var(--color-accent);
+  background: var(--color-accent-surface);
+}
+
+.plan-status--reviewed {
+  border-color: var(--color-primary);
+  background: var(--color-primary-surface);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.plan-grid main,
+.plan-aside {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.plan-card,
+.plan-choice {
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.plan-choice {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  border-color: var(--color-primary);
+  background: var(--color-primary-dark);
+  color: var(--color-text-on-primary);
+}
+
+.plan-choice::after {
+  position: absolute;
+  top: -70px;
+  right: -60px;
+  width: 190px;
+  height: 190px;
+  border: 35px solid rgba(255, 194, 46, 0.14);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.plan-choice > div,
+.plan-choice > ul,
+.plan-choice > a {
+  position: relative;
+  z-index: 1;
+}
+
+.plan-choice span {
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+}
+
+.plan-choice h2 {
+  margin: var(--space-2) 0;
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+}
+
+.plan-choice p {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.plan-choice ul {
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
+  padding-left: var(--space-5);
+}
+
+.plan-choice a {
+  grid-column: 1 / -1;
+  width: fit-content;
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.plan-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.plan-section-heading h2,
+.plan-card > h2,
+.plan-next h2 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+}
+
+.plan-section-heading small {
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.plan-card form {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.plan-card textarea,
+.plan-start textarea,
+.plan-milestone-form input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.plan-card textarea,
+.plan-start textarea {
+  min-height: 130px;
+  padding: var(--space-4);
+  resize: vertical;
+}
+
+.plan-card button,
+.plan-start button,
+.plan-next button,
+.plan-next a,
+.plan-empty > a,
+.plan-return-button {
+  min-height: var(--min-touch-target);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.plan-card form > button,
+.plan-start > button {
+  width: fit-content;
+  padding: 0 var(--space-5);
+}
+
+.plan-card button:disabled,
+.plan-start button:disabled,
+.plan-next button:disabled,
+.plan-return-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.plan-milestones {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  list-style: none;
+}
+
+.plan-milestones li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 58px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+
+.plan-milestones label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.plan-milestones input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+}
+
+.plan-milestones label span,
+.plan-milestones label small {
+  display: block;
+}
+
+.plan-milestones label small {
+  color: var(--color-text-secondary);
+}
+
+.plan-milestones li > button {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--color-error);
+}
+
+.plan-milestone-form {
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.4fr) auto;
+  align-items: end;
+}
+
+.plan-milestone-form label,
+.plan-start > label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.plan-milestone-form input {
+  min-height: var(--min-touch-target);
+  padding: 0 var(--space-3);
+}
+
+.plan-gaps {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-left: var(--space-5);
+}
+
+.plan-muted {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.plan-next {
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--color-accent-surface);
+  box-shadow: inset 0 0 0 1px rgba(212, 160, 18, 0.3);
+}
+
+.plan-next p {
+  margin: var(--space-3) 0 var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+.plan-next a,
+.plan-next button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  text-decoration: none;
+}
+
+.plan-return-button {
+  width: 100%;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.plan-start,
+.plan-empty {
+  padding: clamp(2rem, 7vw, 5rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+}
+
+.plan-start .plan-choice {
+  margin: var(--space-8) 0 var(--space-6);
+}
+
+.plan-start > label {
+  max-width: 720px;
+}
+
+.plan-start textarea {
+  max-width: 720px;
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.plan-empty > a {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-6);
+  padding: 0 var(--space-5);
+  text-decoration: none;
+}
+
+.plan-loading {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-5);
+}
+
+.plan-loading div {
+  min-height: 220px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(90deg, var(--color-divider), var(--color-surface), var(--color-divider));
+  background-size: 200% 100%;
+  animation: plan-loading 1.4s ease-in-out infinite;
+}
+
+.plan-loading div:first-child {
+  grid-row: span 2;
+  min-height: 470px;
+}
+
+@keyframes plan-loading {
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 900px) {
+  .plan-grid,
+  .plan-loading {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-loading div:first-child {
+    grid-row: auto;
+    min-height: 220px;
+  }
+
+  .plan-aside {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .plan-return-button {
+    grid-column: 1 / -1;
+  }
+
+  .plan-milestone-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .plan-milestone-form button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .plan-header {
+    display: grid;
+  }
+
+  .plan-status {
+    width: 100%;
+  }
+
+  .plan-choice {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-choice > a {
+    grid-column: auto;
+  }
+
+  .plan-aside,
+  .plan-milestone-form {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-return-button,
+  .plan-milestone-form button {
+    grid-column: auto;
+  }
+
+  .plan-milestones li {
+    align-items: flex-start;
+  }
+
+  .plan-start,
+  .plan-empty,
+  .plan-card,
+  .plan-choice,
+  .plan-next {
+    padding: var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-loading div {
+    animation: none;
+  }
+}

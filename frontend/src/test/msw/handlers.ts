@@ -125,6 +125,14 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/plan/', () => {
+    return HttpResponse.json({ data: null, error: null, message: '' })
+  }),
+
+  http.get('/api/v1/students/combination-choices/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
+
   http.post('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
       data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
