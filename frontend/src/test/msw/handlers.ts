@@ -635,6 +635,144 @@ export const handlers = [
     })
   }),
 
+  // Guidance catalogue
+  http.get('/api/v1/guidance/framework/current/', () => {
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        code: 'CBC-SS-PILOT-2026',
+        title: 'CBC Senior School Pilot Catalogue 2026',
+        description: 'Curated five-county pilot catalogue.',
+        source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+        effective_date: '2026-01-01',
+        is_active: true,
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get('/api/v1/guidance/pathways/', () => {
+    const pathways = [
+      ['STEM', 'PURE-SCIENCES'],
+      ['Social Sciences', 'HUMANITIES-BUSINESS'],
+      ['Arts & Sports Science', 'ARTS'],
+    ].map(([name, trackCode], index) => ({
+      id: index + 1,
+      name,
+      description: `${name} pathway`,
+      tracks: [{
+        id: index + 1,
+        code: trackCode,
+        name: trackCode.replace(/-/g, ' '),
+        description: 'Pilot track',
+        is_active: true,
+        pathway: { id: index + 1, name, description: `${name} pathway` },
+      }],
+    }))
+    return HttpResponse.json({ data: pathways, error: null, message: '' })
+  }),
+
+  http.get('/api/v1/guidance/combinations/', ({ request }) => {
+    const url = new URL(request.url)
+    const hasExpectedFilters = (
+      url.searchParams.get('pathway') === 'STEM'
+      && url.searchParams.get('county') === 'kiambu'
+      && url.searchParams.get('search') === 'science'
+    )
+    if (!hasExpectedFilters) {
+      return HttpResponse.json({ data: [], error: null, message: '' })
+    }
+    return HttpResponse.json({
+      data: [{
+        id: 1,
+        code: 'ST1042',
+        title: 'Agriculture, Biology & Chemistry',
+        description: 'Curated pilot option.',
+        framework: {
+          code: 'CBC-SS-PILOT-2026',
+          title: 'CBC Senior School Pilot Catalogue 2026',
+          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          effective_date: '2026-01-01',
+        },
+        track: {
+          id: 1,
+          code: 'PURE-SCIENCES',
+          name: 'Pure Sciences',
+          description: 'Pilot track',
+          is_active: true,
+          pathway: { id: 1, name: 'STEM', description: 'STEM pathway' },
+        },
+        subjects: [
+          { id: 1, code: 'AGR10', name: 'Agriculture', grade: 10, category: 'Elective' },
+          { id: 2, code: 'BIO10', name: 'Biology', grade: 10, category: 'Elective' },
+          { id: 3, code: 'CHE10', name: 'Chemistry', grade: 10, category: 'Elective' },
+        ],
+        offered_schools: [],
+      }],
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get(/\/api\/v1\/guidance\/combinations\/\d+\//, () => {
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        code: 'ST1042',
+        title: 'Agriculture, Biology & Chemistry',
+        description: 'Curated pilot option.',
+        framework: {
+          code: 'CBC-SS-PILOT-2026',
+          title: 'CBC Senior School Pilot Catalogue 2026',
+          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          effective_date: '2026-01-01',
+        },
+        track: {
+          id: 1,
+          code: 'PURE-SCIENCES',
+          name: 'Pure Sciences',
+          description: 'Pilot track',
+          is_active: true,
+          pathway: { id: 1, name: 'STEM', description: 'STEM pathway' },
+        },
+        subjects: [
+          { id: 1, code: 'AGR10', name: 'Agriculture', grade: 10, category: 'Elective' },
+          { id: 2, code: 'BIO10', name: 'Biology', grade: 10, category: 'Elective' },
+          { id: 3, code: 'CHE10', name: 'Chemistry', grade: 10, category: 'Elective' },
+        ],
+        offered_schools: [],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get('/api/v1/school-admin/offerings/', () => {
+    return HttpResponse.json({
+      data: {
+        school: { id: 1, school_code: 'PILOT-KIA-001', name: 'Pilot School', county: 'kiambu' },
+        combination_ids: [1],
+        offerings: [],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.put('/api/v1/school-admin/offerings/', async ({ request }) => {
+    const body = await request.json() as { combination_ids: number[] }
+    return HttpResponse.json({
+      data: {
+        school: { id: 1, school_code: 'PILOT-KIA-001', name: 'Pilot School', county: 'kiambu' },
+        combination_ids: body.combination_ids,
+        offerings: [],
+      },
+      error: null,
+      message: 'School offerings updated.',
+    })
+  }),
+
   // Reports
   http.get(/\/api\/v1\/reports\/student\/\d+\/pdf\//, () => {
     const pdfContent = '%PDF-1.4 mock report content'
