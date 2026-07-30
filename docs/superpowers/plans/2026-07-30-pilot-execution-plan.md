@@ -5,6 +5,23 @@
 **Execution style:** Sequential vertical slices, test-first, one logical commit per task  
 **Target:** Final-project presentation pilot, not national production release
 
+## Current execution status
+
+**Active sprint:** Sprint 1 - Correctness and safety blockers
+
+**Completed:** Sprint 0 implementation baseline; Task 1.1 performance-level correction
+
+**Next:** Task 1.2 Grade 10 catalogue correction
+**Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
+
+| Commit | Delivered change |
+|---|---|
+| `b384bda` | Five-county product specification and execution baseline |
+| `c62d297` | Repository rules limited to the two tracked pilot planning documents |
+| `3c09d4e` | Redesigned learner dashboard and student experience baseline |
+| `39be6b4` | Public landing-page mobile overflow correction |
+| `ab53d07` | Canonical CBE grade ordering, labels, points, chart and PDF fixtures |
+
 ## 1. How to use this plan
 
 Execute tasks in order. Do not begin a later sprint until the prior sprint's exit gate passes.
@@ -198,10 +215,10 @@ The current public-page redesign and lively student-dashboard work are understan
 
 ### Task 0.1 - Preserve and classify current work
 
-- [ ] Review `git diff --stat` and `git diff`.
-- [ ] Separate public/student redesign files from unrelated changes.
-- [ ] Confirm no generated PDF or local design artifacts will be included in a product-code commit.
-- [ ] Record the current visual baseline at desktop, tablet and 360px mobile.
+- [x] Review `git diff --stat` and `git diff`.
+- [x] Separate public/student redesign files from unrelated changes.
+- [x] Confirm no generated PDF or local design artifacts will be included in a product-code commit.
+- [ ] Record the current visual baseline at desktop, tablet and 360px mobile. Desktop and 360px are verified; tablet remains.
 
 Acceptance:
 
@@ -219,10 +236,10 @@ Tests:
 
 Work:
 
-- [ ] Diagnose the parent dashboard timeout.
-- [ ] Diagnose the school-admin loading/assertion failure.
-- [ ] Remove material `act()` warnings in affected tests.
-- [ ] Keep MSW data aligned with the current dashboard contracts.
+- [x] Diagnose the parent dashboard timeout. It did not reproduce against the current redesign baseline.
+- [x] Diagnose the school-admin loading/assertion failure. It did not reproduce against the current redesign baseline.
+- [x] Remove material `act()` warnings in affected tests.
+- [x] Keep MSW data aligned with the current dashboard contracts.
 
 Acceptance:
 
@@ -231,11 +248,11 @@ Acceptance:
 
 ### Task 0.3 - Establish quality baseline
 
-- [ ] Run backend tests.
-- [ ] Run frontend tests.
-- [ ] Run frontend production build.
-- [ ] Record baseline bundle sizes and known warnings.
-- [ ] Confirm the five pilot counties remain unchanged.
+- [ ] Run the full backend test suite. Focused grade/student/report suites pass: 77 tests.
+- [x] Run frontend tests: 25 files and 141 tests passed.
+- [x] Run frontend production build.
+- [x] Record baseline bundle sizes and known warnings. Main JS gzip: 135.92 kB; CSS gzip: 20.94 kB before Task 1.1.
+- [x] Confirm the five pilot counties remain unchanged.
 
 Exit gate:
 
@@ -272,11 +289,19 @@ Files:
 
 Work:
 
-- [ ] Correct labels so Level 1 is higher than Level 2 in each band.
-- [ ] Define one canonical ordering utility in backend and frontend.
-- [ ] Remove arbitrary dashboard percentage conversion.
-- [ ] Display trends as ordered performance bands or clearly labelled points.
-- [ ] Update report labels and test fixtures.
+- [x] Correct labels so Level 1 is higher than Level 2 in each band.
+- [x] Define one canonical ordering utility in backend and frontend.
+- [x] Remove arbitrary dashboard percentage conversion.
+- [x] Display trends as ordered performance bands or clearly labelled points.
+- [x] Update report labels and test fixtures.
+
+Verification:
+
+- Backend student/model/report suites: 77 passed.
+- Frontend student/dashboard suites: 16 passed.
+- Student migration drift check: no changes detected.
+- Production build: passed; main JS gzip 135.96 kB, CSS gzip 21.03 kB.
+- Commit: `ab53d07`.
 
 Acceptance:
 
