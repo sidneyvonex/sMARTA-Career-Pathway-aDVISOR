@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Task 4.1 learner summaries
 
-**Next:** Task 4.1 learner evidence and grade summary endpoints
+**Next:** Task 4.2 grade source and verification
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -34,6 +34,7 @@
 | `9b84c28` | Public source-dated guidance APIs with catalogue filters and bounded query counts |
 | `d7ab5e1` | Permission-tested school offering reads and atomic full-replacement updates |
 | `88f2109` | Typed guidance frontend client, unified query keys and complete MSW contracts |
+| `566de40` | Learner evidence and aggregated grade summaries with calculated next actions |
 
 ## 1. How to use this plan
 
@@ -728,6 +729,18 @@ Acceptance:
 
 - Student dashboard loads with a bounded number of requests.
 - Endpoint query count is tested.
+
+Verification:
+
+- Learner summary contract: 16 tests passed.
+- Evidence summary reports profile completion, academic evidence, assessment state/version slot, saved-combination count, plan status and one calculated next action.
+- Next action progresses from profile to grades, assessment and combination exploration as evidence becomes ready.
+- Grade summary returns every enrolled subject and all grade records in one response, including a latest-grade snapshot.
+- Both endpoints remain bounded at three database queries; the grade query count stays constant with six subjects and twelve records.
+- Combined student model/view regression suite: 69 tests passed.
+- Django system check: no issues.
+- Student migration drift check: no changes detected.
+- Commit: `566de40`.
 
 ### Task 4.2 - Add grade source and verification
 
