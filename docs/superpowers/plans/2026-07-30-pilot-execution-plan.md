@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 8 - System administration and public alignment
+**Active sprint:** Sprint 9 - Reports, accessibility, PWA and presentation hardening
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 8.4 public-page alignment
+**Next:** Task 9.1 PDF report context and provenance
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1461,18 +1461,25 @@ Verification:
 
 Update:
 
-- `/pathways` with current tracks and source dates;
-- `/how-it-works` with Evidence -> Interests -> Compare -> Plan -> Review;
-- `/for-schools` with the actual pilot workflow;
-- footer disclaimer and source links;
-- all public copy to say five-county pilot where relevant.
+- [x] `/pathways` with current tracks and source dates;
+- [x] `/how-it-works` with Evidence -> Interests -> Compare -> Plan -> Review;
+- [x] `/for-schools` with the actual pilot workflow;
+- [x] footer disclaimer and source links;
+- [x] all public copy to say five-county pilot where relevant.
 
 Do not redesign public pages again. Extend the current visual system and components.
 
 Exit gate:
 
-- Public claims exactly match implemented pilot capabilities.
-- System administrator can explain and monitor the demo.
+- [x] Public claims exactly match implemented pilot capabilities.
+- [x] System administrator can explain and monitor the demo.
+
+Verification:
+
+- Focused public-page tests: 5 tests passed.
+- Broader public-site regression: 26 tests passed.
+- Strict TypeScript and diff whitespace checks: passed.
+- Commit: `2ad0e92`.
 
 ## 15. Sprint 9 - Reports, accessibility, PWA and presentation hardening
 
