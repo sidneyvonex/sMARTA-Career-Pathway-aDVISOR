@@ -332,6 +332,20 @@ class TestSchoolAssignmentView:
         })
         assert response.status_code == 404
 
+    def test_pending_school_membership_cannot_be_assigned(self):
+        sp = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+        counselor = CounselorFactory(school=self.school)
+        response = self.client.post('/api/v1/school-admin/assignments/', {
+            'student_id': sp.user.id,
+            'counselor_id': counselor.id,
+        })
+        assert response.status_code == 404
+        assert not CounselorAssignment.objects.filter(student_profile=sp).exists()
+
     def test_assign_counselor_not_at_school(self):
         sp = StudentProfileFactory(school=self.school, mode='school_linked')
         c = CounselorFactory(school=SchoolFactory())

@@ -23,6 +23,13 @@ export default function StudentProfilePage() {
 
   const current = profile ?? data
   const fullName = `${current.first_name} ${current.last_name}`
+  const learningModeLabel = current.mode === 'self_guided'
+    ? 'Self-guided'
+    : current.school_membership_status === 'pending'
+      ? 'School approval pending'
+      : current.school_membership_status === 'rejected'
+        ? 'School request declined'
+        : 'School-linked'
 
   return (
     <div className="student-page student-page--profile">
@@ -37,7 +44,7 @@ export default function StudentProfilePage() {
           <div className="profile-hero__chips">
             <span>Grade {current.grade}</span>
             <span>{current.county || 'County not set'}</span>
-            <span>{current.mode === 'self_guided' ? 'Self-guided' : 'School-linked'}</span>
+            <span>{learningModeLabel}</span>
           </div>
         </div>
         <div className="profile-hero__spark" aria-hidden="true">✦</div>
@@ -69,7 +76,7 @@ export default function StudentProfilePage() {
             </div>
             <div>
               <dt>Learning mode</dt>
-              <dd>{current.mode === 'self_guided' ? 'Self-guided' : 'School-linked'}</dd>
+              <dd>{learningModeLabel}</dd>
             </div>
           </dl>
         </section>

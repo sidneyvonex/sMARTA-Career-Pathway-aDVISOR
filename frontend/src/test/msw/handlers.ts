@@ -40,7 +40,8 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         id: 1, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
-        county: 'kiambu', grade: 9, mode: 'self_guided',
+        county: 'kiambu', grade: 9, mode: 'school_linked',
+        school_membership_status: 'pending',
         bio: 'I love science', date_of_birth: null, career_interests: '',
         photo_url: null,
       },
@@ -53,7 +54,8 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         id: 1, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
-        county: 'kiambu', grade: 9, mode: 'self_guided',
+        county: 'kiambu', grade: 9, mode: 'school_linked',
+        school_membership_status: 'pending',
         bio: body.bio ?? 'I love science', date_of_birth: null,
         career_interests: body.career_interests ?? '', photo_url: null,
       },

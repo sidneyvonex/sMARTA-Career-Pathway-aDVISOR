@@ -182,11 +182,23 @@ class TestStudentReportViewPermissions:
         admin = SchoolAdminFactory(school=school)
         self.profile.school = school
         self.profile.mode = 'school_linked'
-        self.profile.save(update_fields=['school', 'mode'])
+        self.profile.school_membership_status = 'active'
+        self.profile.save(update_fields=['school', 'mode', 'school_membership_status'])
         self.client.force_authenticate(admin)
         response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
         assert response.status_code == 200
         assert response['Content-Type'] == 'application/pdf'
+
+    def test_school_admin_cannot_download_pending_membership_report(self):
+        school = SchoolFactory()
+        admin = SchoolAdminFactory(school=school)
+        self.profile.school = school
+        self.profile.mode = 'school_linked'
+        self.profile.school_membership_status = 'pending'
+        self.profile.save(update_fields=['school', 'mode', 'school_membership_status'])
+        self.client.force_authenticate(admin)
+        response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
+        assert response.status_code == 403
 
     def test_school_admin_different_school_cannot_download(self):
         admin = SchoolAdminFactory()

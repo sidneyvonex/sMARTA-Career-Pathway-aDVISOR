@@ -5,6 +5,7 @@ import ProfileForm from '../components/students/ProfileForm'
 import PhotoUpload from '../components/students/PhotoUpload'
 import SubjectList from '../components/students/SubjectList'
 import GradeHistory from '../components/students/GradeHistory'
+import StudentProfilePage from '../pages/StudentProfilePage'
 import {
   GRADE_LEVEL_LABELS,
   GRADE_LEVEL_ORDER,
@@ -22,8 +23,16 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 const mockProfile = {
   id: 1, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
   county: 'kiambu', grade: 9 as const, mode: 'self_guided' as const,
+  school_membership_status: 'not_applicable' as const,
   bio: 'Hello', date_of_birth: null, career_interests: '', photo_url: null,
 }
+
+describe('StudentProfilePage school membership', () => {
+  it('shows that a school-code request is awaiting approval', async () => {
+    render(<StudentProfilePage />, { wrapper: Wrapper })
+    expect(await screen.findAllByText(/school approval pending/i)).toHaveLength(2)
+  })
+})
 
 describe('CBE grade scale', () => {
   it('orders Level 1 above Level 2 within every performance band', () => {

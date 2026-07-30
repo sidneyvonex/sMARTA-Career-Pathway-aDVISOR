@@ -33,6 +33,7 @@ class TestStudentProfileView:
         assert response.status_code == 200
         assert response.data['data']['email'] == verified_profile.user.email
         assert response.data['data']['grade'] == 9
+        assert response.data['data']['school_membership_status'] == 'not_applicable'
 
     def test_patch_updates_bio(self, verified_profile):
         c = make_auth_client(verified_profile.user)

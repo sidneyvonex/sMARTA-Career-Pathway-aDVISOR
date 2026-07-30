@@ -66,7 +66,10 @@ class SchoolListView(APIView):
         qs = School.objects.annotate(
             student_count=Count(
                 'studentprofile',
-                filter=Q(studentprofile__mode='school_linked'),
+                filter=Q(
+                    studentprofile__mode='school_linked',
+                    studentprofile__school_membership_status='active',
+                ),
             ),
             counselor_count=Count(
                 'staff',
@@ -203,11 +206,17 @@ class SchoolDetailView(APIView):
         )
 
         student_count = StudentProfile.objects.filter(
-            school=school, mode='school_linked',
+            school=school,
+            mode='school_linked',
+            school_membership_status='active',
         ).count()
 
         recent_students = list(
-            StudentProfile.objects.filter(school=school, mode='school_linked')
+            StudentProfile.objects.filter(
+                school=school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
             .select_related('user')
             .order_by('-created_at')[:10]
         )

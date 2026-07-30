@@ -80,6 +80,7 @@ class StudentReportView(APIView):
         if user.role == 'school_admin':
             return (
                 profile.mode == 'school_linked'
+                and profile.school_membership_status == 'active'
                 and profile.school_id is not None
                 and profile.school_id == user.school_id
             )

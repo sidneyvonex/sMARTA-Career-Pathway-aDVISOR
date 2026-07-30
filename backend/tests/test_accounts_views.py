@@ -44,6 +44,7 @@ class TestStudentRegistration:
         assert user.is_email_verified is False
         assert user.student_profile.mode == 'self_guided'
         assert user.student_profile.school is None
+        assert user.student_profile.school_membership_status == 'not_applicable'
 
     def test_sends_verification_email(self, client, mailoutbox):
         client.post('/api/v1/auth/register/', {
@@ -73,6 +74,28 @@ class TestStudentRegistration:
         user = User.objects.get(email='linked@test.com')
         assert user.student_profile.mode == 'school_linked'
         assert user.student_profile.school == school
+        assert user.student_profile.school_membership_status == 'pending'
+
+    def test_inactive_school_code_returns_friendly_400(self, client):
+        School.objects.create(
+            name='Inactive Pilot School',
+            county='kiambu',
+            school_code='KIA-OFF',
+            is_active=False,
+        )
+        response = client.post('/api/v1/auth/register/', {
+            'email': 'inactive-school@test.com',
+            'password': 'TestPass123!',
+            'first_name': 'A',
+            'last_name': 'B',
+            'role': 'student',
+            'county': 'kiambu',
+            'grade': 9,
+            'school_code': 'KIA-OFF',
+        }, format='json')
+        assert response.status_code == 400
+        assert 'not active' in str(response.data['message']).lower()
+        assert not User.objects.filter(email='inactive-school@test.com').exists()
 
     def test_invalid_county_returns_400(self, client):
         response = client.post('/api/v1/auth/register/', {

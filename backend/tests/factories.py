@@ -68,6 +68,9 @@ class StudentProfileFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory, role='student')
     mode = 'self_guided'
     school = None
+    school_membership_status = factory.LazyAttribute(
+        lambda profile: 'active' if profile.mode == 'school_linked' else 'not_applicable'
+    )
     grade = factory.Iterator([9, 10])
 
 

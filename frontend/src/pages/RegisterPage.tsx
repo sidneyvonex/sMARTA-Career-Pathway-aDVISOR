@@ -105,7 +105,9 @@ export default function RegisterPage() {
           <input id="school_code" type="text"
             placeholder="Optional — leave blank for self-guided"
             value={form.school_code} onChange={set('school_code')} />
-          <span className="form-hint">Ask your school administrator for this code</span>
+          <span className="form-hint">
+            Ask your school administrator for this code. Your school must approve the link.
+          </span>
         </div>
 
         <button type="submit" className="btn-primary" disabled={loading}>

@@ -14,11 +14,12 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         model = StudentProfile
         fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
-            'grade', 'mode', 'bio', 'date_of_birth', 'career_interests', 'photo_url',
+            'grade', 'mode', 'school_membership_status',
+            'bio', 'date_of_birth', 'career_interests', 'photo_url',
         )
         read_only_fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
-            'grade', 'mode', 'photo_url',
+            'grade', 'mode', 'school_membership_status', 'photo_url',
         )
 
     def validate_bio(self, value):

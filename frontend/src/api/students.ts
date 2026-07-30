@@ -8,6 +8,7 @@ export interface StudentProfile {
   county: string | null
   grade: 9 | 10
   mode: 'self_guided' | 'school_linked'
+  school_membership_status: 'not_applicable' | 'pending' | 'active' | 'rejected'
   bio: string
   date_of_birth: string | null
   career_interests: string

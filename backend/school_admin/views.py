@@ -28,7 +28,10 @@ class SchoolProfileView(APIView):
         return user.school
 
     def _serialize(self, school):
-        student_count = school.studentprofile_set.filter(mode='school_linked').count()
+        student_count = school.studentprofile_set.filter(
+            mode='school_linked',
+            school_membership_status='active',
+        ).count()
         counselor_count = User.objects.filter(school=school, role='counselor').count()
         return {
             'id': school.id,
@@ -285,6 +288,7 @@ class SchoolStudentsView(APIView):
                 'grade': p.grade,
                 'photo_url': p.photo_url,
                 'quiz_status': 'done' if p.has_assessment else 'pending',
+                'school_membership_status': p.school_membership_status,
                 'counselor_id': active_assignment.counselor_id if active_assignment else None,
                 'counselor_name': (
                     f'{active_assignment.counselor.first_name} {active_assignment.counselor.last_name}'
@@ -305,7 +309,11 @@ class SchoolStatsView(APIView):
         has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
 
         profiles = (
-            StudentProfile.objects.filter(school=school, mode='school_linked')
+            StudentProfile.objects.filter(
+                school=school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
             .annotate(has_assessment=Exists(has_assessment))
         )
         total_students = profiles.count()
@@ -338,7 +346,10 @@ class SchoolAssignmentView(APIView):
 
         try:
             profile = StudentProfile.objects.get(
-                user_id=student_id, school=school, mode='school_linked',
+                user_id=student_id,
+                school=school,
+                mode='school_linked',
+                school_membership_status='active',
             )
         except StudentProfile.DoesNotExist:
             return _error('Student not found at your school.', status.HTTP_404_NOT_FOUND)
