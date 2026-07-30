@@ -3,10 +3,12 @@ from .views import (
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
-    StudentCounselorView,
+    StudentCounselorView, EvidenceSummaryView, GradeSummaryView,
 )
 
 urlpatterns = [
+    path('evidence-summary/', EvidenceSummaryView.as_view(), name='student-evidence-summary'),
+    path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
     path('profile/', StudentProfileView.as_view(), name='student-profile'),
     path('profile/photo/', PhotoUploadView.as_view(), name='student-photo'),
     path('subjects/', SubjectListView.as_view(), name='subject-list'),

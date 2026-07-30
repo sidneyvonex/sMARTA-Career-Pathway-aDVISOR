@@ -13,12 +13,55 @@ from .serializers import (
     StudentProfileSerializer, SubjectSerializer,
     StudentSubjectSerializer, CBCGradeSerializer,
 )
+from .summaries import (
+    academic_evidence_summary,
+    assessment_summary,
+    grade_summary,
+    next_action_for,
+    profile_completion_summary,
+)
 
 MAX_PHOTO_SIZE = 5 * 1024 * 1024
 MAX_PHOTO_DIM = 2000
 ALLOWED_FORMATS = {'JPEG', 'PNG'}
 FORMAT_TO_MIME = {'JPEG': 'image/jpeg', 'PNG': 'image/png'}
 FORMAT_TO_EXT = {'JPEG': 'jpg', 'PNG': 'png'}
+
+
+class EvidenceSummaryView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        profile_completion = profile_completion_summary(profile)
+        academic_evidence = academic_evidence_summary(profile)
+        assessment = assessment_summary(profile)
+        saved_combination_count = 0
+        plan_status = 'not_started'
+        return _success(
+            data={
+                'profile_completion': profile_completion,
+                'academic_evidence': academic_evidence,
+                'assessment': assessment,
+                'saved_combination_count': saved_combination_count,
+                'plan_status': plan_status,
+                'next_action': next_action_for(
+                    profile_completion,
+                    academic_evidence,
+                    assessment,
+                    saved_combination_count,
+                    plan_status=plan_status,
+                ),
+            }
+        )
+
+
+class GradeSummaryView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        return _success(data=grade_summary(profile))
 
 
 class StudentProfileView(APIView):
