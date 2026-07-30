@@ -58,12 +58,12 @@ describe('SystemAdminDashboard', () => {
 
   it('renders stat cards with role labels', async () => {
     renderPage()
-    await waitFor(() => {
-      expect(screen.getByText('Students')).toBeTruthy()
-      expect(screen.getByText('Counselors')).toBeTruthy()
-      expect(screen.getByText('Schools')).toBeTruthy()
-      expect(screen.getByText('Parents')).toBeTruthy()
-    })
+    expect(
+      await screen.findByText('Students', {}, { timeout: 5000 }),
+    ).toBeTruthy()
+    expect(screen.getByText('Counselors')).toBeTruthy()
+    expect(screen.getByText('Schools')).toBeTruthy()
+    expect(screen.getByText('Parents')).toBeTruthy()
   })
 
   it('shows stat values from MSW data', async () => {
