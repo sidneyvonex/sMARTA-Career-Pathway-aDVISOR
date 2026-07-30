@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.2 learner summaries and grade verification
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.3 learner summaries, grade verification and explainable assessment
 
-**Next:** Task 4.3 assessment versioning and explainable interest alignment
+**Next:** Task 4.4 learner combination choices
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -36,6 +36,7 @@
 | `88f2109` | Typed guidance frontend client, unified query keys and complete MSW contracts |
 | `566de40` | Learner evidence and aggregated grade summaries with calculated next actions |
 | `457c21e` | Audited school verification and immutable provenance for learner grades |
+| `eee1684` | Versioned assessment attempts, explanation snapshots and expiring learner-scoped drafts |
 
 ## 1. How to use this plan
 
@@ -787,6 +788,22 @@ Acceptance:
 
 - Result never describes a success probability.
 - Historical attempt retains its original version.
+
+Verification:
+
+- New attempts persist `riasec-pilot-1.0`; recommendations persist `interest-alignment-1.0` and a stable explanation snapshot.
+- History and latest-result APIs return the saved versions, while pre-existing unversioned rows are labelled explicitly during migration.
+- Explanations identify the two leading weighted interest dimensions, state the evidence limitations and provide a practical next step without predicting success or placement.
+- Assessment drafts are scoped by learner ID, expire after seven days and are removed together on logout without clearing unrelated preferences.
+- The pre-assessment screen explains purpose and limitations; results separate stated interests, pathways, missing evidence and the next action.
+- Focused backend assessment suite: 51 tests passed.
+- Assessment and evidence-summary regression suite: 67 tests passed.
+- Broader affected-domain suite reached 135 passing tests; its single outdated summary expectation was corrected and covered by the passing 67-test rerun.
+- Focused frontend assessment, draft, PWA and session suite: 41 tests passed.
+- Strict TypeScript check: passed.
+- Django system check: no issues.
+- RIASEC migration drift check: no changes detected.
+- Commit: `eee1684`.
 
 ### Task 4.4 - Add learner combination choices
 
