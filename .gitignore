@@ -51,7 +51,11 @@ Thumbs.db
 CLAUDE.md
 .claude/
 .superpowers/
-docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
+!docs/superpowers/specs/**
+!docs/superpowers/plans/
+!docs/superpowers/plans/**
 
 # Local setup guide — not committed
 LOCAL_SETUP.md
