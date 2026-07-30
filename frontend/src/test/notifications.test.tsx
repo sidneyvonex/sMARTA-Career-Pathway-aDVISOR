@@ -54,24 +54,53 @@ describe('useNotificationPoll', () => {
 })
 
 describe('Topbar / Sidebar', () => {
+  let qc: QueryClient
+
   const mockUser = {
     id: 1, email: 'test@example.com', first_name: 'Alice', last_name: 'Doe',
     role: 'student' as const, is_email_verified: true, county: null,
   }
 
   beforeEach(() => {
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     useAuthStore.setState({ user: null, isAuthenticated: false, isEmailVerified: false, isLoading: false })
     useNotificationStore.setState({ unreadCount: 0, drawerOpen: false })
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    qc.clear()
   })
 
   it('renders the brand name in Sidebar', () => {
     useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
     render(
-      <MemoryRouter>
-        <Sidebar />
-      </MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <Sidebar />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
     expect(screen.getByText('Smarta Shauri')).toBeInTheDocument()
+  })
+
+  it('clears user-scoped query and draft data on logout', async () => {
+    useAuthStore.setState({ user: mockUser, isAuthenticated: true, isEmailVerified: true, isLoading: false })
+    qc.setQueryData(['student-profile'], { id: 1 })
+    localStorage.setItem('riasec_draft', '{"1":4}')
+
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <Sidebar />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+    await userEvent.click(screen.getByRole('button', { name: /log out/i }))
+
+    await waitFor(() => expect(useAuthStore.getState().isAuthenticated).toBe(false))
+    expect(qc.getQueryData(['student-profile'])).toBeUndefined()
+    expect(localStorage.getItem('riasec_draft')).toBeNull()
   })
 
   it('shows no badge when unreadCount is 0', () => {

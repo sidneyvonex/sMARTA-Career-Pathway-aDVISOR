@@ -1,8 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { authApi, type User } from '../../api/auth'
+import { clearUserScopedStorage } from '../../lib/sessionCleanup'
 import Avatar from '../common/Avatar'
 
 interface NavItem {
@@ -91,6 +93,7 @@ export default function Sidebar() {
   const { user, clearUser } = useAuthStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   if (!user) return <aside className="sidebar" aria-label="Main navigation" />
 
@@ -102,6 +105,8 @@ export default function Sidebar() {
     try {
       await authApi.logout()
     } catch { /* cookie cleared regardless */ }
+    queryClient.clear()
+    clearUserScopedStorage()
     clearUser()
     navigate('/login')
     toast.success('Logged out.')
