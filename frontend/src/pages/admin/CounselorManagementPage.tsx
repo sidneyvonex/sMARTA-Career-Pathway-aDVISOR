@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { schoolAdminApi } from '../../api/schoolAdmin'
+import ErrorState from '../../components/common/dashboard/ErrorState'
 import '../../styles/school-admin.css'
 
 export default function CounselorManagementPage() {
@@ -9,7 +10,7 @@ export default function CounselorManagementPage() {
   const [email, setEmail] = useState('')
   const [removingId, setRemovingId] = useState<number | null>(null)
 
-  const { data: counselors, isLoading } = useQuery({
+  const { data: counselors, isLoading, isError, refetch } = useQuery({
     queryKey: ['school-admin', 'counselors'],
     queryFn: () => schoolAdminApi.getCounselors().then(r => r.data.data),
   })
@@ -57,6 +58,18 @@ export default function CounselorManagementPage() {
   }
 
   if (isLoading) return <p className="loading-text">Loading counselors…</p>
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="The counsellor list could not load"
+        description="No counsellor records were changed. Check your connection and try again."
+        onRetry={() => refetch()}
+        actionLabel="Retry counsellors"
+        secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+      />
+    )
+  }
 
   return (
     <div className="counselor-management-page">

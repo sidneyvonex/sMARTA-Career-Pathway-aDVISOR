@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import { schoolAdminApi } from '../../../api/schoolAdmin'
+import ErrorState from '../../common/dashboard/ErrorState'
 import '../../../styles/school-admin.css'
 
 export default function SchoolAdminDashboard() {
@@ -34,13 +34,15 @@ export default function SchoolAdminDashboard() {
   }
 
   if (schoolQ.isError || statsQ.isError) {
-    toast.error('Failed to load dashboard data.')
     return (
-      <div className="school-admin-dashboard">
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          Something went wrong loading the dashboard. Please try again.
-        </p>
-      </div>
+      <ErrorState
+        title="The school dashboard could not load"
+        description="Check your connection and try loading the school summary again."
+        onRetry={() => {
+          schoolQ.refetch()
+          statsQ.refetch()
+        }}
+      />
     )
   }
 

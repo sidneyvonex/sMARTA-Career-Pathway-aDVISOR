@@ -34,6 +34,8 @@ import { useAuthStore } from './store/authStore'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
 import { usePWAUpdate } from './hooks/usePWAUpdate'
 import InstallBanner from './components/InstallBanner'
+import ErrorBoundary from './components/common/ErrorBoundary'
+import ErrorState from './components/common/dashboard/ErrorState'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -109,12 +111,13 @@ function AppRoutes() {
             <Route path="/system-admin/audit-log" element={<SystemAdminAuditLogPage />} />
           </Route>
 
-          <Route path="*" element={
-            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-              <h2 style={{ color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Page not found</h2>
-              <p>This page doesn't exist or is coming soon.</p>
-            </div>
-          } />
+          <Route path="*" element={(
+            <ErrorState
+              title="Page not found"
+              description="This page does not exist or is not available for your account."
+              secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+            />
+          )} />
         </Route>
       </Route>
     </Routes>
@@ -125,16 +128,18 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRoutes />
-        <InstallBanner />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
-            success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
-            error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
-          }}
-        />
+        <ErrorBoundary scope="application">
+          <AppRoutes />
+          <InstallBanner />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
+              success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
+            }}
+          />
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   )

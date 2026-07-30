@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../store/authStore'
 import { useNotificationStore } from '../../../store/notificationStore'
 import { formatRelativeTime } from '../../../lib/format'
 import { useDownloadReport } from '../../../hooks/useDownloadReport'
+import ErrorState from '../../common/dashboard/ErrorState'
 import LivelyStudentDashboard, { type LivelyData } from './lively/LivelyStudentDashboard'
 
 const TRAIT_NAMES: Record<RIASECDimension, string> = {
@@ -74,16 +75,13 @@ export default function StudentDashboard() {
     )
   }
 
-  if (!profile) {
+  if (profileQ.isError || !profile) {
     return (
-      <div className="lv-load-error" role="alert">
-        <span aria-hidden="true">↻</span>
-        <h1>We could not load your dashboard.</h1>
-        <p>Check your connection and try again.</p>
-        <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
-          Try again
-        </button>
-      </div>
+      <ErrorState
+        title="Your dashboard could not load"
+        description="Check your connection and try loading your learner profile again."
+        onRetry={() => profileQ.refetch()}
+      />
     )
   }
 

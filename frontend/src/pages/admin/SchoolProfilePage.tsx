@@ -2,13 +2,14 @@ import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { schoolAdminApi } from '../../api/schoolAdmin'
+import ErrorState from '../../components/common/dashboard/ErrorState'
 import '../../styles/school-admin.css'
 
 export default function SchoolProfilePage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: school, isLoading } = useQuery({
+  const { data: school, isLoading, isError, refetch } = useQuery({
     queryKey: ['school-admin', 'school'],
     queryFn: () => schoolAdminApi.getSchool().then(r => r.data.data),
   })
@@ -54,6 +55,17 @@ export default function SchoolProfilePage() {
   })
 
   if (isLoading) return <p className="loading-text">Loading school profile...</p>
+  if (isError) {
+    return (
+      <ErrorState
+        title="The school profile could not load"
+        description="Check your connection and try loading the school details again."
+        onRetry={() => refetch()}
+        actionLabel="Retry school profile"
+        secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+      />
+    )
+  }
   if (!school) return <p>No school assigned to your account.</p>
 
   function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {

@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { useAuthStore } from '../store/authStore'
+import { server } from './msw/server'
 import SchoolAdminDashboard from '../components/dashboard/admin/SchoolAdminDashboard'
 import SchoolProfilePage from '../pages/admin/SchoolProfilePage'
 import CounselorManagementPage from '../pages/admin/CounselorManagementPage'
@@ -121,6 +123,16 @@ describe('SchoolProfilePage', () => {
     expect(codeInput).toHaveValue('NAI001')
     expect(codeInput).toBeDisabled()
   })
+
+  it('shows a retryable error when the school profile query fails', async () => {
+    server.use(
+      http.get('/api/v1/school-admin/school/', () => HttpResponse.json({}, { status: 500 })),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('school profile could not load')
+    expect(screen.getByRole('button', { name: 'Retry school profile' })).toBeInTheDocument()
+  })
 })
 
 describe('CounselorManagementPage', () => {
@@ -162,6 +174,16 @@ describe('CounselorManagementPage', () => {
     await screen.findByText('Alice Wanjiku')
     const removeButtons = screen.getAllByRole('button', { name: 'Remove' })
     expect(removeButtons.length).toBe(2)
+  })
+
+  it('shows a retryable error when the counsellor query fails', async () => {
+    server.use(
+      http.get('/api/v1/school-admin/counselors/', () => HttpResponse.json({}, { status: 500 })),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('counsellor list could not load')
+    expect(screen.getByRole('button', { name: 'Retry counsellors' })).toBeInTheDocument()
   })
 })
 
@@ -208,5 +230,15 @@ describe('SchoolStudentsPage', () => {
     await screen.findByText('Jane Muthoni')
     const selects = screen.getAllByRole('combobox')
     expect(selects.length).toBe(2)
+  })
+
+  it('shows a retryable error when the student query fails', async () => {
+    server.use(
+      http.get('/api/v1/school-admin/students/', () => HttpResponse.json({}, { status: 500 })),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('student list could not load')
+    expect(screen.getByRole('button', { name: 'Retry students' })).toBeInTheDocument()
   })
 })

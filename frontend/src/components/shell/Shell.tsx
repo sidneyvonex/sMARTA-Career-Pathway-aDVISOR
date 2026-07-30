@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import NotificationPanel from './NotificationPanel'
+import ErrorBoundary from '../common/ErrorBoundary'
 import { useLayoutStore } from '../../store/layoutStore'
 import '../../styles/shell.css'
 import '../../styles/role-dashboard.css'
@@ -15,6 +16,7 @@ interface ShellProps {
 export default function Shell({ children }: ShellProps) {
   const { sidebarCollapsed, mobileSidebarOpen, setMobileSidebarOpen } = useLayoutStore()
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const location = useLocation()
 
   useEffect(() => {
     if (mobileSidebarOpen) {
@@ -61,7 +63,9 @@ export default function Shell({ children }: ShellProps) {
         <Topbar />
         <main className="shell__content" id="main-content">
           <div className="shell__content-inner" data-testid="shell-content-inner">
-            {children ?? <Outlet />}
+            <ErrorBoundary resetKey={location.pathname}>
+              {children ?? <Outlet />}
+            </ErrorBoundary>
           </div>
         </main>
       </div>

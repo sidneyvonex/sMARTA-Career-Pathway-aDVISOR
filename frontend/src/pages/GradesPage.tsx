@@ -5,6 +5,7 @@ import { studentsApi, StudentSubject } from '../api/students'
 import SubjectList from '../components/students/SubjectList'
 import GradeEntryForm from '../components/students/GradeEntryForm'
 import GradeHistory from '../components/students/GradeHistory'
+import ErrorState from '../components/common/dashboard/ErrorState'
 import '../styles/student-pages.css'
 
 export default function GradesPage() {
@@ -51,6 +52,22 @@ export default function GradesPage() {
     },
     onError: () => toast.error('Could not remove subject.'),
   })
+
+  if (profileQ.isError || subjectsQ.isError || catalogQ.isError) {
+    return (
+      <ErrorState
+        title="Your subjects and grades could not load"
+        description="Your saved grades are unchanged. Check your connection and try loading them again."
+        onRetry={() => {
+          profileQ.refetch()
+          subjectsQ.refetch()
+          if (profileQ.data) catalogQ.refetch()
+        }}
+        actionLabel="Retry grade data"
+        secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+      />
+    )
+  }
 
   const enrolled = subjectsQ.data ?? []
   const catalog = catalogQ.data ?? []
@@ -149,7 +166,16 @@ export default function GradesPage() {
                 <GradeEntryForm studentSubjectId={activeSubjectId} />
                 <div className="grade-history-wrap">
                   <h3>Grade history</h3>
-                  {gradesQ.isLoading ? <p>Loading grades…</p> : (
+                  {gradesQ.isLoading ? (
+                    <p>Loading grades…</p>
+                  ) : gradesQ.isError ? (
+                    <ErrorState
+                      title="Grade history could not load"
+                      description="Try loading this subject's grade history again."
+                      onRetry={() => gradesQ.refetch()}
+                      actionLabel="Retry grade history"
+                    />
+                  ) : (
                     <GradeHistory grades={gradesQ.data ?? []} />
                   )}
                 </div>

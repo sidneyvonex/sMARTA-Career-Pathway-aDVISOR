@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { schoolAdminApi, SchoolStudent } from '../../api/schoolAdmin'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
+import ErrorState from '../../components/common/dashboard/ErrorState'
 import '../../styles/school-admin.css'
 
 type Filter = 'all' | 'assigned' | 'unassigned' | 'assessed' | 'pending'
@@ -12,17 +13,19 @@ export default function SchoolStudentsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
 
-  const { data: students, isLoading } = useQuery({
+  const studentsQ = useQuery({
     queryKey: ['school-admin', 'students'],
     queryFn: () => schoolAdminApi.getStudents().then(r => r.data.data),
   })
 
   const { downloadReport, downloadingId } = useDownloadReport()
 
-  const { data: counselors } = useQuery({
+  const counselorsQ = useQuery({
     queryKey: ['school-admin', 'counselors'],
     queryFn: () => schoolAdminApi.getCounselors().then(r => r.data.data),
   })
+  const students = studentsQ.data
+  const counselors = counselorsQ.data
 
   const assignMutation = useMutation({
     mutationFn: ({ studentId, counselorId }: { studentId: number; counselorId: number }) =>
@@ -38,7 +41,23 @@ export default function SchoolStudentsPage() {
     },
   })
 
-  if (isLoading) return <p className="loading-text">Loading students…</p>
+  if (studentsQ.isLoading || counselorsQ.isLoading) {
+    return <p className="loading-text">Loading students…</p>
+  }
+  if (studentsQ.isError || counselorsQ.isError) {
+    return (
+      <ErrorState
+        title="The student list could not load"
+        description="Student and counsellor assignments are unchanged. Check your connection and try again."
+        onRetry={() => {
+          studentsQ.refetch()
+          counselorsQ.refetch()
+        }}
+        actionLabel="Retry students"
+        secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+      />
+    )
+  }
 
   const filtered = (students ?? []).filter((s: SchoolStudent) => {
     const matchesSearch =
