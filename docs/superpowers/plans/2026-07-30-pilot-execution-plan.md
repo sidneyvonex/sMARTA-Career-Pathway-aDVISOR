@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.3 accessibility pass
+**Next:** Task 9.4 performance pass; complete the final manual viewport matrix in Task 9.6
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1530,18 +1530,26 @@ Verification:
 
 Verify:
 
-- keyboard-only navigation;
-- focus order and visible focus;
-- landmark/headings;
-- labels and error relationships;
-- color contrast;
-- chart text alternatives;
-- reduced motion;
-- 200% zoom;
-- 360px width;
-- meaningful loading and error announcements.
+- [ ] keyboard-only navigation (final role-by-role walkthrough in Task 9.6);
+- [ ] focus order and visible focus (final role-by-role walkthrough in Task 9.6);
+- [x] landmark/headings;
+- [x] labels and error relationships;
+- [x] color contrast for core public surfaces;
+- [x] chart text alternatives;
+- [x] reduced motion;
+- [ ] 200% zoom (final role-by-role walkthrough in Task 9.6);
+- [ ] 360px width (final role-by-role walkthrough in Task 9.6);
+- [x] meaningful loading and error announcements.
 
 Add automated checks where current tooling permits. Record manual checks in the presentation runbook.
+
+Verification:
+
+- Accessibility and affected learner-flow regression: 33 tests passed serially.
+- Strict TypeScript and diff whitespace checks: passed.
+- Browser semantics inspection: one page-level heading, expected public landmarks and descriptive images were exposed.
+- Sampled contrast ratios: body 17.4:1; primary action and pilot notice 18.47:1.
+- Commit: `8c6aa5f`.
 
 ### Task 9.4 - Performance pass
 
