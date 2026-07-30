@@ -107,7 +107,7 @@ export default function LearnerPlanPage() {
     )
   }
   if (isLoading) {
-    return <div className="plan-loading" aria-label="Loading learner plan"><div /><div /><div /></div>
+    return <div className="plan-loading" role="status" aria-label="Loading learner plan"><div /><div /><div /></div>
   }
   if (!provisional) {
     return (

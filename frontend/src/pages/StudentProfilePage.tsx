@@ -14,11 +14,11 @@ export default function StudentProfilePage() {
   const [profile, setProfile] = useState<StudentProfile | null>(null)
 
   if (isLoading) {
-    return <div className="student-page-state">Loading your profile…</div>
+    return <div className="student-page-state" role="status" aria-live="polite">Loading your profile…</div>
   }
 
   if (isError || !data) {
-    return <div className="student-page-state student-page-state--error">We could not load your profile. Please try again.</div>
+    return <div className="student-page-state student-page-state--error" role="alert">We could not load your profile. Please try again.</div>
   }
 
   const current = profile ?? data

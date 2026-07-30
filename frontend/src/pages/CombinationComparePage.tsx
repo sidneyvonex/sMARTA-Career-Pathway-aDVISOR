@@ -76,7 +76,7 @@ export default function CombinationComparePage() {
 
   if (isLoading) {
     return (
-      <div className="compare-loading" aria-label="Loading comparison">
+      <div className="compare-loading" role="status" aria-label="Loading comparison">
         {Array.from({ length: 3 }, (_, index) => <div key={index} />)}
       </div>
     )

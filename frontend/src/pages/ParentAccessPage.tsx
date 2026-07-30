@@ -41,7 +41,7 @@ export default function ParentAccessPage() {
   })
 
   if (accessQuery.isLoading) {
-    return <div className="access-loading" aria-label="Loading parent access"><div /><div /></div>
+    return <div className="access-loading" role="status" aria-label="Loading parent access"><div /><div /></div>
   }
   if (accessQuery.isError) {
     return (

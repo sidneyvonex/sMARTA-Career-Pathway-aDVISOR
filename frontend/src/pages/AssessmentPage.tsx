@@ -79,11 +79,11 @@ export default function AssessmentPage() {
   }
 
   if (isLoading) {
-    return <div className="assessment-state">Preparing your questions…</div>
+    return <div className="assessment-state" role="status" aria-live="polite">Preparing your questions…</div>
   }
 
   if (isError) {
-    return <div className="assessment-state assessment-state--error">We could not load the questions. Check your connection and refresh.</div>
+    return <div className="assessment-state assessment-state--error" role="alert">We could not load the questions. Check your connection and refresh.</div>
   }
 
   return (

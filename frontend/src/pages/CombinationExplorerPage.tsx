@@ -209,7 +209,7 @@ export default function CombinationExplorerPage() {
       </section>
 
       {isLoading ? (
-        <div className="explorer-grid" aria-label="Loading combinations">
+        <div className="explorer-grid" role="status" aria-label="Loading combinations">
           {Array.from({ length: 4 }, (_, index) => (
             <div className="explorer-card explorer-card--loading" key={index} />
           ))}

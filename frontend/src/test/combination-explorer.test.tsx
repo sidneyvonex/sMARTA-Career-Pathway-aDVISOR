@@ -32,7 +32,7 @@ describe('CombinationExplorerPage', () => {
     expect(screen.getByRole('option', { name: 'Kirinyaga' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Nyandarua' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Agriculture, Biology & Chemistry' })).toBeInTheDocument()
-    expect(screen.getByText('Pure Sciences')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Pure Sciences' })).toBeInTheDocument()
     expect(screen.getByText('Agriculture')).toBeInTheDocument()
   })
 
