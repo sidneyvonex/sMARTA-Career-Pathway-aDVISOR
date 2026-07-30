@@ -461,6 +461,7 @@ textarea.student-field__control {
 
 .grade-history {
   width: 100%;
+  min-width: 670px;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
@@ -504,6 +505,35 @@ textarea.student-field__control {
 .grade-level--be {
   color: var(--color-flame-hover);
   background: var(--color-accent-surface);
+}
+
+.grade-provenance {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.grade-verification {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  font-weight: var(--font-weight-semibold);
+}
+
+.grade-verification::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.grade-verification--verified {
+  color: var(--color-primary);
+}
+
+.grade-verification--unverified {
+  color: var(--color-text-secondary);
 }
 
 .profile-hero {

@@ -131,12 +131,43 @@ describe('SubjectList', () => {
 describe('GradeHistory', () => {
   it('renders grade rows', () => {
     const grades = [
-      { id: 20, term: 1 as const, year: 2026, level: 'ME1' as const, created_at: '', updated_at: '' },
+      {
+        id: 20,
+        term: 1 as const,
+        year: 2026,
+        level: 'ME1' as const,
+        source: 'school' as const,
+        verified_by: 4,
+        verified_at: '2026-07-30T10:00:00Z',
+        created_at: '',
+        updated_at: '',
+      },
     ]
     render(<GradeHistory grades={grades} />, { wrapper: Wrapper })
     expect(screen.getByText('Term 1')).toBeInTheDocument()
     expect(screen.getByText('2026')).toBeInTheDocument()
     expect(screen.getByText(/meeting expectation/i)).toBeInTheDocument()
+    expect(screen.getByText('School record')).toBeInTheDocument()
+    expect(screen.getByText('Verified')).toBeInTheDocument()
+  })
+
+  it('distinguishes learner-entered evidence that has not been verified', () => {
+    const grades = [
+      {
+        id: 21,
+        term: 2 as const,
+        year: 2026,
+        level: 'AE1' as const,
+        source: 'learner' as const,
+        verified_by: null,
+        verified_at: null,
+        created_at: '',
+        updated_at: '',
+      },
+    ]
+    render(<GradeHistory grades={grades} />, { wrapper: Wrapper })
+    expect(screen.getByText('Learner entered')).toBeInTheDocument()
+    expect(screen.getByText('Not verified')).toBeInTheDocument()
   })
 
   it('shows empty state when no grades', () => {

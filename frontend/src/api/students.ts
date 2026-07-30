@@ -68,6 +68,9 @@ export interface CBCGrade {
   term: 1 | 2 | 3
   year: number
   level: GradeLevel
+  source: 'learner' | 'school'
+  verified_by: number | null
+  verified_at: string | null
   created_at: string
   updated_at: string
 }

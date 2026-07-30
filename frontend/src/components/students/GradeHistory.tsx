@@ -17,6 +17,8 @@ export default function GradeHistory({ grades }: Props) {
             <th>Term</th>
             <th>Year</th>
             <th>Level</th>
+            <th>Source</th>
+            <th>Verification</th>
           </tr>
         </thead>
         <tbody>
@@ -27,6 +29,22 @@ export default function GradeHistory({ grades }: Props) {
               <td>
                 <span className={`grade-level grade-level--${grade.level.slice(0, 2).toLowerCase()}`}>
                   {GRADE_LEVEL_LABELS[grade.level]}
+                </span>
+              </td>
+              <td>
+                <span className="grade-provenance">
+                  {grade.source === 'school' ? 'School record' : 'Learner entered'}
+                </span>
+              </td>
+              <td>
+                <span
+                  className={`grade-verification ${
+                    grade.verified_at && grade.verified_by
+                      ? 'grade-verification--verified'
+                      : 'grade-verification--unverified'
+                  }`}
+                >
+                  {grade.verified_at && grade.verified_by ? 'Verified' : 'Not verified'}
                 </span>
               </td>
             </tr>
