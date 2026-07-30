@@ -253,7 +253,14 @@ The current public-page redesign and lively student-dashboard work are understan
 - [x] Review `git diff --stat` and `git diff`.
 - [x] Separate public/student redesign files from unrelated changes.
 - [x] Confirm no generated PDF or local design artifacts will be included in a product-code commit.
-- [ ] Record the current visual baseline at desktop, tablet and 360px mobile. Desktop and 360px are verified; tablet remains.
+- [x] Record the current visual baseline at desktop, tablet and 360px mobile.
+
+Verification:
+
+- Desktop and 360px behavior is recorded in the presentation runbook across the
+  public surface and all five role dashboards.
+- The learner dashboard and grades page were measured at 768 x 1024 without
+  document-level overflow, and representative responsive contracts cover 768px.
 
 Acceptance:
 
