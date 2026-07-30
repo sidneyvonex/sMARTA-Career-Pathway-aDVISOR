@@ -58,6 +58,7 @@ class StudentSubject(models.Model):
 
 class CBCGrade(models.Model):
     TERM_CHOICES = [(1, 'Term 1'), (2, 'Term 2'), (3, 'Term 3')]
+    SOURCE_CHOICES = [('learner', 'Learner'), ('school', 'School')]
 
     student_subject = models.ForeignKey(
         StudentSubject, on_delete=models.CASCADE, related_name='grades'
@@ -65,12 +66,37 @@ class CBCGrade(models.Model):
     term = models.IntegerField(choices=TERM_CHOICES)
     year = models.IntegerField()
     level = models.CharField(max_length=10, choices=GRADE_LEVEL_CHOICES)
+    source = models.CharField(
+        max_length=10,
+        choices=SOURCE_CHOICES,
+        default='learner',
+    )
+    verified_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_cbc_grades',
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('student_subject', 'term', 'year')
         ordering = ['year', 'term']
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(verified_by__isnull=True, verified_at__isnull=True)
+                    | models.Q(
+                        verified_by__isnull=False,
+                        verified_at__isnull=False,
+                    )
+                ),
+                name='students_grade_verification_pair',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.student_subject} — T{self.term} {self.year}: {self.level}"

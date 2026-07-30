@@ -54,8 +54,25 @@ class StudentSubjectSerializer(serializers.ModelSerializer):
 class CBCGradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CBCGrade
-        fields = ('id', 'term', 'year', 'level', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        fields = (
+            'id',
+            'term',
+            'year',
+            'level',
+            'source',
+            'verified_by',
+            'verified_at',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = (
+            'id',
+            'source',
+            'verified_by',
+            'verified_at',
+            'created_at',
+            'updated_at',
+        )
 
     def validate_year(self, value):
         current_year = date.today().year

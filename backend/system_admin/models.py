@@ -17,12 +17,15 @@ ACTION_CHOICES = [
     ('counselor_added', 'Counselor added to school'),
     ('counselor_removed', 'Counselor removed from school'),
     ('counselor_assigned', 'Counselor assigned to student'),
+    ('grade_verified', 'Grade verified'),
+    ('grade_verification_removed', 'Grade verification removed'),
 ]
 
 TARGET_TYPE_CHOICES = [
     ('user', 'User'),
     ('school', 'School'),
     ('assignment', 'Assignment'),
+    ('grade', 'Grade'),
 ]
 
 

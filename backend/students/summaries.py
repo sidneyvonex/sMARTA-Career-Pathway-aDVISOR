@@ -143,6 +143,11 @@ def grade_summary(profile):
                 'term': grade.term,
                 'year': grade.year,
                 'level': grade.level,
+                'source': grade.source,
+                'verified_by': grade.verified_by_id,
+                'verified_at': (
+                    grade.verified_at.isoformat() if grade.verified_at else None
+                ),
                 'created_at': grade.created_at.isoformat(),
                 'updated_at': grade.updated_at.isoformat(),
             }

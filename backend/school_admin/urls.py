@@ -3,6 +3,11 @@ from . import views
 
 urlpatterns = [
     path('offerings/', views.SchoolOfferingsView.as_view(), name='school-admin-offerings'),
+    path(
+        'students/<int:student_id>/grades/<int:grade_id>/verification/',
+        views.SchoolGradeVerificationView.as_view(),
+        name='school-admin-grade-verification',
+    ),
     path('school/', views.SchoolProfileView.as_view(), name='school-admin-profile'),
     path('school/logo/', views.SchoolLogoUploadView.as_view(), name='school-admin-logo'),
     path('school/logo/remove/', views.SchoolLogoRemoveView.as_view(), name='school-admin-logo-remove'),

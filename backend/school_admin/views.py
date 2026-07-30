@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -21,6 +22,9 @@ from guidance.serializers import (
     SchoolSummarySerializer,
     SubjectCombinationSerializer,
 )
+from students.models import CBCGrade
+from students.serializers import CBCGradeSerializer
+from system_admin.models import AuditLog
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
@@ -122,6 +126,91 @@ class SchoolOfferingsView(APIView):
         return _success(
             data=self._response_data(school),
             message='School offerings updated.',
+        )
+
+
+class SchoolGradeVerificationView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def put(self, request, student_id, grade_id):
+        school = request.user.school
+        if school is None:
+            return _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+        if not school.is_active:
+            return _error('Your school is inactive.', status.HTTP_403_FORBIDDEN)
+        if (
+            'verified' not in request.data
+            or type(request.data['verified']) is not bool
+        ):
+            return _error('verified must be a boolean.')
+        should_verify = request.data['verified']
+
+        with transaction.atomic():
+            try:
+                grade = (
+                    CBCGrade.objects.select_for_update()
+                    .select_related('student_subject__student_profile')
+                    .get(
+                        pk=grade_id,
+                        student_subject__student_profile__user_id=student_id,
+                        student_subject__student_profile__school=school,
+                        student_subject__student_profile__mode='school_linked',
+                        student_subject__student_profile__school_membership_status='active',
+                    )
+                )
+            except CBCGrade.DoesNotExist:
+                return _error(
+                    'Grade not found for an active learner at your school.',
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            is_verified = grade.verified_at is not None
+            verifier_changed = (
+                should_verify
+                and is_verified
+                and grade.verified_by_id != request.user.id
+            )
+            changed = should_verify != is_verified or verifier_changed
+            if changed:
+                if should_verify:
+                    grade.verified_by = request.user
+                    grade.verified_at = timezone.now()
+                    action = 'grade_verified'
+                else:
+                    grade.verified_by = None
+                    grade.verified_at = None
+                    action = 'grade_verification_removed'
+                grade.save(update_fields=['verified_by', 'verified_at', 'updated_at'])
+
+                forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+                ip_address = (
+                    forwarded.split(',')[0].strip()
+                    if forwarded
+                    else request.META.get('REMOTE_ADDR')
+                )
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action=action,
+                    target_type='grade',
+                    target_id=grade.id,
+                    details={
+                        'student_id': student_id,
+                        'school_id': school.id,
+                        'source': grade.source,
+                    },
+                    ip_address=ip_address,
+                )
+
+        return _success(
+            data=CBCGradeSerializer(grade).data,
+            message=(
+                'Grade verified.'
+                if should_verify
+                else 'Grade verification removed.'
+            ),
         )
 
 
