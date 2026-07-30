@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
+import { attentionSummary } from '../components/dashboard/counselor/CounselorDashboard'
 import { useAuthStore } from '../store/authStore'
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,11 @@ beforeEach(() => {
 })
 
 describe('DashboardPage', () => {
+  it('uses correct singular and plural attention grammar', () => {
+    expect(attentionSummary(1)).toBe('1 learner has a clear reason for attention.')
+    expect(attentionSummary(4)).toBe('4 learners have a clear reason for attention.')
+  })
+
   it('renders nothing when user is null', () => {
     const { container } = render(<DashboardPage />, { wrapper })
     expect(container).toBeEmptyDOMElement()

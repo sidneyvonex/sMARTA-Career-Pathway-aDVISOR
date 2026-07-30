@@ -26,6 +26,11 @@ const REASON_PRIORITY = {
   no_plan: 6,
 }
 
+export function attentionSummary(count: number) {
+  if (count === 1) return '1 learner has a clear reason for attention.'
+  return `${count} learners have a clear reason for attention.`
+}
+
 export default function CounselorDashboard() {
   const { user } = useAuthStore()
   const studentsQ = useQuery({
@@ -91,7 +96,7 @@ export default function CounselorDashboard() {
         eyebrow="Counsellor workspace"
         title={user ? greeting(user.first_name) : 'Welcome'}
         description={stats.students_needing_attention > 0
-          ? `${stats.students_needing_attention} learner${stats.students_needing_attention === 1 ? '' : 's'} have a clear reason for attention.`
+          ? attentionSummary(stats.students_needing_attention)
           : 'Your assigned learners are up to date.'}
         avatar={<Avatar seed={fullName} size={46} shape="squircle" />}
         meta={[
