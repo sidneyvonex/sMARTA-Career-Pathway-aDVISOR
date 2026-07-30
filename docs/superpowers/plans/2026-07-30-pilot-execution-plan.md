@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Task 4.1 learner summaries
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.2 learner summaries and grade verification
 
-**Next:** Task 4.2 grade source and verification
+**Next:** Task 4.3 assessment versioning and explainable interest alignment
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -35,6 +35,7 @@
 | `d7ab5e1` | Permission-tested school offering reads and atomic full-replacement updates |
 | `88f2109` | Typed guidance frontend client, unified query keys and complete MSW contracts |
 | `566de40` | Learner evidence and aggregated grade summaries with calculated next actions |
+| `457c21e` | Audited school verification and immutable provenance for learner grades |
 
 ## 1. How to use this plan
 
@@ -755,6 +756,18 @@ Pilot behavior:
 - learner-created record defaults to learner;
 - school verification is available through learner detail/admin flow;
 - verification changes are audited.
+
+Verification:
+
+- Grade records default to learner provenance, while serializer read-only fields prevent learners from forging school source or verification metadata.
+- An active school administrator can verify or remove verification only for an active learner linked to that administrator's active school.
+- Verification accepts a strict boolean, is idempotent for unchanged state and records both verification and removal in the system audit log.
+- The model enforces paired verifier/timestamp state and grade summaries expose provenance without extra queries.
+- Focused grade-verification suite: 16 tests passed.
+- Combined grade, student, school-admin and system-admin regression suite: 133 tests passed.
+- Django system check: no issues.
+- Student and system-admin migration drift checks: no changes detected after normalizing legacy audit-index names.
+- Commit: `457c21e`.
 
 ### Task 4.3 - Version assessment and explain interest alignment
 
