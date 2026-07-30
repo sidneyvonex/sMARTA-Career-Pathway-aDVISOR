@@ -25,6 +25,8 @@ describe('LandingPurpose', () => {
     expect(screen.getByText('6')).toBeInTheDocument()
     expect(screen.getByText(/riasec dimensions/i)).toBeInTheDocument()
     expect(screen.getByText(/to get started/i)).toBeInTheDocument()
+    expect(screen.getByText(/align with your interests and evidence/i)).toBeInTheDocument()
+    expect(screen.queryByText(/actually fits/i)).not.toBeInTheDocument()
   })
 })
 
@@ -112,7 +114,8 @@ describe('LandingCommunity', () => {
 describe('LandingCTA', () => {
   it('renders the closing call to action linking to /register', () => {
     withRouter(<LandingCTA />)
-    expect(screen.getByText(/your pathway is already out there/i)).toBeInTheDocument()
+    expect(screen.getByText(/your next pathway conversation starts here/i)).toBeInTheDocument()
+    expect(screen.getByText(/let's explore the options/i)).toBeInTheDocument()
     const cta = screen.getByRole('link', { name: /create your free account/i })
     expect(cta).toHaveAttribute('href', '/register')
   })

@@ -6,7 +6,7 @@ export default function LandingHero() {
       <section className="landing-hero">
         <div className="landing-hero__grid">
           <div>
-            <span className="landing-eyebrow">For every Form 2–4 learner</span>
+            <span className="landing-eyebrow">Five-county pilot · Form 2–4 learners</span>
             <h1 className="landing-hero__heading">
               Discover. Plan. Choose.
               <span className="landing-script">Succeed.</span>
@@ -15,8 +15,8 @@ export default function LandingHero() {
           <div className="landing-hero__side">
             <p>
               &quot;STEM or Arts?&quot; shouldn&apos;t be a coin flip. Answer a few honest
-              questions about what you enjoy, and we&apos;ll show you which CBC pathway
-              actually fits you — before you have to choose.
+              questions about what you enjoy, and we&apos;ll show you which CBC pathways
+              align with the interests you shared — as a starting point for your choice.
             </p>
             <div className="landing-hero__nav" aria-hidden="true">
               <span className="landing-navdot">

@@ -22,6 +22,13 @@ describe('LandingHero', () => {
     expect(cta).toHaveAttribute('href', '/pathways')
   })
 
+  it('frames interest results as advisory alignment within the five-county pilot', () => {
+    render(<LandingHero />, { wrapper: MemoryRouter })
+    expect(screen.getByText(/five-county pilot/i)).toBeInTheDocument()
+    expect(screen.getByText(/align with the interests you shared/i)).toBeInTheDocument()
+    expect(screen.queryByText(/actually fits you/i)).not.toBeInTheDocument()
+  })
+
   it('renders the photo filmstrip with images served from /img/', () => {
     render(<LandingHero />, { wrapper: MemoryRouter })
     const images = screen.getAllByRole('img')

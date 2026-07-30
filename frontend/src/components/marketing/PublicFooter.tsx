@@ -20,8 +20,8 @@ export default function PublicFooter() {
             Smarta Shauri
           </p>
           <p className="mk-footer__brand-desc">
-            Built for every Kenyan learner staring at a subject selection form, wondering which
-            pathway is actually theirs.
+            Built for learners in this five-county pilot who want clearer evidence and a
+            better-supported pathway conversation.
           </p>
         </div>
 
