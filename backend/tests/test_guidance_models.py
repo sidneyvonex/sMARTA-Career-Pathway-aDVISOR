@@ -29,6 +29,7 @@ class TestFrameworkVersion:
         assert FrameworkVersion.objects.current() == current
 
     def test_current_returns_none_without_active_version(self):
+        FrameworkVersion.objects.update(is_active=False)
         FrameworkVersionFactory(is_active=False)
 
         assert FrameworkVersion.objects.current() is None
