@@ -1,4 +1,3 @@
-from django.db.models import Exists, OuterRef, Prefetch
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import status
@@ -6,10 +5,11 @@ from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsCounselor, IsEmailVerified
 from accounts.models import StudentProfile
 from accounts.response import _success, _error
-from riasec.models import RIASECAssessment, Recommendation
+from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
+from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorNote
 from .serializers import CounselorNoteSerializer, CounselorNoteCreateSerializer
 
@@ -25,38 +25,21 @@ class CounselorStudentsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
     def get(self, request):
-        latest_assessments = RIASECAssessment.objects.filter(
-            student_profile=OuterRef('pk'),
-        ).order_by('-submitted_at')
-
-        profiles = (
-            _get_assigned_profiles(request.user)
-            .annotate(has_assessment=Exists(latest_assessments))
-            .prefetch_related(
-                Prefetch(
-                    'riasec_assessments',
-                    queryset=RIASECAssessment.objects.order_by('-submitted_at').prefetch_related(
-                        Prefetch('recommendations', queryset=Recommendation.objects.select_related('pathway').order_by('rank'))
-                    ),
-                )
-            )
-        )
+        profiles = attention_profiles(_get_assigned_profiles(request.user))
 
         data = []
         for profile in profiles:
             top_pathway = None
             fit_pct = None
             quiz_status = 'pending'
-
-            if profile.has_assessment:
+            assessments = profile.attention_assessments
+            if assessments:
                 quiz_status = 'done'
-                assessments = list(profile.riasec_assessments.all())
-                if assessments:
-                    latest = assessments[0]
-                    recs = list(latest.recommendations.all())
-                    if recs:
-                        top_pathway = recs[0].pathway.name
-                        fit_pct = recs[0].fit_pct
+                recs = list(assessments[0].recommendations.all())
+                if recs:
+                    top_pathway = recs[0].pathway.name
+                    fit_pct = recs[0].fit_pct
+            attention_reasons = attention_reasons_for(profile)
 
             data.append({
                 'id': profile.user.id,
@@ -68,6 +51,8 @@ class CounselorStudentsView(APIView):
                 'top_pathway': top_pathway,
                 'fit_pct': fit_pct,
                 'quiz_status': quiz_status,
+                'needs_attention': bool(attention_reasons),
+                'attention_reasons': attention_reasons,
                 'last_active': profile.user.last_login.isoformat() if profile.user.last_login else None,
             })
         return _success(data=data)
@@ -134,14 +119,16 @@ class CounselorStatsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
     def get(self, request):
-        latest_assessments = RIASECAssessment.objects.filter(
-            student_profile=OuterRef('pk'),
+        profiles = list(
+            attention_profiles(_get_assigned_profiles(request.user))
         )
-        profiles = _get_assigned_profiles(request.user).annotate(
-            has_assessment=Exists(latest_assessments),
+        total = len(profiles)
+        assessed = sum(
+            bool(profile.attention_assessments) for profile in profiles
         )
-        total = profiles.count()
-        assessed = profiles.filter(has_assessment=True).count()
+        needing_attention = sum(
+            bool(attention_reasons_for(profile)) for profile in profiles
+        )
         notes = CounselorNote.objects.filter(
             counselor=request.user, deleted_at__isnull=True,
         ).count()
@@ -149,7 +136,7 @@ class CounselorStatsView(APIView):
         return _success(data={
             'total_students': total,
             'assessments_done': assessed,
-            'students_needing_attention': total - assessed,
+            'students_needing_attention': needing_attention,
             'notes_written': notes,
         })
 

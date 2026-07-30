@@ -47,6 +47,13 @@ class TestCounselorStudentsView:
         data = r.json()['data']
         assert len(data) == 1
         assert data[0]['first_name'] == assigned_student.user.first_name
+        assert data[0]['needs_attention'] is True
+        assert [reason['code'] for reason in data[0]['attention_reasons']] == [
+            'assessment_missing',
+            'academic_evidence_missing',
+            'no_saved_combination',
+            'no_plan',
+        ]
 
     def test_does_not_list_unassigned_students(self, client, counselor, school):
         _auth(client, counselor)
@@ -80,6 +87,12 @@ class TestCounselorStudentsView:
         r = client.get(reverse('counselor-students'))
         data = r.json()['data']
         assert data[0]['quiz_status'] == 'done'
+        assert 'assessment_missing' not in [
+            reason['code'] for reason in data[0]['attention_reasons']
+        ]
+        assert 'academic_evidence_missing' in [
+            reason['code'] for reason in data[0]['attention_reasons']
+        ]
 
     def test_requires_auth(self, client):
         r = client.get(reverse('counselor-students'))
