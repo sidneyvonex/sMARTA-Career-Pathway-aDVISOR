@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 3 - Pilot framework and combination domain
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.3 guidance domain, catalogue and public APIs
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Tasks 3.1-3.4 guidance domain, catalogue and APIs
 
-**Next:** Task 3.4 school offerings API
+**Next:** Task 3.5 typed guidance frontend client
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -32,6 +32,7 @@
 | `ea4e7ab` | Source-dated guidance framework, pathway tracks, three-subject combinations and school offerings |
 | `cce4907` | Curated Ministry-code pilot catalogue and representative five-county demonstration offerings |
 | `9b84c28` | Public source-dated guidance APIs with catalogue filters and bounded query counts |
+| `d7ab5e1` | Permission-tested school offering reads and atomic full-replacement updates |
 
 ## 1. How to use this plan
 
@@ -658,6 +659,19 @@ Acceptance:
 - School admin can replace the school's complete offering selection.
 - Related arrays use clear replace semantics.
 - Only active pilot combinations can be selected.
+
+Verification:
+
+- School-offerings contract: 16 tests passed.
+- GET returns only the authenticated administrator's active, current-framework offerings with school and source metadata.
+- PUT supports complete replacement and an empty-list clear operation.
+- Invalid shapes, duplicates, nonexistent IDs, inactive combinations and combinations from inactive frameworks are rejected without mutation.
+- Unauthenticated, unverified, wrong-role, school-less and inactive-school access paths are covered.
+- Concurrent replacements serialize on the school row inside an atomic transaction.
+- Combined school-management and guidance regression suite: 97 tests passed.
+- Django system check: no issues.
+- Guidance and school-admin migration drift check: no changes detected.
+- Commit: `d7ab5e1`.
 
 ### Task 3.5 - Add typed frontend client
 
