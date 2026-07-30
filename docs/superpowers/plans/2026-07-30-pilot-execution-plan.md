@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.6 presenter-controlled keyboard, native 200% zoom and throttled-network checks
+**Next:** Task 9.6 presenter-controlled native 200% zoom and throttled-network checks
 
 **Outstanding baseline check:** None. All 36 backend test files passed in bounded groups (612 tests total).
 
@@ -1531,8 +1531,8 @@ Verification:
 
 Verify:
 
-- [ ] keyboard-only navigation (final role-by-role walkthrough in Task 9.6);
-- [ ] focus order and visible focus (final role-by-role walkthrough in Task 9.6);
+- [x] keyboard-only navigation through the shared public and authenticated-shell entry paths;
+- [x] focus order and visible focus, including mobile-drawer focus transfer and return;
 - [x] landmark/headings;
 - [x] labels and error relationships;
 - [x] color contrast for core public surfaces;
@@ -1547,10 +1547,14 @@ Add automated checks where current tooling permits. Record manual checks in the 
 Verification:
 
 - Accessibility and affected learner-flow regression: 33 tests passed serially.
+- Public and authenticated-shell keyboard tests verify that the skip link is first,
+  the next shell control follows it, and the mobile drawer receives and returns focus.
+- Live mobile-browser inspection verified the drawer's open/close focus transfer and
+  that its off-canvas controls are removed from the closed tab order.
 - Strict TypeScript and diff whitespace checks: passed.
 - Browser semantics inspection: one page-level heading, expected public landmarks and descriptive images were exposed.
 - Sampled contrast ratios: body 17.4:1; primary action and pilot notice 18.47:1.
-- Commit: `8c6aa5f`.
+- Commits: `8c6aa5f`, `3477494`.
 
 ### Task 9.4 - Performance pass
 
@@ -1566,10 +1570,12 @@ Verification:
 - Student dashboard startup: one HTTP request backed by eight bounded database queries.
 - Backend student summary and dashboard suite: 23 tests passed.
 - Dashboard, application route and shell regression: 14 tests passed.
+- A deterministic delayed-response regression verifies the loading state and the
+  first learner action's usable destination after a high-latency dashboard response.
 - Initial JavaScript baseline: 418.67 kB / 127.08 kB gzip, down from 547.26 kB / 155.29 kB gzip; no chunk exceeds the 500 kB warning threshold.
 - Nine public JPEGs: 10,850,334 bytes reduced to 2,075,716 bytes (80.9% smaller), with representative visual inspection passed.
 - Production build and strict TypeScript check: passed.
-- Commits: `fcd6168`, `63195ba`.
+- Commits: `fcd6168`, `63195ba`, `f9684f2`.
 
 ### Task 9.5 - Seed repeatable demonstration data
 
@@ -1620,9 +1626,9 @@ Create:
 Automated exit-gate verification:
 
 - Backend: all 36 test files passed in bounded groups, 612 tests total. The single-process command exceeded the 10-minute command window; every file was then accounted for in a completed green subset.
-- Frontend: 36 files and 213 tests passed.
+- Frontend: 36 files and 218 tests passed.
 - Production PWA build: passed, including strict TypeScript and generated service worker.
-- Main JavaScript remains 418.67 kB / 127.08 kB gzip with no chunk-size warning.
+- Main JavaScript is 419.39 kB / 127.22 kB gzip with no chunk-size warning.
 - One system-administrator assertion needed a five-second asynchronous render allowance under full-suite contention; its focused 26-test file and the complete suite both passed after correction.
 - Remaining React Router v7 migration notices, Django storage deprecation notice and JSDOM download-navigation notices are non-failing development/test warnings.
 
@@ -1647,6 +1653,9 @@ Additionally:
 - [x] All seeded demo accounts work.
 - [x] Public copy says pilot and does not imply official placement (public-page tests and copy inspection).
 - [x] Presentation runbook completes without database edits.
+- [ ] Native 200% browser zoom is presenter-verified for every matrix surface.
+- [ ] Browser network throttling is presenter-verified on the learner dashboard; the
+  deterministic high-latency regression is green but is not a substitute for this gate.
 
 ## 16. Dashboard completion checklist
 

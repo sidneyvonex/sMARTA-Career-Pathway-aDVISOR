@@ -161,8 +161,8 @@ Complete this on desktop and at 360px before the final presentation.
 
 | Check | Public | Learner | Parent | Counsellor | School admin | System admin |
 |---|---:|---:|---:|---:|---:|---:|
-| Keyboard-only path and visible focus | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Logical focus order after navigation/dialog | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Keyboard-only path and visible focus | [x] | [x] | [x] | [x] | [x] | [x] |
+| Logical focus order after navigation/dialog | [x] | [x] | [x] | [x] | [x] | [x] |
 | 200% browser zoom | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | 360px width, no blocked action | [x] | [x] | [x] | [x] | [x] | [x] |
 | No critical console errors | [x] | [x] | [x] | [x] | [x] | [x] |
@@ -188,6 +188,13 @@ Recorded responsive evidence on 31 July 2026:
   and then verified to scroll inside its 277px wrapper while the document remained
   contained;
 - the complete frontend suite and responsive shell/mobile-navigation tests pass.
+- the shared public and authenticated-shell keyboard entry paths start with a skip
+  link, expose visible focus, and keep the closed mobile drawer out of the tab order;
+- opening the mobile drawer transfers focus to its close control, while Escape closes
+  it and returns focus to the menu button on every role because the shell is shared;
+- the deterministic high-latency dashboard regression preserves a meaningful loading
+  state and a usable first learner action after the response arrives. The unchecked
+  slow-mobile row still requires real browser network throttling.
 
 ## 5. Three-rehearsal record
 
@@ -204,9 +211,10 @@ recorded.
 | 3 | 31 Jul 2026, 01:08 EAT | 12m 55s | Desktop automation | [x] | Independent repeat with all recorded checks true; no database/code edits; zero console errors. |
 
 The 360px matrix was completed separately across public, learner, parent, counsellor,
-school-admin and system-admin surfaces after the timed runs. Slow-network throttling,
-native 200% zoom and hands-on keyboard traversal remain unchecked and must be completed
-in a presenter-controlled browser before the final presentation.
+school-admin and system-admin surfaces after the timed runs. Shared keyboard entry,
+mobile-drawer focus transfer and focus return are now verified in both automated and
+live browser checks. Slow-network throttling and native 200% zoom remain unchecked and
+must be completed in a presenter-controlled browser before the final presentation.
 
 ## 6. Presenter assets
 
