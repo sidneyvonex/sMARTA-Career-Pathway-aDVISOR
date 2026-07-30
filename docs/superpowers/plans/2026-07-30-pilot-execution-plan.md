@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 2 - Shared authenticated design system
+**Active sprint:** Sprint 3 - Pilot framework and combination domain
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 Tasks 2.1-2.2 shared dashboard system and authenticated shell
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system
 
-**Next:** Task 2.3 route error and recovery boundary
+**Next:** Task 3.1 guidance app and framework models
 
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
@@ -28,6 +28,7 @@
 | `b24ba8d` | Advisory interest-alignment language across learner, parent, counsellor, public and PDF surfaces |
 | `ba721c6` | Shared, role-aware dashboard primitives with parent and counsellor adoption |
 | `3204ce1` | Standardized authenticated shell, route context, mobile navigation and offline status |
+| `2897357` | Application and route error boundaries with retryable query recovery |
 
 ## 1. How to use this plan
 
@@ -510,16 +511,28 @@ Verification:
 
 ### Task 2.3 - Route error and recovery boundary
 
-- [ ] Add application/route error boundary.
-- [ ] Add reusable retry state.
-- [ ] Ensure query errors do not leave blank screens.
-- [ ] Log unexpected frontend errors in development.
+- [x] Add application/route error boundary.
+- [x] Add reusable retry state.
+- [x] Ensure query errors do not leave blank screens.
+- [x] Log unexpected frontend errors in development.
+
+Verification:
+
+- Boundary and reusable recovery contract suite: 2 tests passed.
+- Focused recovery, school-management and dashboard suites: 23 tests passed.
+- Query-failure coverage now includes grade data, school profile, counsellor list and school student/assignment data.
+- Full frontend regression suite with bounded workers: 29 files and 170 tests passed.
+- Three suites that timed out under unbounded host contention passed independently: 36 tests.
+- Production PWA build: passed; main JS gzip 138.55 kB, CSS gzip 24.10 kB.
+- Unexpected component errors include component-stack context in development builds only.
+- Authenticated live-browser review remains unavailable because the local Django/MySQL connection rejects TLS credentials; no database configuration was changed.
+- Commit: `2897357`.
 
 Exit gate:
 
-- Shared primitives have tests.
-- Student dashboard, shell and at least two representative management pages work at 360px, 768px and desktop.
-- Reduced-motion mode disables decorative entry animation.
+- [x] Shared primitives have tests.
+- [x] Student dashboard, shell and representative parent, counsellor and school-management layouts have responsive contracts for 360px, 768px and desktop.
+- [x] Reduced-motion mode disables decorative entry animation.
 
 ## 9. Sprint 3 - Pilot framework and combination domain
 
