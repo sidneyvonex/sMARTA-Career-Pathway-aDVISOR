@@ -5,34 +5,25 @@ import toast from 'react-hot-toast'
 import AssessmentStep from '../components/assessment/AssessmentStep'
 import { assessmentApi } from '../api/assessment'
 import type { ResponseItem } from '../api/assessment'
+import { useAuthStore } from '../store/authStore'
+import {
+  clearAssessmentDraft,
+  loadAssessmentDraft,
+  saveAssessmentDraft,
+} from '../lib/assessmentDraft'
 import '../styles/assessment.css'
 
-const DRAFT_KEY = 'riasec_draft'
 const TOTAL_PAGES = 5
 const PER_PAGE = 6
-
-function loadDraft(): Record<number, number> {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveDraft(answers: Record<number, number>) {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(answers))
-}
-
-function clearDraft() {
-  localStorage.removeItem(DRAFT_KEY)
-}
 
 export default function AssessmentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const userId = useAuthStore((state) => state.user?.id)
   const [pageIndex, setPageIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>(loadDraft)
+  const [answers, setAnswers] = useState<Record<number, number>>(
+    () => userId ? loadAssessmentDraft(userId) : {},
+  )
 
   const { data: questionsRes, isLoading, isError } = useQuery({
     queryKey: ['assessment-questions'],
@@ -43,13 +34,13 @@ export default function AssessmentPage() {
   const submitMutation = useMutation({
     mutationFn: (responses: ResponseItem[]) => assessmentApi.submitAssessment(responses),
     onSuccess: () => {
-      clearDraft()
+      if (userId) clearAssessmentDraft(userId)
       queryClient.invalidateQueries({ queryKey: ['assessment-latest'] })
       toast.success('Assessment complete.')
       navigate('/assessment/results')
     },
     onError: () => {
-      toast.error("No connection. Your answers are saved — try again when you're back online.")
+      toast.error("No connection. Your answers are saved. Try again when you're back online.")
     },
   })
 
@@ -66,7 +57,7 @@ export default function AssessmentPage() {
   function handleAnswer(questionId: number, score: number) {
     const next = { ...answers, [questionId]: score }
     setAnswers(next)
-    saveDraft(next)
+    if (userId) saveAssessmentDraft(userId, next)
   }
 
   function handleNext() {
@@ -108,6 +99,17 @@ export default function AssessmentPage() {
           <span>S</span><span>E</span><span>C</span>
         </div>
       </header>
+
+      <section className="assessment-purpose" aria-labelledby="assessment-purpose-title">
+        <div>
+          <h2 id="assessment-purpose-title">What this assessment does</h2>
+          <p>It helps you name the activities and learning styles that currently interest you.</p>
+        </div>
+        <div>
+          <h2>What it cannot decide</h2>
+          <p>It does not predict success, confirm eligibility or place you in a pathway.</p>
+        </div>
+      </section>
 
       <div className="assessment-layout">
         <aside className="assessment-journey" aria-label="Assessment progress">

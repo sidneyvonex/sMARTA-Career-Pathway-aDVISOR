@@ -91,13 +91,13 @@ class TestEvidenceSummaryView:
         assert response.data['data']['next_action']['code'] == 'add_academic_evidence'
 
     def test_assessment_status_includes_version_slot(self):
-        RIASECAssessment.objects.create(student_profile=self.profile)
+        assessment_record = RIASECAssessment.objects.create(student_profile=self.profile)
 
         response = self.client.get(EVIDENCE_URL)
 
         assessment = response.data['data']['assessment']
         assert assessment['status'] == 'complete'
-        assert assessment['instrument_version'] is None
+        assert assessment['instrument_version'] == assessment_record.instrument_version
         assert assessment['submitted_at'] is not None
 
     def test_next_action_advances_to_explore_after_required_evidence(self):

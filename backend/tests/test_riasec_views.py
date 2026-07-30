@@ -116,6 +116,51 @@ class TestAssessmentSubmitView:
         assert RIASECScore.objects.filter(assessment=assessment).count() == 6
         assert Recommendation.objects.filter(assessment=assessment).count() == 3
 
+    def test_versions_and_explanations_are_snapshotted(self, verified_profile):
+        from riasec.models import (
+            CURRENT_ALGORITHM_VERSION,
+            CURRENT_INSTRUMENT_VERSION,
+            RIASECAssessment,
+        )
+        c = make_auth_client(verified_profile.user)
+        response = c.post(
+            '/api/v1/students/assessment/',
+            {'responses': all_responses(4)},
+            format='json',
+        )
+
+        data = response.data['data']
+        assessment = RIASECAssessment.objects.get(pk=data['id'])
+        recommendation = assessment.recommendations.get(rank=1)
+
+        assert data['instrument_version'] == CURRENT_INSTRUMENT_VERSION
+        assert recommendation.algorithm_version == CURRENT_ALGORITHM_VERSION
+        assert data['recommendations'][0]['algorithm_version'] == CURRENT_ALGORITHM_VERSION
+        explanation = data['recommendations'][0]['explanation']
+        assert len(explanation['leading_dimensions']) == 2
+        assert 'does not predict success' in explanation['limitations'].lower()
+        assert 'subject evidence' in explanation['next_step'].lower()
+
+    def test_historical_attempt_keeps_original_versions(self, verified_profile):
+        from riasec.models import RIASECAssessment
+        c = make_auth_client(verified_profile.user)
+        response = c.post(
+            '/api/v1/students/assessment/',
+            {'responses': all_responses(3)},
+            format='json',
+        )
+        assessment = RIASECAssessment.objects.get(pk=response.data['data']['id'])
+        recommendation = assessment.recommendations.get(rank=1)
+
+        assessment.instrument_version = 'historical-instrument'
+        assessment.save(update_fields=['instrument_version'])
+        recommendation.algorithm_version = 'historical-algorithm'
+        recommendation.save(update_fields=['algorithm_version'])
+
+        history = c.get('/api/v1/students/assessment/').data['data'][0]
+        assert history['instrument_version'] == 'historical-instrument'
+        assert history['recommendations'][0]['algorithm_version'] == 'historical-algorithm'
+
     def test_fewer_than_30_responses_returns_400(self, verified_profile):
         c = make_auth_client(verified_profile.user)
         r = c.post('/api/v1/students/assessment/', {'responses': all_responses()[:15]}, format='json')

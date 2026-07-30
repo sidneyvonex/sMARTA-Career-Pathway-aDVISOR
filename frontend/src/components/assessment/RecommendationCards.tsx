@@ -40,6 +40,9 @@ export default function RecommendationCards({ recommendations, hollandCode, hide
               {rec.rank === 1 ? 'Strongest interest alignment' : 'Suggested for exploration'}
             </p>
             <p className="recommendation-description">{rec.pathway.description}</p>
+            {rec.explanation?.summary && (
+              <p className="recommendation-explanation">{rec.explanation.summary}</p>
+            )}
           </div>
         ))}
       </div>

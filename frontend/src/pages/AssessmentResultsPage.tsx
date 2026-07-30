@@ -34,6 +34,7 @@ export default function AssessmentResultsPage() {
 
   const result = data.data.data
   const firstSuggestion = result.recommendations[0]
+  const explanation = firstSuggestion?.explanation
 
   return (
     <div className="assessment-page assessment-page--results">
@@ -72,8 +73,8 @@ export default function AssessmentResultsPage() {
         <section className="results-panel results-panel--scores">
           <div className="results-panel__heading">
             <div>
-              <span className="assessment-eyebrow">Personality</span>
-              <h2>Your dimension scores</h2>
+              <span className="assessment-eyebrow">Interest profile</span>
+              <h2>Your stated interests</h2>
             </div>
           </div>
           <p className="results-panel__intro">These six dimensions combine to form your personal interest pattern.</p>
@@ -87,6 +88,30 @@ export default function AssessmentResultsPage() {
           </button>
         </section>
       </div>
+
+      <section className="results-guidance" aria-label="How to use these results">
+        <div>
+          <h2>Missing evidence</h2>
+          <p>
+            {explanation?.limitations ??
+              'This result reflects interests only. It does not yet include your grades, subject requirements or school offerings.'}
+          </p>
+        </div>
+        <div>
+          <h2>Your next step</h2>
+          <p>
+            {explanation?.next_step ??
+              'Add your latest grades, then explore subject combinations available in your county.'}
+          </p>
+          <button
+            type="button"
+            className="assessment-button assessment-button--secondary"
+            onClick={() => navigate('/grades')}
+          >
+            Review my evidence
+          </button>
+        </div>
+      </section>
     </div>
   )
 }

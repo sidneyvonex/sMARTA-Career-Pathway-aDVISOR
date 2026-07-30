@@ -10,6 +10,9 @@ DIMENSION_CHOICES = [
     ('C', 'Conventional'),
 ]
 
+CURRENT_INSTRUMENT_VERSION = 'riasec-pilot-1.0'
+CURRENT_ALGORITHM_VERSION = 'interest-alignment-1.0'
+
 
 class RIASECQuestion(models.Model):
     dimension = models.CharField(max_length=1, choices=DIMENSION_CHOICES)
@@ -41,6 +44,7 @@ class RIASECAssessment(models.Model):
     student_profile = models.ForeignKey(
         StudentProfile, on_delete=models.CASCADE, related_name='riasec_assessments'
     )
+    instrument_version = models.CharField(max_length=40, default=CURRENT_INSTRUMENT_VERSION)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -90,6 +94,8 @@ class Recommendation(models.Model):
     rank = models.PositiveSmallIntegerField()
     fit_score = models.FloatField()
     fit_pct = models.PositiveSmallIntegerField()
+    algorithm_version = models.CharField(max_length=40, default=CURRENT_ALGORITHM_VERSION)
+    explanation = models.JSONField(default=dict)
 
     class Meta:
         unique_together = [('assessment', 'rank'), ('assessment', 'pathway')]
