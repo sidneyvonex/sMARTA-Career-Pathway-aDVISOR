@@ -56,17 +56,17 @@ describe('DashboardPage', () => {
   it('renders CounselorDashboard for counselor role', async () => {
     setUser('counselor')
     render(<DashboardPage />, { wrapper })
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: /Welcome banner/i })).toBeInTheDocument()
-    })
+    const hero = await screen.findByRole('region', { name: /Good .+, Jane/i })
+    expect(hero).toHaveClass('db-hero--counsellor')
+    expect(screen.getByLabelText(/Total students:/i)).toHaveClass('db-metric')
   })
 
   it('renders ParentDashboard for parent role', async () => {
     setUser('parent')
     render(<DashboardPage />, { wrapper })
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: /Welcome banner/i })).toBeInTheDocument()
-    })
+    const hero = await screen.findByRole('region', { name: /Good .+, Jane/i })
+    expect(hero).toHaveClass('db-hero--parent')
+    expect(screen.getByRole('heading', { name: 'Your children' })).toBeInTheDocument()
   })
 
   it('renders SchoolAdminDashboard for school_admin role', async () => {

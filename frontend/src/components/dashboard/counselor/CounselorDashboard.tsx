@@ -1,15 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../../store/authStore'
 import { dashboardApi } from '../../../api/dashboard'
 import { greeting } from '../../../lib/greeting'
-import { initials } from '../../../lib/format'
 import AssessmentRing from './AssessmentRing'
 import StudentList from './StudentList'
+import Avatar from '../../common/Avatar'
+import DashboardHero from '../../common/dashboard/DashboardHero'
+import ErrorState from '../../common/dashboard/ErrorState'
+import LoadingSkeleton from '../../common/dashboard/LoadingSkeleton'
+import MetricCard from '../../common/dashboard/MetricCard'
+import SectionHeader from '../../common/dashboard/SectionHeader'
 import '../../../styles/dashboard.css'
 
 export default function CounselorDashboard() {
-  const navigate = useNavigate()
   const { user } = useAuthStore()
 
   const studentsQ = useQuery({
@@ -26,82 +29,69 @@ export default function CounselorDashboard() {
   const stats = statsQ.data ?? { total_students: 0, assessments_done: 0, students_needing_attention: 0, notes_written: 0 }
 
   if (studentsQ.isLoading || statsQ.isLoading) {
+    return <LoadingSkeleton label="Loading counsellor dashboard" rows={4} variant="metrics" />
+  }
+
+  if (studentsQ.isError || statsQ.isError) {
     return (
-      <div>
-        <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
-        <div className="stat-cards">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton" style={{ height: 16, width: '40%' }} />
-              <div className="skeleton" style={{ height: 40 }} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <ErrorState
+        title="The counsellor dashboard could not load"
+        description="Check your connection and try loading the learner caseload again."
+        onRetry={() => {
+          studentsQ.refetch()
+          statsQ.refetch()
+        }}
+      />
     )
   }
 
+  const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : 'Counsellor'
+
   return (
-    <div>
-      <div className="greeting-strip" role="region" aria-label="Welcome banner">
-        <div className="greeting-strip__avatar" aria-hidden="true">
-          {user ? initials(user.first_name, user.last_name) : '?'}
-        </div>
-        <div className="greeting-strip__body">
-          <div className="greeting-strip__hello">{user ? greeting(user.first_name) : ''}</div>
-          <div className="greeting-strip__name">{user?.first_name} {user?.last_name}</div>
-          <div className="greeting-strip__chips">
-            <span className="greeting-chip">Career Counselor</span>
-            {user?.county && <span className="greeting-chip" style={{ textTransform: 'capitalize' }}>{user.county}</span>}
-            {stats.students_needing_attention > 0 && (
-              <span className="greeting-chip greeting-chip--gold">
-                {stats.students_needing_attention} students need attention
-              </span>
-            )}
-          </div>
-        </div>
+    <div className="db-page">
+      <DashboardHero
+        tone="counsellor"
+        eyebrow="Counsellor workspace"
+        title={user ? greeting(user.first_name) : 'Welcome'}
+        description={stats.students_needing_attention > 0
+          ? `${stats.students_needing_attention} learner${stats.students_needing_attention === 1 ? '' : 's'} need a follow-up.`
+          : 'Your assigned learners are up to date.'}
+        avatar={<Avatar seed={fullName} size={46} shape="squircle" />}
+        meta={[
+          user?.county ? `${user.county} County` : '',
+          `${stats.total_students} learner${stats.total_students === 1 ? '' : 's'} assigned`,
+        ]}
+        actions={[{ label: 'Add a learner note', to: '/counselor/notes' }]}
+      />
+
+      <div className="db-metric-grid">
+        <MetricCard label="Total students" value={stats.total_students} detail="Assigned to you" to="/counselor/students" />
+        <MetricCard
+          label="Assessments done"
+          value={stats.assessments_done}
+          detail={stats.total_students > 0
+            ? `${Math.round((stats.assessments_done / stats.total_students) * 100)}% complete`
+            : 'No learners yet'}
+          tone="positive"
+        />
+        <MetricCard
+          label="Need attention"
+          value={stats.students_needing_attention}
+          detail="Assessment follow-up"
+          tone={stats.students_needing_attention > 0 ? 'warning' : 'neutral'}
+          to="/counselor/students"
+        />
+        <MetricCard label="Notes written" value={stats.notes_written} detail="Across all learners" to="/counselor/notes" />
       </div>
 
-      <div className="stat-cards">
-        <div className="stat-card">
-          <div className="stat-card__label">Total students</div>
-          <div className="stat-card__value">{stats.total_students}</div>
-          <div className="stat-card__sub">Assigned to you</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Assessments done</div>
-          <div className="stat-card__value">{stats.assessments_done}</div>
-          <div className="stat-card__sub">
-            {stats.total_students > 0
-              ? `${Math.round((stats.assessments_done / stats.total_students) * 100)}% completion`
-              : 'No students yet'}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Need attention</div>
-          <div className="stat-card__value" style={{ color: stats.students_needing_attention > 0 ? 'var(--color-warning)' : 'var(--color-text)' }}>
-            {stats.students_needing_attention}
-          </div>
-          <div className="stat-card__sub">No quiz yet</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Notes written</div>
-          <div className="stat-card__value">{stats.notes_written}</div>
-          <div className="stat-card__sub">Across all students</div>
-        </div>
-      </div>
-
-      <div className="dashboard-grid">
+      <section className="db-content-grid" aria-label="Counsellor caseload and assessment progress">
         <StudentList students={students} />
 
-        <div className="dashboard-card">
-          <p className="dashboard-card__title">Assessment progress</p>
+        <aside className="db-panel db-panel--compact">
+          <SectionHeader eyebrow="Coverage" title="Assessment progress" titleAs="h3" />
           <AssessmentRing done={stats.assessments_done} total={stats.total_students} />
-          <button className="btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} onClick={() => navigate('/counselor/notes')}>
-            Add a student note
-          </button>
-        </div>
-      </div>
+        </aside>
+      </section>
     </div>
   )
 }

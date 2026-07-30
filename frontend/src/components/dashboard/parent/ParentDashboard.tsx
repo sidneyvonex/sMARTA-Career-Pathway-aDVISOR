@@ -5,8 +5,14 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../../../store/authStore'
 import { dashboardApi, LinkedChild } from '../../../api/dashboard'
 import { greeting } from '../../../lib/greeting'
-import { initials } from '../../../lib/format'
 import ChildHeader from './ChildHeader'
+import Avatar from '../../common/Avatar'
+import DashboardHero from '../../common/dashboard/DashboardHero'
+import EmptyState from '../../common/dashboard/EmptyState'
+import ErrorState from '../../common/dashboard/ErrorState'
+import LoadingSkeleton from '../../common/dashboard/LoadingSkeleton'
+import SectionHeader from '../../common/dashboard/SectionHeader'
+import StatusBadge from '../../common/dashboard/StatusBadge'
 import '../../../styles/dashboard.css'
 
 export default function ParentDashboard() {
@@ -26,93 +32,84 @@ export default function ParentDashboard() {
   }, [childrenQ.isError])
 
   if (childrenQ.isLoading) {
-    return (
-      <div>
-        <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
-        <div className="skeleton" style={{ height: 200, borderRadius: 13 }} />
-      </div>
-    )
+    return <LoadingSkeleton label="Loading parent dashboard" rows={3} />
   }
 
   if (childrenQ.isError) {
     return (
-      <div className="dashboard-card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
-        <p style={{ color: 'var(--color-text-secondary)' }}>
-          Couldn't load your children's data. Please try again.
-        </p>
-      </div>
+      <ErrorState
+        title="Your children's information could not load"
+        description="Check your connection and try again."
+        onRetry={() => childrenQ.refetch()}
+      />
     )
   }
 
+  const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : 'Parent'
+
   return (
-    <div>
-      <div className="greeting-strip" style={{ marginBottom: 'var(--space-5)' }} role="region" aria-label="Welcome banner">
-        <div className="greeting-strip__avatar" aria-hidden="true">
-          {user ? initials(user.first_name, user.last_name) : '?'}
-        </div>
-        <div className="greeting-strip__body">
-          <div className="greeting-strip__hello">{user ? greeting(user.first_name) : ''}</div>
-          <div className="greeting-strip__name">{user?.first_name} {user?.last_name}</div>
-          <div className="greeting-strip__chips">
-            <span className="greeting-chip">Parent</span>
-            {user?.county && <span className="greeting-chip" style={{ textTransform: 'capitalize' }}>{user.county}</span>}
-            <span className="greeting-chip">{children.length} child{children.length !== 1 ? 'ren' : ''}</span>
-          </div>
-        </div>
-      </div>
+    <div className="db-page">
+      <DashboardHero
+        tone="parent"
+        eyebrow="Parent workspace"
+        title={user ? greeting(user.first_name) : 'Welcome'}
+        description="Follow each learner's interests, subjects, and guidance conversations in one place."
+        avatar={<Avatar seed={fullName} size={46} shape="squircle" />}
+        meta={[
+          user?.county ? `${user.county} County` : '',
+          `${children.length} child${children.length === 1 ? '' : 'ren'} linked`,
+        ]}
+      />
 
       {children.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <section className="db-stack" aria-labelledby="parent-children-title">
+          <SectionHeader
+            eyebrow="Family view"
+            title="Your children"
+            titleId="parent-children-title"
+            description="Open a learner profile to review their evidence and latest guidance."
+          />
           {children.map((child: LinkedChild) => (
-            <div key={child.id} className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <article key={child.id} className="db-panel">
               <ChildHeader child={child} />
-              <div style={{ padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <p className="dashboard-card__title">{child.first_name}'s career personality</p>
+              <div className="db-panel__grid">
+                <div className="db-panel__section">
+                  <h3>{child.first_name}'s interest profile</h3>
                   {child.top_pathway ? (
-                    <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{child.top_pathway}</div>
-                      <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                        Strongest interest alignment
-                      </div>
+                    <div className="db-panel__highlight">
+                      <strong>{child.top_pathway}</strong>
+                      <StatusBadge tone="positive">Strongest interest alignment</StatusBadge>
                     </div>
                   ) : (
-                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                      Career quiz not completed yet.
-                    </p>
+                    <p className="db-panel__muted">Career quiz not completed yet.</p>
                   )}
                 </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <p className="dashboard-card__title">{child.first_name}'s subjects</p>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                <div className="db-panel__section">
+                  <h3>{child.first_name}'s subjects</h3>
+                  <p className="db-panel__muted">
                     {child.subject_count > 0
                       ? `${child.subject_count} subject${child.subject_count !== 1 ? 's' : ''} enrolled.`
                       : 'No subjects added yet.'}
                   </p>
                 </div>
               </div>
-              <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
+              <footer className="db-panel__footer">
                 <Link
                   to={`/parent/child/${child.id}`}
-                  className="btn-ghost"
-                  style={{ fontSize: 'var(--font-size-sm)' }}
+                  className="db-panel__link"
                   aria-label={`View profile for ${child.first_name}`}
                 >
-                  View profile
+                  View learner profile <span aria-hidden="true">→</span>
                 </Link>
-              </div>
-            </div>
+              </footer>
+            </article>
           ))}
-        </div>
+        </section>
       ) : (
-        <div className="dashboard-card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
-          <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
-            No child linked to your account yet.
-          </p>
-          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-            Contact your school to link your child's account.
-          </p>
-        </div>
+        <EmptyState
+          title="No child linked yet"
+          description="Contact your school to link a learner account to this parent workspace."
+        />
       )}
     </div>
   )

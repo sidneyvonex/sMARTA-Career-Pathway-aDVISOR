@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardHero from './DashboardHero'
 import Avatar from '../../../common/Avatar'
+import SectionHeader from '../../../common/dashboard/SectionHeader'
 import type { RadarDatum } from './PersonalityRadar'
 import type { GradePoint } from './GradeTrend'
 import '../../../../styles/dashboard-lively.css'
@@ -54,13 +55,13 @@ function JourneyPanel({ data }: { data: LivelyData }) {
 
   return (
     <aside className="lv-journey lv-anim" style={{ ['--i' as string]: 1 }} aria-labelledby="journey-title">
-      <div className="lv-section-head">
-        <div>
-          <span className="lv-section-kicker">Keep moving</span>
-          <h2 id="journey-title">This week</h2>
-        </div>
-        <span className="lv-journey__count">{tasks.length} steps</span>
-      </div>
+      <SectionHeader
+        className="lv-section-head"
+        eyebrow="Keep moving"
+        title="This week"
+        titleId="journey-title"
+        aside={<span className="lv-journey__count">{tasks.length} steps</span>}
+      />
       <div className="lv-journey__tasks">
         {tasks.map((task, index) => (
           <Link to={task.to} className="lv-task" key={task.label}>
@@ -121,29 +122,32 @@ export default function LivelyStudentDashboard(data: LivelyData) {
       </div>
 
       <section className="lv-insights" aria-labelledby="insights-title">
-        <div className="lv-section-head lv-section-head--wide">
-          <div>
-            <span className="lv-section-kicker">Your story in data</span>
-            <h2 id="insights-title">Career insights</h2>
-          </div>
-          {data.topStrength && <p>Your strongest signal is <strong>{data.topStrength}</strong>.</p>}
-        </div>
+        <SectionHeader
+          className="lv-section-head lv-section-head--wide"
+          eyebrow="Your story in data"
+          title="Career insights"
+          titleId="insights-title"
+          aside={data.topStrength
+            ? <p>Your strongest signal is <strong>{data.topStrength}</strong>.</p>
+            : undefined}
+        />
 
         <div className="lv-chart-grid">
           <article className="lv-card lv-card--radar lv-anim" style={{ ['--i' as string]: 2 }}>
-            <div className="lv-card__head">
-              <div><span className="lv-card__eyebrow">Personality</span><h3>Your strength shape</h3></div>
-              {data.quizDone && <Link to="/assessment/results" className="lv-card__link">Full results</Link>}
-            </div>
+            <SectionHeader
+              className="lv-card__head"
+              eyebrow="Personality"
+              title="Your strength shape"
+              titleAs="h3"
+              action={data.quizDone ? { label: 'Full results', to: '/assessment/results' } : undefined}
+            />
             {data.radar
               ? <Suspense fallback={<ChartSkeleton />}><PersonalityRadar data={data.radar} /></Suspense>
               : <EmptyChart kind="quiz" />}
           </article>
 
           <article className="lv-card lv-card--pathway lv-anim" style={{ ['--i' as string]: 3 }}>
-            <div className="lv-card__head">
-              <div><span className="lv-card__eyebrow">Direction</span><h3>Interest-aligned pathways</h3></div>
-            </div>
+            <SectionHeader className="lv-card__head" eyebrow="Direction" title="Interest-aligned pathways" titleAs="h3" />
             {data.pathways && data.topPathway ? (
               <div>
                 <p className="lv-pathway-advisory">
@@ -163,10 +167,13 @@ export default function LivelyStudentDashboard(data: LivelyData) {
           </article>
 
           <article className="lv-card lv-card--trend lv-anim" style={{ ['--i' as string]: 4 }}>
-            <div className="lv-card__head">
-              <div><span className="lv-card__eyebrow">Progress</span><h3>Your grade trend</h3></div>
-              {data.subjectsCount > 0 && <Link to="/grades" className="lv-card__link">My grades</Link>}
-            </div>
+            <SectionHeader
+              className="lv-card__head"
+              eyebrow="Progress"
+              title="Your grade trend"
+              titleAs="h3"
+              action={data.subjectsCount > 0 ? { label: 'My grades', to: '/grades' } : undefined}
+            />
             {data.gradeTrend && data.gradeTrend.length > 0
               ? <Suspense fallback={<ChartSkeleton />}><GradeTrend data={data.gradeTrend} /></Suspense>
               : <EmptyChart kind="grades" />}
@@ -181,9 +188,7 @@ export default function LivelyStudentDashboard(data: LivelyData) {
       <section className="lv-people-grid" aria-label="Support and recent activity">
         <article className="lv-card lv-card--counselor lv-anim" style={{ ['--i' as string]: 5 }}>
           <span className="lv-card__sun" aria-hidden="true" />
-          <div className="lv-card__head">
-            <div><span className="lv-card__eyebrow">Your support</span><h3>Career counselor</h3></div>
-          </div>
+          <SectionHeader className="lv-card__head" eyebrow="Your support" title="Career counsellor" titleAs="h3" />
           {data.counselor ? (
             <>
               <div className="lv-counselor">
@@ -204,12 +209,15 @@ export default function LivelyStudentDashboard(data: LivelyData) {
         </article>
 
         <article className="lv-card lv-card--activity lv-anim" style={{ ['--i' as string]: 6 }}>
-          <div className="lv-card__head">
-            <div><span className="lv-card__eyebrow">Latest</span><h3>Recent activity</h3></div>
-            {data.activity.length > 0 && data.onOpenActivity && (
-              <button type="button" className="lv-card__link" onClick={data.onOpenActivity}>See all</button>
-            )}
-          </div>
+          <SectionHeader
+            className="lv-card__head"
+            eyebrow="Latest"
+            title="Recent activity"
+            titleAs="h3"
+            action={data.activity.length > 0 && data.onOpenActivity
+              ? { label: 'See all', onClick: data.onOpenActivity }
+              : undefined}
+          />
           {data.activity.length > 0 ? data.activity.slice(0, 4).map((item, index) => (
             <div key={`${item.text}-${index}`} className="lv-act">
               <Avatar seed={item.actor ?? data.firstName} size={40} shape="squircle" />

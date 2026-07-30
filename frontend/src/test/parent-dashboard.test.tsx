@@ -41,14 +41,15 @@ describe('ParentDashboard', () => {
   it('renders greeting with parent name', async () => {
     renderDashboard()
     expect(await screen.findByText(/Good .+, Jane/)).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: /Good .+, Jane/ })).toHaveClass('db-hero--parent')
   })
 
   it('renders both children from API (fixes #40)', async () => {
     renderDashboard()
     const links = await screen.findAllByRole('link', { name: /view profile/i })
     expect(links).toHaveLength(2)
-    expect(screen.getByText(/Tom's career personality/)).toBeInTheDocument()
-    expect(screen.getByText(/Alice's career personality/)).toBeInTheDocument()
+    expect(screen.getByText(/Tom's interest profile/)).toBeInTheDocument()
+    expect(screen.getByText(/Alice's interest profile/)).toBeInTheDocument()
   })
 
   it('shows child grade chips', async () => {
@@ -83,6 +84,6 @@ describe('ParentDashboard', () => {
       }),
     )
     renderDashboard()
-    expect(await screen.findByText(/couldn't load/i)).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i)
   })
 })
