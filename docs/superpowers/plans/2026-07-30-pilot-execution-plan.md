@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.4 performance pass; complete the final manual viewport matrix in Task 9.6
+**Next:** Task 9.5 repeatable demonstration data; complete manual network and viewport checks in Task 9.6
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1553,12 +1553,22 @@ Verification:
 
 ### Task 9.4 - Performance pass
 
-- remove student dashboard request fan-out;
-- lazy-load charts and role-heavy pages if necessary;
-- compress illustration assets;
-- set bundle-size baseline;
-- test throttled mobile network;
-- ensure first action remains usable while nonessential data loads.
+- [x] remove student dashboard request fan-out;
+- [x] lazy-load charts and role-heavy pages if necessary;
+- [x] compress illustration assets;
+- [x] set bundle-size baseline;
+- [ ] test throttled mobile network (final presentation walkthrough in Task 9.6);
+- [x] ensure first action remains usable while nonessential data loads.
+
+Verification:
+
+- Student dashboard startup: one HTTP request backed by eight bounded database queries.
+- Backend student summary and dashboard suite: 23 tests passed.
+- Dashboard, application route and shell regression: 14 tests passed.
+- Initial JavaScript baseline: 418.67 kB / 127.08 kB gzip, down from 547.26 kB / 155.29 kB gzip; no chunk exceeds the 500 kB warning threshold.
+- Nine public JPEGs: 10,850,334 bytes reduced to 2,075,716 bytes (80.9% smaller), with representative visual inspection passed.
+- Production build and strict TypeScript check: passed.
+- Commits: `fcd6168`, `63195ba`.
 
 ### Task 9.5 - Seed repeatable demonstration data
 
