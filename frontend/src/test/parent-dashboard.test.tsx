@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '../store/authStore'
@@ -44,32 +44,38 @@ describe('ParentDashboard', () => {
     expect(screen.getByRole('region', { name: /Good .+, Jane/ })).toHaveClass('db-hero--parent')
   })
 
-  it('renders both children from API (fixes #40)', async () => {
+  it('uses a child switcher for multiple approved learners', async () => {
     renderDashboard()
-    const links = await screen.findAllByRole('link', { name: /view profile/i })
-    expect(links).toHaveLength(2)
-    expect(screen.getByText(/Tom's interest profile/)).toBeInTheDocument()
-    expect(screen.getByText(/Alice's interest profile/)).toBeInTheDocument()
+    const switcher = await screen.findByLabelText('Choose learner')
+    expect(switcher).toHaveValue('10')
+    expect(screen.getByText('Agriculture, Biology & Chemistry')).toBeInTheDocument()
+
+    fireEvent.change(switcher, { target: { value: '11' } })
+
+    expect(screen.getByText('No provisional combination yet')).toBeInTheDocument()
+    expect(screen.getByText('Complete your interest assessment')).toBeInTheDocument()
   })
 
   it('shows child grade chips', async () => {
     renderDashboard()
     expect(await screen.findByText(/Grade 9/)).toBeInTheDocument()
-    expect(await screen.findByText(/Grade 10/)).toBeInTheDocument()
   })
 
-  it('describes the top pathway as an advisory interest alignment without a percentage', async () => {
+  it('shows action, plan, milestone, prompt and approved access without fit percentage', async () => {
     renderDashboard()
-    expect(await screen.findByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(await screen.findByText('Review your plan and next milestone')).toBeInTheDocument()
+    expect(screen.getByText('1 of 3 milestones')).toBeInTheDocument()
+    expect(screen.getByText(/Review two pilot schools/)).toBeInTheDocument()
+    expect(screen.getByText(/How can I support your next plan milestone/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Learner approved/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/% fit/i)).not.toBeInTheDocument()
   })
 
-  it('shows link to each child detail', async () => {
+  it('shows learner summary and report actions for the selected child', async () => {
     renderDashboard()
-    const links = await screen.findAllByRole('link', { name: /view profile/i })
-    expect(links).toHaveLength(2)
-    expect(links[0]).toHaveAttribute('href', '/parent/child/10')
-    expect(links[1]).toHaveAttribute('href', '/parent/child/11')
+    const links = await screen.findAllByRole('link', { name: /learner summary|review your plan/i })
+    expect(links.some((link) => link.getAttribute('href') === '/parent/child/10')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Download report' })).toBeInTheDocument()
   })
 
   it('shows error state on API failure', async () => {
@@ -85,5 +91,23 @@ describe('ParentDashboard', () => {
     )
     renderDashboard()
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i)
+  })
+
+  it('explains that learner approval is required when no child is visible', async () => {
+    const { server } = await import('./msw/server')
+    const { http, HttpResponse } = await import('msw')
+    server.use(
+      http.get('/api/v1/parents/children/', () => HttpResponse.json({
+        data: [],
+        error: null,
+        message: '',
+      })),
+    )
+
+    renderDashboard()
+
+    expect(await screen.findByRole('heading', { name: 'No learner access approved yet' })).toBeInTheDocument()
+    expect(screen.getByText(/must approve access/i)).toBeInTheDocument()
+    expect(screen.queryByText(/contact your school/i)).not.toBeInTheDocument()
   })
 })

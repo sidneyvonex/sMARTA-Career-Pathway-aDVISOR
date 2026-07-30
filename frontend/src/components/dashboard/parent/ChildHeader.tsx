@@ -21,7 +21,7 @@ export default function ChildHeader({ child }: Props) {
         <div className="greeting-strip__chips">
           <span className="greeting-chip">Grade {child.grade}</span>
           {child.county && <span className="greeting-chip child-header-card__county">{child.county}</span>}
-          <span className="greeting-chip">School-linked</span>
+          <span className="greeting-chip greeting-chip--gold">Access: Learner approved</span>
           <span className={`greeting-chip${child.quiz_status === 'done' ? ' greeting-chip--gold' : ''}`}>
             Quiz: {child.quiz_status === 'done' ? 'Done' : 'Pending'}
           </span>

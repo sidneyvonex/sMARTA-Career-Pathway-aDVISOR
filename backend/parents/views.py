@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,7 @@ from rest_framework import status
 from accounts.permissions import IsParent, IsEmailVerified, IsStudent
 from accounts.response import _success, _error
 from accounts.models import StudentProfile
+from counselors.models import CounselorAssignment
 from parents.models import ParentStudentLink
 from parents.serializers import (
     ChildDetailSerializer,
@@ -24,7 +26,23 @@ class ParentChildrenView(APIView):
                 parent=request.user,
                 status=ParentStudentLink.STATUS_ACTIVE,
             )
-            .select_related('student__student_profile')
+            .select_related(
+                'student__student_profile__learner_plan'
+                '__provisional_choice__combination__track__pathway',
+            )
+            .prefetch_related(
+                'student__student_profile__enrolled_subjects__grades',
+                'student__student_profile__riasec_assessments'
+                '__recommendations__pathway',
+                'student__student_profile__combination_choices'
+                '__combination__track__pathway',
+                'student__student_profile__learner_plan__milestones',
+                Prefetch(
+                    'student__student_profile__counselor_assignments',
+                    queryset=CounselorAssignment.objects.filter(is_active=True),
+                    to_attr='active_parent_assignments',
+                ),
+            )
         )
         data = LinkedChildSerializer(links, many=True).data
         return _success(data=data)

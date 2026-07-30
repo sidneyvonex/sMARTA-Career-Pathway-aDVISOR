@@ -72,7 +72,7 @@ describe('DashboardPage', () => {
     render(<DashboardPage />, { wrapper })
     const hero = await screen.findByRole('region', { name: /Good .+, Jane/i })
     expect(hero).toHaveClass('db-hero--parent')
-    expect(screen.getByRole('heading', { name: 'Your children' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Learner support' })).toBeInTheDocument()
   })
 
   it('renders SchoolAdminDashboard for school_admin role', async () => {

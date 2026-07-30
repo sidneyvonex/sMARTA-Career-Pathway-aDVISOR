@@ -1,8 +1,10 @@
 from rest_framework import serializers
-from riasec.models import RIASECAssessment, Recommendation
+from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment, CounselorNote
 from students.models import StudentSubject, CBCGrade
+from students.summaries import next_action_for, profile_completion_summary
+from guidance.models import LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
 
 
@@ -46,7 +48,13 @@ class LinkedChildSerializer(serializers.Serializer):
     counselor_assigned = serializers.SerializerMethodField()
     last_active = serializers.SerializerMethodField()
     top_pathway = serializers.SerializerMethodField()
-    fit_pct = serializers.SerializerMethodField()
+    access_status = serializers.CharField(source='status')
+    next_action = serializers.SerializerMethodField()
+    provisional_combination = serializers.SerializerMethodField()
+    plan_status = serializers.SerializerMethodField()
+    plan_progress = serializers.SerializerMethodField()
+    upcoming_milestone = serializers.SerializerMethodField()
+    conversation_prompt = serializers.SerializerMethodField()
 
     def _profile(self, obj):
         return getattr(obj.student, 'student_profile', None)
@@ -56,17 +64,13 @@ class LinkedChildSerializer(serializers.Serializer):
             self._rec_cache = {}
         key = profile.pk
         if key not in self._rec_cache:
-            assessment = (
-                RIASECAssessment.objects
-                .filter(student_profile=profile)
-                .order_by('-submitted_at')
-                .first()
-            )
+            assessments = list(profile.riasec_assessments.all())
+            assessment = assessments[0] if assessments else None
             if assessment:
+                recommendations = list(assessment.recommendations.all())
                 self._rec_cache[key] = (
                     assessment,
-                    Recommendation.objects.filter(assessment=assessment, rank=1)
-                    .select_related('pathway').first(),
+                    recommendations[0] if recommendations else None,
                 )
             else:
                 self._rec_cache[key] = (None, None)
@@ -89,13 +93,13 @@ class LinkedChildSerializer(serializers.Serializer):
 
     def get_subject_count(self, obj):
         p = self._profile(obj)
-        return p.enrolled_subjects.count() if p else 0
+        return len(list(p.enrolled_subjects.all())) if p else 0
 
     def get_counselor_assigned(self, obj):
         p = self._profile(obj)
         if not p:
             return False
-        return CounselorAssignment.objects.filter(student_profile=p, is_active=True).exists()
+        return bool(getattr(p, 'active_parent_assignments', []))
 
     def get_last_active(self, obj):
         return obj.student.updated_at.isoformat() if obj.student.updated_at else None
@@ -107,12 +111,152 @@ class LinkedChildSerializer(serializers.Serializer):
         _, rec = self._top_recommendation(p)
         return rec.pathway.name if rec else None
 
-    def get_fit_pct(self, obj):
-        p = self._profile(obj)
-        if not p:
+    def _plan(self, profile):
+        try:
+            return profile.learner_plan
+        except LearnerPlan.DoesNotExist:
             return None
-        _, rec = self._top_recommendation(p)
-        return rec.fit_pct if rec else None
+
+    def _choices(self, profile):
+        return list(profile.combination_choices.all())
+
+    def _evidence(self, profile):
+        if not hasattr(self, '_evidence_cache'):
+            self._evidence_cache = {}
+        if profile.pk not in self._evidence_cache:
+            enrollments = list(profile.enrolled_subjects.all())
+            grade_counts = [len(list(item.grades.all())) for item in enrollments]
+            total_subjects = len(enrollments)
+            subjects_with_evidence = sum(count > 0 for count in grade_counts)
+            total_grades = sum(grade_counts)
+            if total_subjects >= 3 and subjects_with_evidence == total_subjects:
+                academic_status = 'ready'
+            elif total_subjects or total_grades:
+                academic_status = 'in_progress'
+            else:
+                academic_status = 'not_started'
+            assessment, _ = self._top_recommendation(profile)
+            choices = self._choices(profile)
+            plan = self._plan(profile)
+            self._evidence_cache[profile.pk] = {
+                'profile': profile_completion_summary(profile),
+                'academic': {
+                    'status': academic_status,
+                    'total_subjects': total_subjects,
+                    'subjects_with_evidence': subjects_with_evidence,
+                    'total_grade_records': total_grades,
+                },
+                'assessment': {
+                    'status': 'complete' if assessment else 'not_started',
+                    'instrument_version': (
+                        assessment.instrument_version if assessment else None
+                    ),
+                    'submitted_at': (
+                        assessment.submitted_at.isoformat() if assessment else None
+                    ),
+                },
+                'choices': choices,
+                'plan': plan,
+            }
+        return self._evidence_cache[profile.pk]
+
+    def get_next_action(self, obj):
+        profile = self._profile(obj)
+        if not profile:
+            return {
+                'code': 'complete_profile',
+                'title': 'Complete the learner profile',
+            }
+        evidence = self._evidence(profile)
+        choices = evidence['choices']
+        plan = evidence['plan']
+        action = next_action_for(
+            evidence['profile'],
+            evidence['academic'],
+            evidence['assessment'],
+            len(choices),
+            has_provisional_choice=any(
+                choice.status == LearnerCombinationChoice.STATUS_PROVISIONAL
+                for choice in choices
+            ),
+            plan_status=plan.review_status if plan else 'not_started',
+        )
+        return {'code': action['code'], 'title': action['title']}
+
+    def get_provisional_combination(self, obj):
+        profile = self._profile(obj)
+        if not profile:
+            return None
+        evidence = self._evidence(profile)
+        plan = evidence['plan']
+        choice = plan.provisional_choice if plan else next(
+            (
+                item for item in evidence['choices']
+                if item.status == LearnerCombinationChoice.STATUS_PROVISIONAL
+            ),
+            None,
+        )
+        if choice is None:
+            return None
+        combination = choice.combination
+        return {
+            'id': combination.id,
+            'code': combination.code,
+            'title': combination.title,
+            'pathway': combination.track.pathway.name,
+            'track': combination.track.name,
+        }
+
+    def get_plan_status(self, obj):
+        profile = self._profile(obj)
+        plan = self._plan(profile) if profile else None
+        return plan.review_status if plan else 'not_started'
+
+    def get_plan_progress(self, obj):
+        profile = self._profile(obj)
+        plan = self._plan(profile) if profile else None
+        if plan is None:
+            return {'completed': 0, 'total': 0}
+        milestones = list(plan.milestones.all())
+        return {
+            'completed': sum(item.is_complete for item in milestones),
+            'total': len(milestones),
+        }
+
+    def get_upcoming_milestone(self, obj):
+        profile = self._profile(obj)
+        plan = self._plan(profile) if profile else None
+        if plan is None:
+            return None
+        milestone = next(
+            (item for item in plan.milestones.all() if not item.is_complete),
+            None,
+        )
+        if milestone is None:
+            return None
+        return {
+            'id': milestone.id,
+            'title': milestone.title,
+            'due_date': (
+                milestone.due_date.isoformat() if milestone.due_date else None
+            ),
+        }
+
+    def get_conversation_prompt(self, obj):
+        profile = self._profile(obj)
+        if not profile:
+            return 'What would help you complete your learner profile?'
+        action = self.get_next_action(obj)
+        prompts = {
+            'complete_profile': 'What interests or goals would you like to add to your profile?',
+            'add_academic_evidence': 'Which subjects feel strongest, and where would support help?',
+            'complete_interest_assessment': 'Which activities make you feel curious or energized?',
+            'explore_combinations': 'Which subject combinations would you like to explore together?',
+            'compare_combinations': 'What matters most as you compare your saved choices?',
+            'create_plan': 'What is one practical step you can add to your plan?',
+            'review_plan': 'How can I support your next plan milestone?',
+        }
+        return prompts[action['code']]
 
 
 class ChildProfileSerializer(serializers.Serializer):

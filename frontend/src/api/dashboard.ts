@@ -43,7 +43,29 @@ export interface LinkedChild {
   counselor_assigned: boolean
   last_active: string | null
   top_pathway: string | null
-  fit_pct: number | null
+  access_status: 'active'
+  next_action: {
+    code: string
+    title: string
+  }
+  provisional_combination: {
+    id: number
+    code: string
+    title: string
+    pathway: string
+    track: string
+  } | null
+  plan_status: 'not_started' | 'draft' | 'ready_for_review' | 'reviewed'
+  plan_progress: {
+    completed: number
+    total: number
+  }
+  upcoming_milestone: {
+    id: number
+    title: string
+    due_date: string | null
+  } | null
+  conversation_prompt: string
 }
 
 export const dashboardApi = {

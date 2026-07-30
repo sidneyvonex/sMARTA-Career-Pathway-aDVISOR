@@ -9,6 +9,13 @@ from tests.factories import (
 )
 from riasec.models import RIASECScore, Recommendation, Pathway
 from notifications.models import Notification
+from guidance.models import (
+    FrameworkVersion,
+    LearnerCombinationChoice,
+    LearnerPlan,
+    PlanMilestone,
+    SubjectCombination,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -121,6 +128,73 @@ class TestParentChildrenView:
         resp = self.client.get(self.URL)
         child = resp.json()['data'][0]
         assert child['counselor_assigned'] is True
+
+    def test_child_summary_includes_next_action_and_access_status(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=student, grade=9)
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(self.URL)
+
+        child = resp.json()['data'][0]
+        assert child['access_status'] == 'active'
+        assert child['next_action']['code'] == 'complete_profile'
+        assert child['provisional_combination'] is None
+        assert child['plan_status'] == 'not_started'
+        assert child['plan_progress'] == {'completed': 0, 'total': 0}
+        assert child['upcoming_milestone'] is None
+        assert child['conversation_prompt']
+
+    def test_child_summary_includes_provisional_plan_and_upcoming_milestone(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(
+            user=student,
+            grade=9,
+            bio='Interested in practical science.',
+            date_of_birth='2011-01-10',
+            career_interests='Agriculture',
+        )
+        combination = SubjectCombination.objects.filter(
+            framework_version=FrameworkVersion.objects.current(),
+        ).first()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=profile,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=profile,
+            provisional_choice=choice,
+        )
+        PlanMilestone.objects.create(
+            plan=plan,
+            title='Review two pilot schools',
+            due_date='2026-09-15',
+            position=1,
+        )
+        PlanMilestone.objects.create(
+            plan=plan,
+            title='Complete interest conversation',
+            is_complete=True,
+            position=0,
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(self.URL)
+
+        child = resp.json()['data'][0]
+        assert child['provisional_combination']['code'] == combination.code
+        assert child['plan_status'] == 'draft'
+        assert child['plan_progress'] == {'completed': 1, 'total': 2}
+        assert child['upcoming_milestone'] == {
+            'id': child['upcoming_milestone']['id'],
+            'title': 'Review two pilot schools',
+            'due_date': '2026-09-15',
+        }
 
 
 class TestParentChildDetailView:
