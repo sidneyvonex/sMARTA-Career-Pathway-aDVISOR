@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.5 repeatable demonstration data; complete manual network and viewport checks in Task 9.6
+**Next:** Task 9.6 presentation runbook, final walkthroughs and exit-gate verification
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1580,22 +1580,29 @@ python manage.py seed_pilot_demo
 
 Seed:
 
-- one system administrator;
-- five schools, one per county;
-- one school administrator;
-- two counsellors;
-- representative learners;
-- one parent;
-- pathway/track/combination catalogue;
-- school offerings;
-- grade histories;
-- assessment results;
-- saved choices;
-- one completed plan;
-- one learner needing review;
-- notifications and audit events.
+- [x] one system administrator;
+- [x] five schools, one per county;
+- [x] one school administrator;
+- [x] two counsellors;
+- [x] representative learners;
+- [x] one parent;
+- [x] pathway/track/combination catalogue;
+- [x] school offerings;
+- [x] grade histories;
+- [x] assessment results;
+- [x] saved choices;
+- [x] one completed plan;
+- [x] one learner needing review;
+- [x] notifications and audit events.
 
 The command must be idempotent or provide a clearly documented reset path for non-production demo data.
+
+Verification:
+
+- `seed_pilot_demo` requires an explicit `--password` or `PILOT_DEMO_PASSWORD`; no default credential is stored or printed.
+- The command reuses the migration-owned five-county catalogue and schools, then refreshes only identifiable `.test` presentation accounts and their related demo records.
+- Focused management-command suite: 3 tests passed, including authentication for all eight roles/accounts and two consecutive seed runs with stable counts and core object IDs.
+- Commit: `3221e15`.
 
 ### Task 9.6 - Create presentation runbook
 
@@ -1635,11 +1642,11 @@ Additionally:
 
 | Surface | Hero/priority | Metrics | Main workflow | Help/activity | Mobile | Status |
 |---|---|---|---|---|---|---|
-| Student | One next evidence/plan action | Evidence, interests, choices, plan | Complete learner journey | Counsellor/activity | Required | Pending |
-| Parent | Child next action | Plan and milestone progress | Support child | Prompt/report/access | Required | Pending |
-| Counsellor | Priority queue | Caseload, overdue, plan completion | Intervention/follow-up | Recent cases | Required | Pending |
-| School admin | Pending operational action | Students, assignments, completion | Approve, assign, configure | Activity | Required | Pending |
-| System admin | Pilot health warning/action | County/school/user/plan totals | Manage and audit | Framework freshness | Required | Pending |
+| Student | One next evidence/plan action | Evidence, interests, choices, plan | Complete learner journey | Counsellor/activity | Required | Complete; final manual matrix in 9.6 |
+| Parent | Child next action | Plan and milestone progress | Support child | Prompt/report/access | Required | Complete; final manual matrix in 9.6 |
+| Counsellor | Priority queue | Caseload, overdue, plan completion | Intervention/follow-up | Recent cases | Required | Complete; final manual matrix in 9.6 |
+| School admin | Pending operational action | Students, assignments, completion | Approve, assign, configure | Activity | Required | Complete; final manual matrix in 9.6 |
+| System admin | Pilot health warning/action | County/school/user/plan totals | Manage and audit | Framework freshness | Required | Complete; final manual matrix in 9.6 |
 
 Each dashboard is complete only when:
 
