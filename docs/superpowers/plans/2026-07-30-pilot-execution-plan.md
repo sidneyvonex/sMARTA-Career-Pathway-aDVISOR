@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.6 learner summaries, grade verification, explainable assessment, combination choices, explorer and comparison
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.7 learner summaries, grade verification, explainable assessment, combination choices, explorer, comparison and action planning
 
-**Next:** Task 4.7 learner plan and milestones
+**Next:** Task 4.8 refocus student dashboard
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -40,6 +40,7 @@
 | `a9219f2` | Learner-saved and provisional combinations with pilot limits and summary integration |
 | `3d2db97` | Responsive five-county learner combination explorer with save actions |
 | `38836be` | Evidence-led two-or-three-choice comparison with curated related routes |
+| `737d96b` | Learner action plan, evidence gaps, milestones and review readiness |
 
 ## 1. How to use this plan
 
@@ -932,6 +933,21 @@ Frontend `/plan`:
 - milestone checklist;
 - review status;
 - next-action card.
+
+Verification:
+
+- `LearnerPlan` binds one learner to their current provisional choice and supports draft, ready-for-review and reviewed states.
+- `PlanMilestone` provides ordered, dated checklist items with server-managed completion timestamps.
+- Learner-scoped APIs get or update a plan and create, update or delete only that learner's milestones.
+- Changing the provisional choice safely repoints an existing plan and returns it to draft; changing a reviewed reason also clears stale review state.
+- `/plan` provides provisional-choice context, an editable learner reason, calculated evidence gaps, milestone progress, review readiness and one next action.
+- Empty, loading, retryable error and mutation-feedback states are deliberate, with responsive two-column and single-column layouts.
+- Focused learner-plan, guidance-model, evidence-summary and learner-choice backend suite: 66 tests passed.
+- Learner-plan, comparison and authenticated-shell frontend suite: 9 tests passed.
+- Strict TypeScript check: passed.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Commit: `737d96b`.
 
 ### Task 4.8 - Refocus student dashboard
 
