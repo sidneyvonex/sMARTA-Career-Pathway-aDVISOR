@@ -55,6 +55,22 @@ class TestParentChildrenView:
         assert child['subject_count'] == 0
         assert child['counselor_assigned'] is False
 
+    def test_pending_child_is_not_visible(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=student, grade=9)
+        ParentStudentLinkFactory(
+            parent=parent,
+            student=student,
+            status='pending_learner',
+        )
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(self.URL)
+
+        assert resp.status_code == 200
+        assert resp.json()['data'] == []
+
     def test_parent_with_multiple_children(self):
         parent = ParentFactory()
         s1 = VerifiedUserFactory(role='student')
@@ -145,6 +161,21 @@ class TestParentChildDetailView:
         assert data['profile']['first_name'] == 'Tom'
         assert data['profile']['grade'] == 9
         assert data['profile']['bio'] == 'Loves math'
+
+    def test_pending_link_cannot_open_child_detail(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=student, grade=9)
+        ParentStudentLinkFactory(
+            parent=parent,
+            student=student,
+            status='pending_learner',
+        )
+        self.client.force_authenticate(user=parent)
+
+        resp = self.client.get(self._url(student.id))
+
+        assert resp.status_code == 404
 
     def test_linked_child_returns_subjects_with_grades(self):
         parent = ParentFactory()
@@ -267,6 +298,27 @@ class TestRIASECParentNotification:
         }, format='json')
         assert resp.status_code == 201
         assert Notification.objects.filter(type='child_assessment_complete').count() == 0
+
+    def test_pending_parent_is_not_notified(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=student, grade=9)
+        ParentStudentLinkFactory(
+            parent=parent,
+            student=student,
+            status='pending_learner',
+        )
+        self.client.force_authenticate(user=student)
+
+        resp = self.client.post('/api/v1/students/assessment/', {
+            'responses': self._all_responses(3),
+        }, format='json')
+
+        assert resp.status_code == 201
+        assert not Notification.objects.filter(
+            user=parent,
+            type='child_assessment_complete',
+        ).exists()
 
 
 class TestVisibleToParentNote:

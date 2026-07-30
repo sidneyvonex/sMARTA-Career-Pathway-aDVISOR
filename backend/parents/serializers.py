@@ -3,6 +3,35 @@ from riasec.models import RIASECAssessment, Recommendation
 from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment, CounselorNote
 from students.models import StudentSubject, CBCGrade
+from parents.models import ParentStudentLink
+
+
+class ParentAccessSerializer(serializers.ModelSerializer):
+    parent_name = serializers.SerializerMethodField()
+    parent_email = serializers.EmailField(source='parent.email')
+    relationship_label = serializers.CharField(
+        source='get_claimed_relationship_display',
+    )
+
+    class Meta:
+        model = ParentStudentLink
+        fields = (
+            'id',
+            'parent_name',
+            'parent_email',
+            'claimed_relationship',
+            'relationship_label',
+            'status',
+            'learner_approved_at',
+            'revoked_at',
+            'created_at',
+        )
+
+    def get_parent_name(self, obj):
+        return (
+            f'{obj.parent.first_name} {obj.parent.last_name}'.strip()
+            or obj.parent.email
+        )
 
 
 class LinkedChildSerializer(serializers.Serializer):

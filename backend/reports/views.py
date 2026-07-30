@@ -86,7 +86,9 @@ class StudentReportView(APIView):
             )
         if user.role == 'parent':
             return ParentStudentLink.objects.filter(
-                parent=user, student=student,
+                parent=user,
+                student=student,
+                status=ParentStudentLink.STATUS_ACTIVE,
             ).exists()
         return False
 

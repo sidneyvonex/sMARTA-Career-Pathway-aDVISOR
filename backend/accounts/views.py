@@ -283,6 +283,10 @@ class AcceptInviteView(APIView):
         first_name = request.data.get('first_name', '').strip()
         last_name = request.data.get('last_name', '').strip()
         county = request.data.get('county', '')
+        claimed_relationship = request.data.get(
+            'claimed_relationship',
+            ParentStudentLink.RELATIONSHIP_GUARDIAN,
+        )
 
         if not password:
             return _error('Password is required.')
@@ -311,6 +315,12 @@ class AcceptInviteView(APIView):
 
         if User.objects.filter(email=email).exists():
             return _error('An account with this email already exists.')
+        if (
+            student_id is not None
+            and claimed_relationship
+            not in dict(ParentStudentLink.RELATIONSHIP_CHOICES)
+        ):
+            return _error('Choose a valid relationship to the learner.')
 
         try:
             validate_password(password)
@@ -335,7 +345,12 @@ class AcceptInviteView(APIView):
         if student_id is not None:
             try:
                 student = User.objects.get(pk=student_id, role='student')
-                ParentStudentLink.objects.create(parent=user, student=student)
+                ParentStudentLink.objects.create(
+                    parent=user,
+                    student=student,
+                    claimed_relationship=claimed_relationship,
+                    status=ParentStudentLink.STATUS_PENDING,
+                )
                 link_created = True
             except User.DoesNotExist:
                 logger.warning(
@@ -346,7 +361,12 @@ class AcceptInviteView(APIView):
         if student_id and not link_created:
             message = 'Account created, but the student could not be found. Contact your school to link your child.'
         else:
-            message = 'Account created successfully.'
+            message = (
+                'Account created. The learner must approve access before '
+                'you can view their information.'
+                if student_id is not None
+                else 'Account created successfully.'
+            )
 
         refresh = RefreshToken.for_user(user)
         response = _success(

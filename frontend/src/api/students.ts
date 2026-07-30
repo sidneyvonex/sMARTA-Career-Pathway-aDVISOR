@@ -93,9 +93,42 @@ export interface EvidenceSummary {
   }
 }
 
+export type ParentAccessStatus =
+  | 'invited'
+  | 'pending_learner'
+  | 'active'
+  | 'revoked'
+
+export interface ParentAccess {
+  id: number
+  parent_name: string
+  parent_email: string
+  claimed_relationship: 'mother' | 'father' | 'guardian' | 'relative' | 'other'
+  relationship_label: string
+  status: ParentAccessStatus
+  learner_approved_at: string | null
+  revoked_at: string | null
+  created_at: string
+}
+
 export const studentsApi = {
   getEvidenceSummary: () =>
     api.get<{ data: EvidenceSummary }>('/students/evidence-summary/'),
+
+  getParentAccess: () =>
+    api.get<{ data: ParentAccess[] }>('/students/parent-access/'),
+
+  approveParentAccess: (linkId: number) =>
+    api.put<{ data: ParentAccess }>(
+      `/students/parent-access/${linkId}/approve/`,
+      {},
+    ),
+
+  revokeParentAccess: (linkId: number) =>
+    api.put<{ data: ParentAccess }>(
+      `/students/parent-access/${linkId}/revoke/`,
+      {},
+    ),
 
   getProfile: () =>
     api.get<{ data: StudentProfile }>('/students/profile/'),

@@ -11,8 +11,28 @@ from .views import (
     PlanMilestoneDetailView,
     PlanMilestoneListCreateView,
 )
+from parents.views import (
+    StudentParentAccessApproveView,
+    StudentParentAccessListView,
+    StudentParentAccessRevokeView,
+)
 
 urlpatterns = [
+    path(
+        'parent-access/',
+        StudentParentAccessListView.as_view(),
+        name='student-parent-access-list',
+    ),
+    path(
+        'parent-access/<int:link_id>/approve/',
+        StudentParentAccessApproveView.as_view(),
+        name='student-parent-access-approve',
+    ),
+    path(
+        'parent-access/<int:link_id>/revoke/',
+        StudentParentAccessRevokeView.as_view(),
+        name='student-parent-access-revoke',
+    ),
     path('evidence-summary/', EvidenceSummaryView.as_view(), name='student-evidence-summary'),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
     path(

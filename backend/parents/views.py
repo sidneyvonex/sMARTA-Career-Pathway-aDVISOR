@@ -1,11 +1,17 @@
+from django.db import transaction
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from accounts.permissions import IsParent, IsEmailVerified
+from accounts.permissions import IsParent, IsEmailVerified, IsStudent
 from accounts.response import _success, _error
 from accounts.models import StudentProfile
 from parents.models import ParentStudentLink
-from parents.serializers import LinkedChildSerializer, ChildDetailSerializer
+from parents.serializers import (
+    ChildDetailSerializer,
+    LinkedChildSerializer,
+    ParentAccessSerializer,
+)
 
 
 class ParentChildrenView(APIView):
@@ -14,7 +20,10 @@ class ParentChildrenView(APIView):
     def get(self, request):
         links = (
             ParentStudentLink.objects
-            .filter(parent=request.user)
+            .filter(
+                parent=request.user,
+                status=ParentStudentLink.STATUS_ACTIVE,
+            )
             .select_related('student__student_profile')
         )
         data = LinkedChildSerializer(links, many=True).data
@@ -26,7 +35,9 @@ class ParentChildDetailView(APIView):
 
     def get(self, request, student_id):
         if not ParentStudentLink.objects.filter(
-            parent=request.user, student_id=student_id,
+            parent=request.user,
+            student_id=student_id,
+            status=ParentStudentLink.STATUS_ACTIVE,
         ).exists():
             return _error('Child not found.', status.HTTP_404_NOT_FOUND)
 
@@ -37,3 +48,71 @@ class ParentChildDetailView(APIView):
 
         data = ChildDetailSerializer(profile).data
         return _success(data=data)
+
+
+class StudentParentAccessListView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        links = (
+            ParentStudentLink.objects
+            .filter(student=request.user)
+            .select_related('parent')
+            .order_by('-created_at')
+        )
+        return _success(data=ParentAccessSerializer(links, many=True).data)
+
+
+class StudentParentAccessApproveView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def put(self, request, link_id):
+        with transaction.atomic():
+            link = (
+                ParentStudentLink.objects
+                .select_for_update()
+                .select_related('parent')
+                .filter(pk=link_id, student=request.user)
+                .first()
+            )
+            if link is None:
+                return _error('Parent access request not found.', status.HTTP_404_NOT_FOUND)
+            if link.status == ParentStudentLink.STATUS_REVOKED:
+                return _error('A revoked request cannot be approved. Send a new invitation.')
+            if link.status != ParentStudentLink.STATUS_ACTIVE:
+                link.status = ParentStudentLink.STATUS_ACTIVE
+                link.learner_approved_at = timezone.now()
+                link.revoked_at = None
+                link.save(update_fields=[
+                    'status',
+                    'learner_approved_at',
+                    'revoked_at',
+                ])
+        return _success(
+            data=ParentAccessSerializer(link).data,
+            message='Parent access approved.',
+        )
+
+
+class StudentParentAccessRevokeView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def put(self, request, link_id):
+        with transaction.atomic():
+            link = (
+                ParentStudentLink.objects
+                .select_for_update()
+                .select_related('parent')
+                .filter(pk=link_id, student=request.user)
+                .first()
+            )
+            if link is None:
+                return _error('Parent access request not found.', status.HTTP_404_NOT_FOUND)
+            if link.status != ParentStudentLink.STATUS_REVOKED:
+                link.status = ParentStudentLink.STATUS_REVOKED
+                link.revoked_at = timezone.now()
+                link.save(update_fields=['status', 'revoked_at'])
+        return _success(
+            data=ParentAccessSerializer(link).data,
+            message='Parent access revoked.',
+        )

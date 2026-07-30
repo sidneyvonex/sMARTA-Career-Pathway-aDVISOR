@@ -92,7 +92,10 @@ class AssessmentView(APIView):
             ])
 
         try:
-            parent_links = ParentStudentLink.objects.filter(student=request.user)
+            parent_links = ParentStudentLink.objects.filter(
+                student=request.user,
+                status=ParentStudentLink.STATUS_ACTIVE,
+            )
             student_name = f'{request.user.first_name} {request.user.last_name}'.strip()
             for link in parent_links:
                 create_notification(

@@ -232,6 +232,19 @@ class TestStudentReportViewPermissions:
         response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
         assert response.status_code == 403
 
+    def test_parent_pending_learner_approval_cannot_download(self):
+        parent = ParentFactory()
+        ParentStudentLinkFactory(
+            parent=parent,
+            student=self.student,
+            status='pending_learner',
+        )
+        self.client.force_authenticate(parent)
+
+        response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
+
+        assert response.status_code == 403
+
     def test_system_admin_can_download_any(self):
         admin = SystemAdminFactory()
         self.client.force_authenticate(admin)

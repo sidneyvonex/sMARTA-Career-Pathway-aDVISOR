@@ -129,6 +129,18 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: '' })
   }),
 
+  http.get('/api/v1/students/parent-access/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
+
+  http.post('/api/v1/auth/invite-parent/', () => {
+    return HttpResponse.json({
+      data: null,
+      error: null,
+      message: 'Invitation sent.',
+    })
+  }),
+
   http.get('/api/v1/students/combination-choices/', () => {
     return HttpResponse.json({ data: [], error: null, message: '' })
   }),

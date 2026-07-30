@@ -239,6 +239,7 @@ class ParentStudentLinkFactory(factory.django.DjangoModelFactory):
 
     parent = factory.SubFactory(ParentFactory)
     student = factory.SubFactory(VerifiedUserFactory, role='student')
+    status = ParentStudentLink.STATUS_ACTIVE
 
 
 class AuditLogFactory(factory.django.DjangoModelFactory):

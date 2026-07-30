@@ -318,6 +318,7 @@ class TestPasswordReset:
 
 
 from accounts.tokens import make_invite_token, make_parent_invite_token
+from parents.models import ParentStudentLink
 
 
 @pytest.mark.django_db
@@ -418,9 +419,13 @@ class TestParentInvite:
             'first_name': 'Mary',
             'last_name': 'W',
             'county': 'kiambu',
+            'claimed_relationship': 'mother',
         }, format='json')
         assert response.status_code == 201
         from django.contrib.auth import get_user_model
         User = get_user_model()
         parent = User.objects.get(email='parent@test.com')
         assert parent.role == 'parent'
+        link = ParentStudentLink.objects.get(parent=parent, student=profile.user)
+        assert link.status == ParentStudentLink.STATUS_PENDING
+        assert link.claimed_relationship == ParentStudentLink.RELATIONSHIP_MOTHER
