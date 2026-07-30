@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.3 learner summaries, grade verification and explainable assessment
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.4 learner summaries, grade verification, explainable assessment and combination choices
 
-**Next:** Task 4.4 learner combination choices
+**Next:** Task 4.5 learner combination explorer
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -37,6 +37,7 @@
 | `566de40` | Learner evidence and aggregated grade summaries with calculated next actions |
 | `457c21e` | Audited school verification and immutable provenance for learner grades |
 | `eee1684` | Versioned assessment attempts, explanation snapshots and expiring learner-scoped drafts |
+| `a9219f2` | Learner-saved and provisional combinations with pilot limits and summary integration |
 
 ## 1. How to use this plan
 
@@ -827,6 +828,20 @@ Rules:
 - maximum three saved combinations;
 - only one provisional choice;
 - active pilot combinations only.
+
+Verification:
+
+- Authenticated, verified learners can list and save choices, remove saved choices and promote one saved choice to provisional.
+- Choice creation is serialized per learner, rejects duplicates and caps the learner's active comparison set at three combinations.
+- A conditional database constraint permits only one provisional choice; promoting another choice atomically demotes the previous provisional choice.
+- Creation accepts only active combinations in the current framework, while learners cannot read, change or remove another learner's choices.
+- Choice payloads include the complete source-dated combination, subjects, pathway track and active school offerings.
+- Evidence summary now reports the saved-choice count and provisional state without exceeding its three-query budget.
+- Focused learner-choice, model and summary suite: 47 tests passed.
+- Affected guidance and student regression suite: 101 tests passed.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Commit: `a9219f2`.
 
 ### Task 4.5 - Build explorer
 
