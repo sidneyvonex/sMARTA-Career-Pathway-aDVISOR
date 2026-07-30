@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow
 
-**Next:** Task 8.3 expanded audit events
+**Next:** Task 8.4 public-page alignment
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1427,14 +1427,35 @@ Verification:
 
 Add:
 
-- school-link decision;
-- parent-link approval/revocation;
-- grade verification;
-- provisional combination change;
-- plan review;
-- report download;
-- framework activation;
-- school offering change.
+- [x] school-link decision;
+- [x] parent-link approval/revocation;
+- [x] grade verification;
+- [x] provisional combination change;
+- [x] plan review;
+- [x] report download;
+- [x] framework/combination status change;
+- [x] school offering change.
+
+Decision:
+
+- Framework versions remain activated by the versioned seed migration or management command for presentation reliability.
+- The live system-admin governance control audits current-framework combination activation and deactivation.
+- A missing counsellor plan-review action was added so the existing reviewed-plan metrics can be reached through the product UI.
+
+Verification:
+
+- Parent approval/revocation, learner provisional-choice changes, report downloads and school offering replacements emit dedicated events only after authorized state changes.
+- Existing school-membership and grade-verification events remain covered.
+- Assigned counsellors can mark submitted plans reviewed and reopen them; draft plans, invalid booleans and unassigned counsellors are rejected.
+- Plan-review transitions update the learner detail immediately and refresh counsellor list/stat queries.
+- System-admin activity labels expose all new governance events.
+- Parent-access, learner-choice, learner-plan and school-offerings regression group: 49 tests passed.
+- Counsellor, report and system-admin regression group: 123 tests passed.
+- Focused counsellor plan-review rerun: 3 tests passed.
+- Counsellor and system-admin frontend regression: 42 tests passed.
+- Django system check and migration drift check: passed.
+- Strict TypeScript and diff whitespace checks: passed.
+- Commit: `6d29b5e`.
 
 ### Task 8.4 - Align public pages
 
