@@ -77,6 +77,17 @@ describe('PWA cache safety', () => {
     expect(matchingRule?.handler).toBe('CacheFirst')
     expect(matchingRule?.options?.cacheName).toBe('smarta-shauri-images-v1')
   })
+
+  it('caches only the public current-framework response for offline fallback', () => {
+    const frameworkUrl = 'https://smarta-shauri.test/api/v1/guidance/framework/current/'
+    const matchingRule = PWA_RUNTIME_CACHING.find((rule) => (
+      rule.urlPattern.test(frameworkUrl)
+    ))
+
+    expect(matchingRule?.handler).toBe('NetworkFirst')
+    expect(matchingRule?.options?.cacheName).toBe('smarta-shauri-public-framework-v1')
+    expect(matchingRule?.options?.expiration.maxEntries).toBe(1)
+  })
 })
 
 describe('logout storage cleanup', () => {
