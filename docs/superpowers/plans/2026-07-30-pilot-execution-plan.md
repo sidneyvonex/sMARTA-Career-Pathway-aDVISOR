@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow
 
-**Next:** Task 8.1 system-admin dashboard redesign
+**Next:** Task 8.2 framework catalogue management
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -54,6 +54,7 @@
 | `ab4d5be` | Evidence-led school operations dashboard with cohort and workload metrics |
 | `7ac4f68` | Responsive learner and counsellor management with safe bulk assignment |
 | `2f924c8` | Grouped school-offerings workspace with complete-set saves and removal warnings |
+| `76752bf` | Five-county system-admin pilot-health and framework-freshness dashboard |
 
 ## 1. How to use this plan
 
@@ -1365,14 +1366,28 @@ The public proposition and pilot administration match the actual system.
 
 Show:
 
-- learners by five pilot counties;
-- active schools;
-- verified learners;
-- pending school links;
-- assignment coverage;
-- plans completed;
-- recent important audit events;
-- framework version/freshness.
+- [x] learners by five pilot counties;
+- [x] active schools;
+- [x] verified learners;
+- [x] pending school links;
+- [x] assignment coverage;
+- [x] plans completed;
+- [x] recent important audit events;
+- [x] framework version/freshness.
+
+Verification:
+
+- Learner distribution and active-school cards are restricted to the five configured pilot counties.
+- Verification, pending-link and assignment-coverage metrics derive from current learner and assignment records.
+- Completed plans count counsellor-reviewed plans for approved learners at active schools.
+- The current framework card names the version, effective date and official source.
+- Recent audit activity recognizes membership and grade-verification events.
+- Seed-aware system dashboard backend suite: 5 tests passed.
+- System-admin, role-dashboard, shared-primitives and shell frontend regression: 38 tests passed.
+- Django system check: passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `76752bf`.
 
 ### Task 8.2 - Framework catalogue management
 
