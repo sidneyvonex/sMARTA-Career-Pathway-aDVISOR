@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow
 
-**Next:** Task 8.2 framework catalogue management
+**Next:** Task 8.3 expanded audit events
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1393,15 +1393,35 @@ Verification:
 
 P1 minimum:
 
-- read catalogue;
-- activate/deactivate combination;
-- inspect source metadata.
+- [x] read catalogue;
+- [x] activate/deactivate combination;
+- [x] inspect source metadata.
 
 P2 optional:
 
 - full create/edit forms.
 
 For presentation reliability, seeded migrations/management commands remain the source of truth even if CRUD is shown.
+
+Decision:
+
+- Full create/edit forms are deferred as optional P2 scope.
+- The pilot exposes only reversible status controls for combinations in the current framework.
+- Deactivation preserves historical learner choices and school-offering records.
+
+Verification:
+
+- The protected system-admin catalogue API returns the current framework, official source metadata and both active and inactive combinations.
+- Combination responses include pathway, track, three subjects, active-school impact and learner-choice impact.
+- Status changes accept strict booleans, lock the current-framework record transactionally and create a durable audit entry.
+- Old-framework combinations return not found and non-system-admin access is denied.
+- The responsive catalogue workspace supports search, status filtering and reversible activation controls from the sidebar and dashboard.
+- Focused catalogue backend contract: 8 tests passed.
+- Complete system-admin backend regression: 70 tests passed.
+- System-admin and shell frontend regression: 30 tests passed.
+- Django system check and migration drift check: passed.
+- Strict TypeScript and diff whitespace checks: passed.
+- Commit: `757f9ac`.
 
 ### Task 8.3 - Expand audit events
 
