@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 6 - Counsellor intervention workflow
+**Active sprint:** Sprint 7 - School onboarding, offerings and cohort workflow
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
 
-**Next:** Task 6.4 counsellor caseload and learner detail redesign
+**Next:** Task 7.1 school-link approval queue
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -48,6 +48,8 @@
 | `80d27ec` | Explicit, non-predictive counsellor attention reasons with bounded caseload loading |
 | `6de164d` | Pilot interventions with agreed actions, follow-ups and explicit visibility |
 | `b0c5f52` | Reason-led counsellor priority dashboard with due follow-ups and recent interventions |
+| `578f7b0` | Learner intervention context and visibility-filtered counsellor, learner and parent APIs |
+| `8fdfd46` | Responsive counsellor caseload, intervention workspace and shared agreed-action views |
 
 ## 1. How to use this plan
 
@@ -1188,19 +1190,33 @@ Verification:
 
 ### Task 6.4 - Redesign caseload and learner detail
 
-- responsive list/card view;
-- filters by attention reason;
-- evidence summary;
-- saved/provisional combinations;
-- plan;
-- intervention timeline;
-- set next step/follow-up.
+- [x] responsive list/card view;
+- [x] filters by attention reason;
+- [x] evidence summary;
+- [x] saved/provisional combinations;
+- [x] plan;
+- [x] intervention timeline;
+- [x] set next step/follow-up.
+
+Verification:
+
+- Caseload uses responsive learner cards with text search, status filters, explicit attention-reason filters and direct learner actions.
+- Counsellor learner detail includes evidence, saved and provisional choices, action-plan milestones, intervention history and an inline agreed-next-step form.
+- Counsellors can create follow-ups and complete interventions without using Django admin.
+- Learners receive only interventions explicitly marked learner-visible.
+- Parents with an active learner-approved link receive only interventions explicitly marked parent-visible.
+- Counselor, learner and parent visibility backend suites: 64 tests passed across two bounded runs.
+- Focused counselor, learner-dashboard and parent-detail frontend suite: 31 tests passed.
+- Broader dashboard, access-control, shell, student and recovery frontend regression suite: 66 tests passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commits: `578f7b0`, `8fdfd46`.
 
 Exit gate:
 
-- Counsellor can complete the presentation intervention without switching to Django admin.
-- Learner sees agreed learner-visible action.
-- Parent sees only explicitly parent-visible content.
+- [x] Counsellor can complete the presentation intervention without switching to Django admin.
+- [x] Learner sees agreed learner-visible action.
+- [x] Parent sees only explicitly parent-visible content.
 
 ## 13. Sprint 7 - School onboarding, offerings and cohort workflow
 
