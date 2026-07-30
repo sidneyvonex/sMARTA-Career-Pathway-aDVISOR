@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
+import { studentsApi } from '../api/students'
 import { attentionSummary } from '../components/dashboard/counselor/CounselorDashboard'
 import { useAuthStore } from '../store/authStore'
 
@@ -36,6 +37,10 @@ beforeEach(() => {
   useAuthStore.setState({ user: null, isAuthenticated: false, isEmailVerified: false, isLoading: false })
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 describe('DashboardPage', () => {
   it('uses correct singular and plural attention grammar', () => {
     expect(attentionSummary(1)).toBe('1 learner has a clear reason for attention.')
@@ -65,6 +70,30 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Review your milestone dates.')).toBeInTheDocument()
     expect(screen.getByText(/suggestions are starting points for exploration/i)).toBeInTheDocument()
     expect(screen.queryByText('73%')).not.toBeInTheDocument()
+  })
+
+  it('keeps the first learner action usable after a delayed dashboard response', async () => {
+    setUser('student')
+    const getDashboard = studentsApi.getDashboard.bind(studentsApi)
+    let releaseResponse: (() => void) | undefined
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve
+    })
+    vi.spyOn(studentsApi, 'getDashboard').mockImplementation(async () => {
+      await responseGate
+      return getDashboard()
+    })
+
+    render(<DashboardPage />, { wrapper })
+
+    expect(screen.getByLabelText('Loading dashboard')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Continue' })).not.toBeInTheDocument()
+
+    releaseResponse?.()
+
+    const firstAction = await screen.findByRole('link', { name: 'Continue' })
+    expect(firstAction).toHaveAttribute('href', '/compare')
+    expect(firstAction).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('renders CounselorDashboard for counselor role', async () => {
