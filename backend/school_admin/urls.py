@@ -27,5 +27,10 @@ urlpatterns = [
     ),
     path('stats/', views.SchoolStatsView.as_view(), name='school-admin-stats'),
     path('assignments/', views.SchoolAssignmentView.as_view(), name='school-admin-assignment'),
+    path(
+        'assignments/bulk/',
+        views.SchoolBulkAssignmentView.as_view(),
+        name='school-admin-bulk-assignment',
+    ),
     path('assignments/<int:assignment_id>/remove/', views.SchoolAssignmentRemoveView.as_view(), name='school-admin-assignment-remove'),
 ]

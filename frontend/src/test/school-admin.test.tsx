@@ -190,6 +190,15 @@ describe('CounselorManagementPage', () => {
     expect(removeButtons.length).toBe(2)
   })
 
+  it('uses a responsive workload list that can be searched', async () => {
+    renderPage()
+    expect(await screen.findByRole('table', { name: 'School counsellors' })).toBeInTheDocument()
+
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search counsellors' }), 'Bob')
+    expect(screen.getByText('Bob Ochieng')).toBeInTheDocument()
+    expect(screen.queryByText('Alice Wanjiku')).not.toBeInTheDocument()
+  })
+
   it('shows a retryable error when the counsellor query fails', async () => {
     server.use(
       http.get('/api/v1/school-admin/counselors/', () => HttpResponse.json({}, { status: 500 })),
@@ -269,6 +278,32 @@ describe('SchoolStudentsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Approve Mary Wanjiru' }))
 
     await waitFor(() => expect(receivedDecision).toBe('approve'))
+  })
+
+  it('bulk assigns only selected unassigned approved learners', async () => {
+    let assignedIds: number[] = []
+    server.use(
+      http.post('/api/v1/school-admin/assignments/bulk/', async ({ request }) => {
+        const body = await request.json() as { student_ids: number[] }
+        assignedIds = body.student_ids
+        return HttpResponse.json({
+          data: { assigned_count: body.student_ids.length, counselor_id: 10, student_ids: body.student_ids },
+          error: null,
+          message: '1 learner assigned to Alice Wanjiku.',
+        }, { status: 201 })
+      }),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('table', { name: 'Approved school learners' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select Kevin Otieno' }))
+    await userEvent.selectOptions(
+      screen.getByLabelText('Counsellor for selected learners'),
+      '10',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Assign 1 learner' }))
+
+    await waitFor(() => expect(assignedIds).toEqual([21]))
   })
 
   it('shows a retryable error when the student query fails', async () => {

@@ -871,6 +871,22 @@ export const handlers = [
     })
   }),
 
+  http.post('/api/v1/school-admin/assignments/bulk/', async ({ request }) => {
+    const body = await request.json() as {
+      student_ids: number[]
+      counselor_id: number
+    }
+    return HttpResponse.json({
+      data: {
+        assigned_count: body.student_ids.length,
+        counselor_id: body.counselor_id,
+        student_ids: body.student_ids,
+      },
+      error: null,
+      message: `${body.student_ids.length} learners assigned.`,
+    }, { status: 201 })
+  }),
+
   http.post(/\/api\/v1\/school-admin\/assignments\/\d+\/remove\//, () => {
     return HttpResponse.json({ data: null, error: null, message: 'Assignment removed.' })
   }),

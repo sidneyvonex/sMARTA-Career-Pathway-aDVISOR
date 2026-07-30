@@ -111,6 +111,19 @@ export const schoolAdminApi = {
       counselor_id: counselorId,
     }),
 
+  bulkAssignStudents: (studentIds: number[], counselorId: number) =>
+    api.post<{
+      data: {
+        assigned_count: number
+        counselor_id: number
+        student_ids: number[]
+      }
+      message: string
+    }>('/school-admin/assignments/bulk/', {
+      student_ids: studentIds,
+      counselor_id: counselorId,
+    }),
+
   removeAssignment: (assignmentId: number) =>
     api.post('/school-admin/assignments/' + assignmentId + '/remove/'),
 }

@@ -772,6 +772,103 @@ class SchoolAssignmentView(APIView):
         )
 
 
+class SchoolBulkAssignmentView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request):
+        school = request.user.school
+        if not school:
+            return _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        student_ids = request.data.get('student_ids')
+        counselor_id = request.data.get('counselor_id')
+        valid_ids = (
+            isinstance(student_ids, list)
+            and 1 <= len(student_ids) <= 50
+            and all(type(student_id) is int and student_id > 0 for student_id in student_ids)
+            and len(student_ids) == len(set(student_ids))
+        )
+        if not valid_ids:
+            return _error(
+                'student_ids must contain 1 to 50 unique learner IDs.'
+            )
+
+        try:
+            counselor = User.objects.get(
+                pk=counselor_id,
+                role='counselor',
+                school=school,
+            )
+        except (User.DoesNotExist, TypeError, ValueError):
+            return _error(
+                'Counselor not found at your school.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        with transaction.atomic():
+            profiles = list(
+                StudentProfile.objects.select_for_update()
+                .filter(
+                    user_id__in=student_ids,
+                    school=school,
+                    mode='school_linked',
+                    school_membership_status='active',
+                )
+                .order_by('user_id')
+            )
+            if len(profiles) != len(student_ids):
+                return _error(
+                    'Every selected learner must be approved and belong to your school.'
+                )
+
+            profile_ids = [profile.id for profile in profiles]
+            if CounselorAssignment.objects.filter(
+                student_profile_id__in=profile_ids,
+                is_active=True,
+            ).exists():
+                return _error(
+                    'Bulk assignment is limited to currently unassigned learners.'
+                )
+
+            assignments = CounselorAssignment.objects.bulk_create([
+                CounselorAssignment(
+                    counselor=counselor,
+                    student_profile=profile,
+                    school=school,
+                )
+                for profile in profiles
+            ])
+
+            for assignment, profile in zip(assignments, profiles):
+                AuditLog.objects.create(
+                    actor=request.user,
+                    action='counselor_assigned',
+                    target_type='assignment',
+                    target_id=assignment.id,
+                    details={
+                        'student_id': profile.user_id,
+                        'counselor_id': counselor.id,
+                        'bulk': True,
+                    },
+                )
+
+        return _success(
+            data={
+                'assigned_count': len(assignments),
+                'counselor_id': counselor.id,
+                'student_ids': student_ids,
+            },
+            message=(
+                f'{len(assignments)} learners assigned to '
+                f'{counselor.first_name} {counselor.last_name}.'
+            ),
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
 class SchoolAssignmentRemoveView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
 

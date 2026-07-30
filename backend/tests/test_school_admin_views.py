@@ -584,3 +584,88 @@ class TestSchoolAssignmentView:
         a = CounselorAssignmentFactory(counselor=c, student_profile=sp, school=other_school)
         response = self.client.post(f'/api/v1/school-admin/assignments/{a.id}/remove/')
         assert response.status_code == 404
+
+    def test_bulk_assigns_unassigned_approved_learners_atomically(self):
+        first = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        second = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        counselor = CounselorFactory(school=self.school)
+
+        response = self.client.post('/api/v1/school-admin/assignments/bulk/', {
+            'student_ids': [first.user_id, second.user_id],
+            'counselor_id': counselor.id,
+        }, format='json')
+
+        assert response.status_code == 201
+        assert response.data['data']['assigned_count'] == 2
+        assert CounselorAssignment.objects.filter(
+            student_profile__in=[first, second],
+            counselor=counselor,
+            is_active=True,
+        ).count() == 2
+
+    @pytest.mark.parametrize('invalid_kind', ['pending', 'wrong_school', 'assigned'])
+    def test_bulk_assignment_rejects_unsafe_batch_without_partial_changes(
+        self,
+        invalid_kind,
+    ):
+        eligible = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        counselor = CounselorFactory(school=self.school)
+        if invalid_kind == 'pending':
+            invalid = StudentProfileFactory(
+                school=self.school,
+                mode='school_linked',
+                school_membership_status='pending',
+            )
+        elif invalid_kind == 'wrong_school':
+            invalid = StudentProfileFactory(
+                school=SchoolFactory(),
+                mode='school_linked',
+                school_membership_status='active',
+            )
+        else:
+            invalid = StudentProfileFactory(
+                school=self.school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
+            CounselorAssignmentFactory(
+                student_profile=invalid,
+                counselor=CounselorFactory(school=self.school),
+                school=self.school,
+            )
+
+        response = self.client.post('/api/v1/school-admin/assignments/bulk/', {
+            'student_ids': [eligible.user_id, invalid.user_id],
+            'counselor_id': counselor.id,
+        }, format='json')
+
+        assert response.status_code == 400
+        assert not CounselorAssignment.objects.filter(
+            student_profile=eligible,
+        ).exists()
+
+    @pytest.mark.parametrize(
+        'student_ids',
+        [[], [1, 1], 'not-a-list', list(range(51))],
+    )
+    def test_bulk_assignment_validates_student_ids(self, student_ids):
+        counselor = CounselorFactory(school=self.school)
+
+        response = self.client.post('/api/v1/school-admin/assignments/bulk/', {
+            'student_ids': student_ids,
+            'counselor_id': counselor.id,
+        }, format='json')
+
+        assert response.status_code == 400
