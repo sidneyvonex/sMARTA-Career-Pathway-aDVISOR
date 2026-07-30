@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 7 - School onboarding, offerings and cohort workflow
+**Active sprint:** Sprint 8 - System administration and public alignment
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow
 
-**Next:** Task 7.5 optional validated CSV import
+**Next:** Task 8.1 system-admin dashboard redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1342,11 +1342,18 @@ Minimum safe flow:
 
 Do not build Excel, MIS synchronization or background import for the pilot.
 
+Decision:
+
+- [x] Deferred from the final-project pilot after Tasks 7.1-7.4 passed.
+- A safe import requires an account invitation, credential recovery and duplicate-identity policy; a parser-only demonstration would imply learner accounts are usable when they are not.
+- Manual learner registration plus the school-link approval queue remains the truthful pilot onboarding path.
+- Revisit only after the required Sprint 8-9 presentation and safety work is complete.
+
 Exit gate:
 
-- School admin can approve the demo learner, configure offerings and assign a counsellor.
-- Dashboard metrics update.
-- Mobile management surfaces remain usable.
+- [x] School admin can approve the demo learner, configure offerings and assign a counsellor.
+- [x] Dashboard metrics update.
+- [x] Mobile management surfaces remain usable.
 
 ## 14. Sprint 8 - System administration and public alignment
 
