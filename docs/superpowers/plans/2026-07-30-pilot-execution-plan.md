@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 5 - Parent support and access
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 Task 5.1 learner-approved parent access
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 Tasks 5.1-5.2 learner-approved parent access and support dashboard
 
-**Next:** Task 5.2 parent dashboard redesign
+**Next:** Task 5.3 child detail redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -43,6 +43,7 @@
 | `737d96b` | Learner action plan, evidence gaps, milestones and review readiness |
 | `7b2c62f` | Evidence-to-action learner dashboard with calculated next action |
 | `dac4407` | Learner-approved parent access, revocation and pilot identity notice |
+| `257b981` | Parent support dashboard with learner plan and next-action context |
 
 ## 1. How to use this plan
 
@@ -1045,6 +1046,20 @@ Remove:
 
 - unqualified fit percentage;
 - confusing empty copy telling all parents to contact the school.
+
+Verification:
+
+- The active-child API returns each learner's rule-based next action, provisional combination, plan state, completed/total milestone counts, upcoming milestone, conversation prompt and access state.
+- Evidence, assessment, choice, plan, milestone and counsellor relationships are prefetched for the dashboard summary.
+- The unqualified fit percentage is removed from the parent-dashboard contract and interface.
+- A child switcher presents one focused learner workspace rather than repeating passive cards for every child.
+- The workspace includes one next action, provisional direction, plan progress, upcoming milestone, conversation prompt, report action and learner-approved access state.
+- The empty state explains that the learner must approve access and no longer tells all parents to contact a school.
+- The two-column support grid collapses to single-column cards on mobile and does not depend on wide rows.
+- Parent summary and access backend suite: 34 tests passed.
+- Parent dashboard, role dashboard, shared primitives and child-detail frontend suite: 26 tests passed after updating one retired heading assertion.
+- Strict TypeScript check: passed.
+- Commit: `257b981`.
 
 ### Task 5.3 - Redesign child detail
 
