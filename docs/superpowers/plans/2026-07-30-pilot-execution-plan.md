@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
+**Active sprint:** Sprint 5 - Parent support and access
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.7 learner summaries, grade verification, explainable assessment, combination choices, explorer, comparison and action planning
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey
 
-**Next:** Task 4.8 refocus student dashboard
+**Next:** Task 5.1 parent-link approval and revocation
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -41,6 +41,7 @@
 | `3d2db97` | Responsive five-county learner combination explorer with save actions |
 | `38836be` | Evidence-led two-or-three-choice comparison with curated related routes |
 | `737d96b` | Learner action plan, evidence gaps, milestones and review readiness |
+| `7b2c62f` | Evidence-to-action learner dashboard with calculated next action |
 
 ## 1. How to use this plan
 
@@ -959,6 +960,19 @@ Update the lively dashboard:
 - replace arbitrary grade trend percentages;
 - link every card to a real destination;
 - show incomplete/loading/error states deliberately.
+
+Verification:
+
+- The hero displays the evidence-summary API's calculated next action and links directly to its real destination.
+- The arbitrary career-journey percentage and progress bar are removed.
+- The journey is organized as Evidence, Interests, Compare and Plan, with data-backed status copy and working destinations.
+- The interest-pathway card retains advisory language and now links to the pilot explorer.
+- The grade trend continues to use canonical CBE levels on a one-to-eight scale rather than invented percentages.
+- Essential learner profile, subject, evidence and choice requests have explicit loading, retryable error and complete states.
+- The existing responsive rules collapse the overview, journey, insights and support areas to one column for mobile widths, including 360px.
+- Dashboard, shell, learner-plan and comparison frontend suite: 14 tests passed.
+- Strict TypeScript check: passed.
+- Commit: `7b2c62f`.
 
 Exit gate:
 
