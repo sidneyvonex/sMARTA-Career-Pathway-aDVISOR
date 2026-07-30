@@ -389,9 +389,18 @@ class Command(BaseCommand):
     def _choices_and_plans(self, *, profiles, combinations):
         choices = {}
         plans = {}
+        combinations_by_code = {
+            combination.code: combination for combination in combinations
+        }
         choice_specs = {
-            'learner_ready': (combinations[0], combinations[1]),
-            'learner_review': (combinations[2], combinations[3]),
+            'learner_ready': (
+                combinations_by_code['ST1042'],
+                combinations_by_code['ST2007'],
+            ),
+            'learner_review': (
+                combinations_by_code['SS2019'],
+                combinations_by_code['AS2009'],
+            ),
         }
         for profile_key, (provisional_combination, saved_combination) in choice_specs.items():
             profile = profiles[profile_key]
@@ -445,6 +454,11 @@ class Command(BaseCommand):
         )
         plans['learner_ready'] = ready_plan
         plans['learner_review'] = review_plan
+
+        for profile_key, selected_combinations in choice_specs.items():
+            profiles[profile_key].combination_choices.exclude(
+                combination__in=selected_combinations
+            ).delete()
 
         milestone_specs = {
             ready_plan: (

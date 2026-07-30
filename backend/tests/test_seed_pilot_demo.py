@@ -108,6 +108,15 @@ def test_seed_creates_a_complete_five_county_demo():
         student_profile__in=profiles,
         status=LearnerCombinationChoice.STATUS_PROVISIONAL,
     ).count() == 2
+    assert LearnerCombinationChoice.objects.filter(
+        student_profile__in=profiles,
+    ).count() == 4
+    assert not LearnerCombinationChoice.objects.filter(
+        student_profile__in=profiles,
+    ).exclude(
+        combination__school_offerings__school__in=profiles.values('school'),
+        combination__school_offerings__is_active=True,
+    ).exists()
     assert LearnerPlan.objects.filter(
         student_profile__in=profiles,
         review_status=LearnerPlan.STATUS_REVIEWED,
