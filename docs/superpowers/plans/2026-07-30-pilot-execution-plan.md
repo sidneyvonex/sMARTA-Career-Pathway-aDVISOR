@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 2 - Shared authenticated design system
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 Task 2.1 shared dashboard primitives
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 Tasks 2.1-2.2 shared dashboard system and authenticated shell
 
-**Next:** Task 2.2 standardized authenticated page layout
+**Next:** Task 2.3 route error and recovery boundary
 
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
@@ -27,6 +27,7 @@
 | `f30a99a` | Active-school validation and pending learner membership |
 | `b24ba8d` | Advisory interest-alignment language across learner, parent, counsellor, public and PDF surfaces |
 | `ba721c6` | Shared, role-aware dashboard primitives with parent and counsellor adoption |
+| `3204ce1` | Standardized authenticated shell, route context, mobile navigation and offline status |
 
 ## 1. How to use this plan
 
@@ -490,11 +491,22 @@ Files:
 
 Work:
 
-- [ ] Define common content width, page spacing and responsive breakpoints.
-- [ ] Add consistent page title/breadcrumb/action positions.
-- [ ] Add mobile navigation behavior for all roles.
-- [ ] Add global offline indicator placeholder.
-- [ ] Ensure notification and profile actions remain reachable at 360px.
+- [x] Define common content width, page spacing and responsive breakpoints.
+- [x] Add consistent page title/breadcrumb/action positions.
+- [x] Add mobile navigation behavior for all roles.
+- [x] Add global offline indicator placeholder.
+- [x] Ensure notification and account actions remain reachable at 360px.
+
+Verification:
+
+- Shell contract suite: 4 tests passed, covering route context, mobile open/close/Escape behavior, the shared content container and offline state.
+- Focused shell, notification and dashboard regression suites: 22 tests passed.
+- Full frontend regression suite: 27 files and 164 tests passed.
+- Production PWA build: passed; main JS gzip 137.77 kB, CSS gzip 23.99 kB.
+- Static responsive review: 44px notification/account/navigation targets remain visible at 360px; content spacing changes at 900px and 400px; the shared role-page header stacks at 680px.
+- Reduced-motion mode removes shell, drawer-overlay and skip-link transitions.
+- Authenticated live-browser review remains unavailable because the local Django/MySQL connection rejects TLS credentials; no database configuration was changed.
+- Commit: `3204ce1`.
 
 ### Task 2.3 - Route error and recovery boundary
 
