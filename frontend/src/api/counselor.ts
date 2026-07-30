@@ -49,6 +49,37 @@ export interface CounselorNote {
   updated_at: string
 }
 
+export type InterventionCategory =
+  | 'assessment'
+  | 'academic_evidence'
+  | 'combination'
+  | 'plan'
+  | 'follow_up'
+  | 'other'
+
+export interface CounselorIntervention {
+  id: number
+  student: number
+  student_name: string
+  category: InterventionCategory
+  action_agreed: string
+  follow_up_date: string | null
+  status: 'open' | 'completed'
+  learner_visible: boolean
+  parent_visible: boolean
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InterventionInput {
+  category: InterventionCategory
+  action_agreed: string
+  follow_up_date?: string | null
+  learner_visible?: boolean
+  parent_visible?: boolean
+}
+
 export const counselorApi = {
   getStudents: () =>
     api.get<{ data: AssignedStudent[] }>('/counselors/students/'),
@@ -73,4 +104,22 @@ export const counselorApi = {
 
   deleteNote: (noteId: number) =>
     api.delete(`/counselors/notes/${noteId}/`),
+
+  getInterventions: () =>
+    api.get<{ data: CounselorIntervention[] }>('/counselors/interventions/'),
+
+  createIntervention: (studentId: number, input: InterventionInput) =>
+    api.post<{ data: CounselorIntervention }>('/counselors/interventions/', {
+      student_id: studentId,
+      ...input,
+    }),
+
+  updateIntervention: (
+    interventionId: number,
+    input: Partial<InterventionInput & { status: 'open' | 'completed' }>,
+  ) =>
+    api.patch<{ data: CounselorIntervention }>(
+      `/counselors/interventions/${interventionId}/`,
+      input,
+    ),
 }

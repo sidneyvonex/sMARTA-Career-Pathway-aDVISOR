@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 from types import SimpleNamespace
 
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from counselors.attention import (
     AttentionSnapshot,
@@ -11,6 +12,7 @@ from counselors.attention import (
     attention_reasons_for,
     derive_attention_reasons,
 )
+from counselors.models import CounselorIntervention
 from tests.factories import (
     CBCGradeFactory,
     CounselorAssignmentFactory,
@@ -166,3 +168,32 @@ def test_attention_context_query_count_stays_bounded_with_larger_caseload():
 
     assert len(results) == 6
     assert len(queries) <= 7
+
+
+def test_open_overdue_intervention_is_derived_from_loaded_profile():
+    school = SchoolFactory()
+    counselor = CounselorFactory(school=school)
+    profile = StudentProfileFactory(
+        user=VerifiedUserFactory(role='student'),
+        school=school,
+        mode='school_linked',
+    )
+    CounselorAssignmentFactory(
+        counselor=counselor,
+        student_profile=profile,
+        school=school,
+    )
+    CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_FOLLOW_UP,
+        action_agreed='Check the learner plan.',
+        follow_up_date=timezone.localdate() - timedelta(days=1),
+    )
+
+    loaded_profile = attention_profiles(
+        StudentProfileFactory._meta.model.objects.filter(pk=profile.pk)
+    ).get()
+    reasons = attention_reasons_for(loaded_profile)
+
+    assert 'follow_up_overdue' in [reason['code'] for reason in reasons]

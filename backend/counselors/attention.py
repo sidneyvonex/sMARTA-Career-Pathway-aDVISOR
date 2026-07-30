@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import date
 
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch
 from django.utils import timezone
 
 from guidance.models import LearnerCombinationChoice, SchoolOffering
 from riasec.models import RIASECAssessment, Recommendation
 from students.models import CBCGrade, StudentSubject
+from .models import CounselorIntervention
 
 
 ATTENTION_REASON_CONTENT = {
@@ -74,7 +75,14 @@ def derive_attention_reasons(snapshot):
 
 def attention_profiles(queryset):
     """Load every evidence source with a caseload-bounded query count."""
-    return queryset.select_related(
+    overdue_follow_ups = CounselorIntervention.objects.filter(
+        student_id=OuterRef('user_id'),
+        status=CounselorIntervention.STATUS_OPEN,
+        follow_up_date__lt=timezone.localdate(),
+    )
+    return queryset.annotate(
+        has_overdue_follow_up=Exists(overdue_follow_ups),
+    ).select_related(
         'school',
         'learner_plan__provisional_choice',
     ).prefetch_related(
@@ -161,7 +169,7 @@ def _selected_combination_available(profile, plan, choices):
     return provisional_choice.combination_id in offered_combination_ids
 
 
-def attention_reasons_for(profile, *, follow_ups=(), today=None):
+def attention_reasons_for(profile, *, follow_ups=None, today=None):
     assessments = getattr(profile, 'attention_assessments', [])
     subjects = getattr(profile, 'attention_subjects', [])
     choices = getattr(profile, 'attention_choices', [])
@@ -182,9 +190,13 @@ def attention_reasons_for(profile, *, follow_ups=(), today=None):
         learner_requested_review=(
             plan is not None and plan.review_status == 'ready_for_review'
         ),
-        follow_up_overdue=_has_overdue_follow_up(
-            follow_ups,
-            today or timezone.localdate(),
+        follow_up_overdue=(
+            _has_overdue_follow_up(
+                follow_ups,
+                today or timezone.localdate(),
+            )
+            if follow_ups is not None
+            else bool(getattr(profile, 'has_overdue_follow_up', False))
         ),
         selected_combination_available=_selected_combination_available(
             profile,

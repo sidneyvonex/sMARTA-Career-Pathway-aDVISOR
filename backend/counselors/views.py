@@ -10,8 +10,13 @@ from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
 from .attention import attention_profiles, attention_reasons_for
-from .models import CounselorAssignment, CounselorNote
-from .serializers import CounselorNoteSerializer, CounselorNoteCreateSerializer
+from .models import CounselorAssignment, CounselorIntervention, CounselorNote
+from .serializers import (
+    CounselorInterventionCreateSerializer,
+    CounselorInterventionSerializer,
+    CounselorNoteCreateSerializer,
+    CounselorNoteSerializer,
+)
 
 
 def _get_assigned_profiles(counselor):
@@ -221,3 +226,69 @@ class CounselorNoteDetailView(APIView):
         note.deleted_at = timezone.now()
         note.save(update_fields=['deleted_at'])
         return _success(message='Note removed.')
+
+
+class CounselorInterventionsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
+
+    def get(self, request):
+        interventions = CounselorIntervention.objects.filter(
+            counselor=request.user,
+        ).select_related('student')
+        return _success(
+            data=CounselorInterventionSerializer(
+                interventions,
+                many=True,
+            ).data
+        )
+
+    def post(self, request):
+        serializer = CounselorInterventionCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+
+        student_id = serializer.validated_data.pop('student_id')
+        if not CounselorAssignment.objects.filter(
+            counselor=request.user,
+            student_profile__user_id=student_id,
+            is_active=True,
+        ).exists():
+            return _error(
+                'You can only create interventions for your assigned students.'
+            )
+
+        intervention = CounselorIntervention.objects.create(
+            counselor=request.user,
+            student_id=student_id,
+            **serializer.validated_data,
+        )
+        return _success(
+            data=CounselorInterventionSerializer(intervention).data,
+            message='Intervention saved.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class CounselorInterventionDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
+
+    def patch(self, request, intervention_id):
+        try:
+            intervention = CounselorIntervention.objects.select_related(
+                'student'
+            ).get(pk=intervention_id, counselor=request.user)
+        except CounselorIntervention.DoesNotExist:
+            return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
+
+        serializer = CounselorInterventionSerializer(
+            intervention,
+            data=request.data,
+            partial=True,
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        serializer.save()
+        return _success(
+            data=CounselorInterventionSerializer(intervention).data,
+            message='Intervention updated.',
+        )
