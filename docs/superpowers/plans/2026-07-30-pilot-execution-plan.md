@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
 
-**Next:** Task 7.4 school offerings page
+**Next:** Task 7.5 optional validated CSV import
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -53,6 +53,7 @@
 | `da44227` | School-scoped learner-link approval queue with audit history and notifications |
 | `ab4d5be` | Evidence-led school operations dashboard with cohort and workload metrics |
 | `7ac4f68` | Responsive learner and counsellor management with safe bulk assignment |
+| `2f924c8` | Grouped school-offerings workspace with complete-set saves and removal warnings |
 
 ## 1. How to use this plan
 
@@ -1309,11 +1310,23 @@ Verification:
 
 ### Task 7.4 - Build school offerings page
 
-- select from active curated combinations;
-- group by pathway and track;
-- show three subjects;
-- save complete offering set;
-- show learner impact warning before removal.
+- [x] select from active curated combinations;
+- [x] group by pathway and track;
+- [x] show three subjects;
+- [x] save complete offering set;
+- [x] show learner impact warning before removal.
+
+Verification:
+
+- School administrators can open the offerings workspace from the dashboard, sidebar and authenticated route.
+- The active current-framework catalogue is grouped by pathway and track and every card names its three elective subjects.
+- The UI tracks the complete selected set and uses the existing atomic replacement API.
+- Removing an existing offering shows a learner-impact warning before the save action is allowed to complete.
+- Offerings, catalogue, route and shell frontend regression: 29 tests passed.
+- Existing backend offering permissions and atomic replacement suite remains the API baseline.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `2f924c8`.
 
 ### Task 7.5 - Optional CSV import
 
