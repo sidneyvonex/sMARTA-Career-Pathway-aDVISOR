@@ -22,6 +22,10 @@ describe('guidance API client', () => {
       'guidance',
       'school-offerings',
     ])
+    expect(guidanceKeys.learnerChoices()).toEqual([
+      'guidance',
+      'learner-choices',
+    ])
   })
 
   it('loads the current source-dated framework', async () => {
@@ -59,5 +63,15 @@ describe('guidance API client', () => {
     expect(initial.data.data.combination_ids).toEqual([1])
     expect(replacement.data.data.combination_ids).toEqual([2, 3])
     expect(replacement.data.message).toBe('School offerings updated.')
+  })
+
+  it('loads and saves learner combination choices', async () => {
+    const initial = await guidanceApi.getLearnerChoices()
+    const saved = await guidanceApi.saveLearnerChoice(1, 'I enjoy these subjects.')
+
+    expect(initial.data.data).toEqual([])
+    expect(saved.data.data.status).toBe('saved')
+    expect(saved.data.data.combination.id).toBe(1)
+    expect(saved.data.data.learner_reason).toBe('I enjoy these subjects.')
   })
 })

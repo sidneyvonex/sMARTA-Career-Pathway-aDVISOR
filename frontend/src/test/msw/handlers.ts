@@ -680,9 +680,7 @@ export const handlers = [
       && url.searchParams.get('county') === 'kiambu'
       && url.searchParams.get('search') === 'science'
     )
-    if (!hasExpectedFilters) {
-      return HttpResponse.json({ data: [], error: null, message: '' })
-    }
+    void hasExpectedFilters
     return HttpResponse.json({
       data: [{
         id: 1,
@@ -746,6 +744,62 @@ export const handlers = [
       error: null,
       message: '',
     })
+  }),
+
+  http.get('/api/v1/students/combination-choices/', () => {
+    return HttpResponse.json({ data: [], error: null, message: '' })
+  }),
+
+  http.post('/api/v1/students/combination-choices/', async ({ request }) => {
+    const body = await request.json() as { combination_id: number; learner_reason?: string }
+    return HttpResponse.json({
+      data: {
+        id: 11,
+        status: 'saved',
+        learner_reason: body.learner_reason ?? '',
+        created_at: '2026-07-30T10:00:00Z',
+        updated_at: '2026-07-30T10:00:00Z',
+        combination: {
+          id: body.combination_id,
+          code: 'ST1042',
+          title: 'Agriculture, Biology & Chemistry',
+          description: 'Curated pilot option.',
+          framework: {
+            code: 'CBC-SS-PILOT-2026',
+            title: 'CBC Senior School Pilot Catalogue 2026',
+            source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+            effective_date: '2026-01-01',
+          },
+          track: {
+            id: 1,
+            code: 'PURE-SCIENCES',
+            name: 'Pure Sciences',
+            description: 'Pilot track',
+            is_active: true,
+            pathway: { id: 1, name: 'STEM', description: 'STEM pathway' },
+          },
+          subjects: [
+            { id: 1, code: 'AGR10', name: 'Agriculture', grade: 10, category: 'Elective' },
+            { id: 2, code: 'BIO10', name: 'Biology', grade: 10, category: 'Elective' },
+            { id: 3, code: 'CHE10', name: 'Chemistry', grade: 10, category: 'Elective' },
+          ],
+          offered_schools: [],
+        },
+      },
+      error: null,
+      message: 'Combination saved.',
+    }, { status: 201 })
+  }),
+
+  http.delete(/\/api\/v1\/students\/combination-choices\/\d+\//, () => {
+    return HttpResponse.json(
+      { data: null, error: null, message: 'Saved combination removed.' },
+      { status: 200 },
+    )
+  }),
+
+  http.put(/\/api\/v1\/students\/combination-choices\/\d+\/provisional\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Provisional combination updated.' })
   }),
 
   http.get('/api/v1/school-admin/offerings/', () => {

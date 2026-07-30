@@ -25,6 +25,7 @@ interface PageContext {
 function getPageContext(pathname: string): PageContext {
   if (pathname === '/') return { title: 'Dashboard' }
   if (pathname === '/grades') return { title: 'My grades' }
+  if (pathname === '/explore') return { title: 'Explore combinations' }
   if (pathname === '/assessment/results') return {
     title: 'Career profile',
     parent: { label: 'Career quiz', to: '/assessment' },

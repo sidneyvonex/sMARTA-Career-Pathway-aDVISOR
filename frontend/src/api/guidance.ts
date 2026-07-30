@@ -67,6 +67,15 @@ export interface SchoolOfferings {
   offerings: GuidanceCombination[]
 }
 
+export interface LearnerCombinationChoice {
+  id: number
+  combination: GuidanceCombination
+  status: 'saved' | 'provisional'
+  learner_reason: string
+  created_at: string
+  updated_at: string
+}
+
 export interface GuidanceCombinationFilters {
   pathway?: string | number
   track?: string | number
@@ -92,6 +101,7 @@ export const guidanceKeys = {
   combination: (combinationId: number) =>
     [...rootKey, 'combinations', 'detail', combinationId] as const,
   schoolOfferings: () => [...rootKey, 'school-offerings'] as const,
+  learnerChoices: () => [...rootKey, 'learner-choices'] as const,
 }
 
 export const guidanceApi = {
@@ -118,4 +128,27 @@ export const guidanceApi = {
     api.put<ApiEnvelope<SchoolOfferings>>('/school-admin/offerings/', {
       combination_ids: combinationIds,
     }),
+
+  getLearnerChoices: () =>
+    api.get<ApiEnvelope<LearnerCombinationChoice[]>>(
+      '/students/combination-choices/',
+    ),
+
+  saveLearnerChoice: (combinationId: number, learnerReason = '') =>
+    api.post<ApiEnvelope<LearnerCombinationChoice>>(
+      '/students/combination-choices/',
+      {
+        combination_id: combinationId,
+        learner_reason: learnerReason,
+      },
+    ),
+
+  removeLearnerChoice: (choiceId: number) =>
+    api.delete<ApiEnvelope<null>>(`/students/combination-choices/${choiceId}/`),
+
+  setProvisionalChoice: (choiceId: number) =>
+    api.put<ApiEnvelope<LearnerCombinationChoice>>(
+      `/students/combination-choices/${choiceId}/provisional/`,
+      {},
+    ),
 }

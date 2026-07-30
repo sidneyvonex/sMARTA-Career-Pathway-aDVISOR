@@ -14,6 +14,7 @@ import StudentProfilePage from './pages/StudentProfilePage'
 import GradesPage from './pages/GradesPage'
 import AssessmentPage from './pages/AssessmentPage'
 import AssessmentResultsPage from './pages/AssessmentResultsPage'
+import CombinationExplorerPage from './pages/CombinationExplorerPage'
 import StudentListPage from './pages/counselor/StudentListPage'
 import StudentDetailPage from './pages/counselor/StudentDetailPage'
 import NotesListPage from './pages/counselor/NotesListPage'
@@ -87,6 +88,7 @@ function AppRoutes() {
             <Route path="/grades" element={<GradesPage />} />
             <Route path="/assessment" element={<AssessmentPage />} />
             <Route path="/assessment/results" element={<AssessmentResultsPage />} />
+            <Route path="/explore" element={<CombinationExplorerPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['counselor']} />}>
