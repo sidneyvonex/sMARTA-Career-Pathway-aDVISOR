@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail
 
-**Next:** Task 6.3 counsellor priority dashboard redesign
+**Next:** Task 6.4 counsellor caseload and learner detail redesign
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -47,6 +47,7 @@
 | `681d874` | Learner-approved parent child summary with evidence, plan, notes and report access |
 | `80d27ec` | Explicit, non-predictive counsellor attention reasons with bounded caseload loading |
 | `6de164d` | Pilot interventions with agreed actions, follow-ups and explicit visibility |
+| `b0c5f52` | Reason-led counsellor priority dashboard with due follow-ups and recent interventions |
 
 ## 1. How to use this plan
 
@@ -1163,13 +1164,27 @@ Verification:
 
 Show:
 
-- one priority queue;
-- reason chips;
-- follow-ups due;
-- caseload size;
-- learner journey completion;
-- recent interventions;
-- direct actions.
+- [x] one priority queue;
+- [x] reason chips;
+- [x] follow-ups due;
+- [x] caseload size;
+- [x] learner journey completion;
+- [x] recent interventions;
+- [x] direct actions.
+
+Verification:
+
+- The primary queue sorts assigned learners by explicit attention-reason priority and shows up to three reason chips per learner.
+- Dashboard copy states that reasons are evidence gaps or agreed follow-ups, not a predictive risk score.
+- Metrics expose caseload size, learners needing attention, open follow-ups due and reviewed learner journeys.
+- Recent interventions are ordered by latest update and keep completion state and follow-up date visible.
+- Direct actions separate caseload/intervention work from confidential notes.
+- Priority layout collapses to one column at 900px; learner cards and intervention rows stack for 600px mobile layouts.
+- Focused dashboard acceptance suite: 5 tests passed.
+- Dashboard, counsellor, shared-primitives and authenticated-shell frontend regression suite: 28 tests passed.
+- Complete counsellor backend regression suite: 43 tests passed.
+- Strict TypeScript check: passed.
+- Commit: `b0c5f52`.
 
 ### Task 6.4 - Redesign caseload and learner detail
 
