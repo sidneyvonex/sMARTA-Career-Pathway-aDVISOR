@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
@@ -10,26 +11,6 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import DashboardPage from './pages/DashboardPage'
-import StudentProfilePage from './pages/StudentProfilePage'
-import GradesPage from './pages/GradesPage'
-import AssessmentPage from './pages/AssessmentPage'
-import AssessmentResultsPage from './pages/AssessmentResultsPage'
-import CombinationExplorerPage from './pages/CombinationExplorerPage'
-import CombinationComparePage from './pages/CombinationComparePage'
-import LearnerPlanPage from './pages/LearnerPlanPage'
-import ParentAccessPage from './pages/ParentAccessPage'
-import StudentListPage from './pages/counselor/StudentListPage'
-import StudentDetailPage from './pages/counselor/StudentDetailPage'
-import NotesListPage from './pages/counselor/NotesListPage'
-import SchoolProfilePage from './pages/admin/SchoolProfilePage'
-import CounselorManagementPage from './pages/admin/CounselorManagementPage'
-import SchoolStudentsPage from './pages/admin/SchoolStudentsPage'
-import SchoolOfferingsPage from './pages/admin/SchoolOfferingsPage'
-import ChildDetailPage from './pages/parent/ChildDetailPage'
-import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
-import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
-import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
-import SystemAdminCataloguePage from './pages/system-admin/SystemAdminCataloguePage'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import PathwaysPage from './pages/PathwaysPage'
@@ -42,6 +23,28 @@ import { usePWAUpdate } from './hooks/usePWAUpdate'
 import InstallBanner from './components/InstallBanner'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import ErrorState from './components/common/dashboard/ErrorState'
+import LoadingSkeleton from './components/common/dashboard/LoadingSkeleton'
+
+const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'))
+const GradesPage = lazy(() => import('./pages/GradesPage'))
+const AssessmentPage = lazy(() => import('./pages/AssessmentPage'))
+const AssessmentResultsPage = lazy(() => import('./pages/AssessmentResultsPage'))
+const CombinationExplorerPage = lazy(() => import('./pages/CombinationExplorerPage'))
+const CombinationComparePage = lazy(() => import('./pages/CombinationComparePage'))
+const LearnerPlanPage = lazy(() => import('./pages/LearnerPlanPage'))
+const ParentAccessPage = lazy(() => import('./pages/ParentAccessPage'))
+const StudentListPage = lazy(() => import('./pages/counselor/StudentListPage'))
+const StudentDetailPage = lazy(() => import('./pages/counselor/StudentDetailPage'))
+const NotesListPage = lazy(() => import('./pages/counselor/NotesListPage'))
+const SchoolProfilePage = lazy(() => import('./pages/admin/SchoolProfilePage'))
+const CounselorManagementPage = lazy(() => import('./pages/admin/CounselorManagementPage'))
+const SchoolStudentsPage = lazy(() => import('./pages/admin/SchoolStudentsPage'))
+const SchoolOfferingsPage = lazy(() => import('./pages/admin/SchoolOfferingsPage'))
+const ChildDetailPage = lazy(() => import('./pages/parent/ChildDetailPage'))
+const SystemAdminSchoolsPage = lazy(() => import('./pages/system-admin/SystemAdminSchoolsPage'))
+const SystemAdminUsersPage = lazy(() => import('./pages/system-admin/SystemAdminUsersPage'))
+const SystemAdminAuditLogPage = lazy(() => import('./pages/system-admin/SystemAdminAuditLogPage'))
+const SystemAdminCataloguePage = lazy(() => import('./pages/system-admin/SystemAdminCataloguePage'))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -87,7 +90,11 @@ function AppRoutes() {
 
       {/* Authenticated pages — wrapped in Shell */}
       <Route element={<ProtectedRoute />}>
-        <Route element={<Shell />}>
+        <Route element={(
+          <Suspense fallback={<LoadingSkeleton label="Loading page" rows={4} />}>
+            <Shell />
+          </Suspense>
+        )}>
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/profile" element={<StudentProfilePage />} />
             <Route path="/grades" element={<GradesPage />} />

@@ -3,7 +3,7 @@ from .views import (
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
-    StudentCounselorView, EvidenceSummaryView, GradeSummaryView,
+    StudentCounselorView, StudentDashboardView, EvidenceSummaryView, GradeSummaryView,
     StudentInterventionsView,
     LearnerCombinationChoiceDetailView,
     LearnerCombinationChoiceListCreateView,
@@ -19,6 +19,7 @@ from parents.views import (
 )
 
 urlpatterns = [
+    path('dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
     path(
         'parent-access/',
         StudentParentAccessListView.as_view(),

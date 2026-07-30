@@ -22,21 +22,22 @@ pytestmark = pytest.mark.django_db
 
 EVIDENCE_URL = '/api/v1/students/evidence-summary/'
 GRADES_URL = '/api/v1/students/grades/summary/'
+DASHBOARD_URL = '/api/v1/students/dashboard/'
 
 
 class TestStudentSummaryPermissions:
-    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL])
+    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL, DASHBOARD_URL])
     def test_unauthenticated_request_is_rejected(self, url):
         assert APIClient().get(url).status_code == 401
 
-    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL])
+    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL, DASHBOARD_URL])
     def test_non_student_is_rejected(self, url):
         client = APIClient()
         client.force_authenticate(VerifiedUserFactory(role='counselor'))
 
         assert client.get(url).status_code == 403
 
-    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL])
+    @pytest.mark.parametrize('url', [EVIDENCE_URL, GRADES_URL, DASHBOARD_URL])
     def test_unverified_student_is_rejected(self, url):
         user = UserFactory(role='student', is_email_verified=False)
         StudentProfileFactory(user=user)
@@ -261,3 +262,58 @@ class TestGradeSummaryView:
 
         assert response.status_code == 200
         assert len(response.data['data']['subjects']) == 6
+
+
+class TestStudentDashboardView:
+    def setup_method(self):
+        self.profile = StudentProfileFactory(
+            user=VerifiedUserFactory(role='student'),
+            grade=9,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.profile.user)
+
+    def test_returns_the_complete_dashboard_contract_in_one_response(self):
+        enrollment = StudentSubjectFactory(student_profile=self.profile)
+        CBCGradeFactory(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            level='ME1',
+        )
+
+        response = self.client.get(DASHBOARD_URL)
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert set(data) == {
+            'profile',
+            'grade_summary',
+            'evidence',
+            'choices',
+            'assessment',
+            'counselor',
+            'notifications',
+            'interventions',
+        }
+        assert data['profile']['id'] == self.profile.id
+        assert data['grade_summary']['total_grade_records'] == 1
+        assert data['evidence']['academic_evidence']['total_grade_records'] == 1
+        assert data['assessment'] is None
+        assert data['choices'] == []
+        assert data['notifications'] == []
+        assert data['interventions'] == []
+
+    def test_query_count_is_bounded_as_subjects_grow(self, django_assert_num_queries):
+        for index in range(6):
+            enrollment = StudentSubjectFactory(
+                student_profile=self.profile,
+                subject=SubjectFactory(code=f'DSH{index}9'),
+            )
+            CBCGradeFactory(student_subject=enrollment)
+
+        with django_assert_num_queries(8):
+            response = self.client.get(DASHBOARD_URL)
+
+        assert response.status_code == 200
+        assert len(response.data['data']['grade_summary']['subjects']) == 6

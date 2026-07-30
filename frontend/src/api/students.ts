@@ -1,5 +1,9 @@
 import api from '../lib/axios'
 import type { CounselorIntervention } from './counselor'
+import type { AssessmentResult } from './assessment'
+import type { CounselorInfo } from './dashboard'
+import type { LearnerCombinationChoice } from './guidance'
+import type { Notification } from './notifications'
 
 export interface StudentProfile {
   id: number
@@ -94,6 +98,30 @@ export interface EvidenceSummary {
   }
 }
 
+export interface StudentGradeSummary {
+  status: 'not_started' | 'in_progress' | 'ready'
+  total_subjects: number
+  subjects_with_evidence: number
+  total_grade_records: number
+  subjects: Array<{
+    enrollment_id: number
+    subject: Subject
+    grades: CBCGrade[]
+    latest_grade: CBCGrade | null
+  }>
+}
+
+export interface StudentDashboardPayload {
+  profile: StudentProfile
+  grade_summary: StudentGradeSummary
+  evidence: EvidenceSummary
+  choices: LearnerCombinationChoice[]
+  assessment: AssessmentResult | null
+  counselor: CounselorInfo | null
+  notifications: Notification[]
+  interventions: CounselorIntervention[]
+}
+
 export type ParentAccessStatus =
   | 'invited'
   | 'pending_learner'
@@ -113,6 +141,9 @@ export interface ParentAccess {
 }
 
 export const studentsApi = {
+  getDashboard: () =>
+    api.get<{ data: StudentDashboardPayload }>('/students/dashboard/'),
+
   getEvidenceSummary: () =>
     api.get<{ data: EvidenceSummary }>('/students/evidence-summary/'),
 

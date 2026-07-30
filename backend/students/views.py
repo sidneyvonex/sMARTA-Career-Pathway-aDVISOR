@@ -30,6 +30,11 @@ from guidance.serializers import (
     LearnerPlanUpdateSerializer,
     PlanMilestoneSerializer,
 )
+from notifications.models import Notification
+from notifications.serializers import NotificationSerializer
+from riasec.models import RIASECAssessment
+from riasec.serializers import AssessmentResultSerializer
+from counselors.models import CounselorAssignment
 from .models import Subject, StudentSubject, CBCGrade
 from .serializers import (
     StudentProfileSerializer, SubjectSerializer,
@@ -151,6 +156,135 @@ class EvidenceSummaryView(APIView):
                 ),
             }
         )
+
+
+class StudentDashboardView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = (
+            StudentProfile.objects
+            .select_related('user', 'school', 'learner_plan')
+            .annotate(
+                saved_combination_count=Count(
+                    'combination_choices',
+                    distinct=True,
+                ),
+                provisional_combination_count=Count(
+                    'combination_choices',
+                    filter=Q(
+                        combination_choices__status=(
+                            LearnerCombinationChoice.STATUS_PROVISIONAL
+                        )
+                    ),
+                    distinct=True,
+                ),
+            )
+            .get(user=request.user)
+        )
+        grades = grade_summary(profile)
+        academic_evidence = {
+            key: grades[key]
+            for key in (
+                'status',
+                'total_subjects',
+                'subjects_with_evidence',
+                'total_grade_records',
+            )
+        }
+        assessment = (
+            RIASECAssessment.objects
+            .filter(student_profile=profile)
+            .prefetch_related('scores', 'recommendations__pathway')
+            .order_by('-submitted_at', '-pk')
+            .first()
+        )
+        assessment_evidence = (
+            {
+                'status': 'complete',
+                'instrument_version': assessment.instrument_version,
+                'submitted_at': assessment.submitted_at.isoformat(),
+            }
+            if assessment else {
+                'status': 'not_started',
+                'instrument_version': None,
+                'submitted_at': None,
+            }
+        )
+        profile_completion = profile_completion_summary(profile)
+        try:
+            plan_status = profile.learner_plan.review_status
+        except LearnerPlan.DoesNotExist:
+            plan_status = 'not_started'
+        has_provisional_choice = profile.provisional_combination_count > 0
+        evidence = {
+            'profile_completion': profile_completion,
+            'academic_evidence': academic_evidence,
+            'assessment': assessment_evidence,
+            'saved_combination_count': profile.saved_combination_count,
+            'plan_status': plan_status,
+            'next_action': next_action_for(
+                profile_completion,
+                academic_evidence,
+                assessment_evidence,
+                profile.saved_combination_count,
+                has_provisional_choice=has_provisional_choice,
+                plan_status=plan_status,
+            ),
+        }
+
+        assignment = (
+            CounselorAssignment.objects
+            .filter(student_profile=profile, is_active=True)
+            .select_related('counselor')
+            .first()
+        )
+        counselor = None
+        if assignment:
+            user = assignment.counselor
+            counselor = {
+                'id': user.id,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'email': user.email,
+                'county': user.county,
+                'photo_url': None,
+                'last_message': None,
+                'last_message_at': None,
+            }
+
+        notifications = (
+            Notification.objects
+            .filter(user=request.user)
+            .order_by('-created_at')[:50]
+        )
+        interventions = (
+            CounselorIntervention.objects
+            .filter(student=request.user, learner_visible=True)
+            .select_related('student')
+        )
+        return _success(data={
+            'profile': StudentProfileSerializer(profile).data,
+            'grade_summary': grades,
+            'evidence': evidence,
+            'choices': LearnerCombinationChoiceSerializer(
+                learner_choice_queryset(profile),
+                many=True,
+            ).data,
+            'assessment': (
+                AssessmentResultSerializer(assessment).data
+                if assessment else None
+            ),
+            'counselor': counselor,
+            'notifications': NotificationSerializer(
+                notifications,
+                many=True,
+            ).data,
+            'interventions': CounselorInterventionSerializer(
+                interventions,
+                many=True,
+            ).data,
+        })
 
 
 class StudentInterventionsView(APIView):

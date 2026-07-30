@@ -125,6 +125,111 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/dashboard/', () => {
+    return HttpResponse.json({
+      data: {
+        profile: {
+          id: 1, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
+          county: 'kiambu', grade: 9, mode: 'school_linked',
+          school_membership_status: 'active',
+          bio: 'I love science', date_of_birth: '2011-01-10',
+          career_interests: 'Engineering', photo_url: null,
+        },
+        grade_summary: {
+          status: 'ready',
+          total_subjects: 3,
+          subjects_with_evidence: 3,
+          total_grade_records: 3,
+          subjects: [
+            {
+              enrollment_id: 10,
+              subject: {
+                id: 1, name: 'Mathematics', code: 'MTH9',
+                grade: 9, category: 'Core', is_active: true,
+              },
+              grades: [
+                {
+                  id: 20, term: 1, year: 2026, level: 'ME1',
+                  source: 'learner', verified_by: null, verified_at: null,
+                  created_at: '2026-06-14T10:00:00Z',
+                  updated_at: '2026-06-14T10:00:00Z',
+                },
+              ],
+              latest_grade: {
+                id: 20, term: 1, year: 2026, level: 'ME1',
+                source: 'learner', verified_by: null, verified_at: null,
+                created_at: '2026-06-14T10:00:00Z',
+                updated_at: '2026-06-14T10:00:00Z',
+              },
+            },
+          ],
+        },
+        evidence: {
+          profile_completion: { status: 'complete', percent: 100, missing_fields: [] },
+          academic_evidence: {
+            status: 'ready',
+            total_subjects: 3,
+            subjects_with_evidence: 3,
+            total_grade_records: 3,
+          },
+          assessment: {
+            status: 'complete',
+            instrument_version: 'riasec-pilot-1.0',
+            submitted_at: '2026-06-15T10:30:00Z',
+          },
+          saved_combination_count: 2,
+          plan_status: 'not_started',
+          next_action: {
+            code: 'compare_combinations',
+            title: 'Compare your saved combinations',
+            href: '/compare',
+          },
+        },
+        choices: [],
+        assessment: {
+          id: 1,
+          submitted_at: '2026-06-15T10:30:00Z',
+          instrument_version: 'riasec-pilot-1.0',
+          holland_code: 'IRE',
+          scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
+          recommendations: [
+            { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+            { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+            { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          ],
+        },
+        counselor: null,
+        notifications: [
+          {
+            id: 1,
+            type: 'assessment_submitted',
+            message: 'Your RIASEC assessment results are ready.',
+            read: false,
+            created_at: '2026-06-16T10:00:00Z',
+          },
+        ],
+        interventions: [
+          {
+            id: 77,
+            student: 1,
+            student_name: 'Jane Doe',
+            category: 'plan',
+            action_agreed: 'Review your milestone dates.',
+            follow_up_date: '2026-08-06',
+            status: 'open',
+            learner_visible: true,
+            parent_visible: false,
+            completed_at: null,
+            created_at: '2026-07-29T08:00:00Z',
+            updated_at: '2026-07-29T08:00:00Z',
+          },
+        ],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
   http.get('/api/v1/students/plan/', () => {
     return HttpResponse.json({ data: null, error: null, message: '' })
   }),

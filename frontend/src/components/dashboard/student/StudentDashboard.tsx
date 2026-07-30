@@ -1,9 +1,6 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { GRADE_LEVEL_POINTS, studentsApi } from '../../../api/students'
-import { assessmentApi, type RIASECDimension } from '../../../api/assessment'
-import { dashboardApi } from '../../../api/dashboard'
-import { guidanceApi, guidanceKeys } from '../../../api/guidance'
-import { notificationsApi } from '../../../api/notifications'
+import type { RIASECDimension } from '../../../api/assessment'
 import { useAuthStore } from '../../../store/authStore'
 import { useNotificationStore } from '../../../store/notificationStore'
 import { formatRelativeTime } from '../../../lib/format'
@@ -25,70 +22,20 @@ export default function StudentDashboard() {
   const { setDrawerOpen } = useNotificationStore()
   const { downloadReport, downloadingId } = useDownloadReport()
 
-  const profileQ = useQuery({
-    queryKey: ['student-profile'],
-    queryFn: () => studentsApi.getProfile().then((response) => response.data.data),
+  const dashboardQ = useQuery({
+    queryKey: ['student', 'dashboard'],
+    queryFn: () => studentsApi.getDashboard().then((response) => response.data.data),
   })
 
-  const subjectsQ = useQuery({
-    queryKey: ['my-subjects'],
-    queryFn: () => studentsApi.getMySubjects().then((response) => response.data.data),
-  })
+  const profile = dashboardQ.data?.profile ?? null
+  const gradeSummary = dashboardQ.data?.grade_summary ?? null
+  const result = dashboardQ.data?.assessment ?? null
+  const counselor = dashboardQ.data?.counselor ?? null
+  const notifications = dashboardQ.data?.notifications ?? []
+  const evidence = dashboardQ.data?.evidence ?? null
+  const choices = dashboardQ.data?.choices ?? []
 
-  const evidenceQ = useQuery({
-    queryKey: ['student', 'evidence-summary'],
-    queryFn: () => studentsApi.getEvidenceSummary().then((response) => response.data.data),
-  })
-
-  const choicesQ = useQuery({
-    queryKey: guidanceKeys.learnerChoices(),
-    queryFn: () => guidanceApi.getLearnerChoices().then((response) => response.data.data),
-  })
-
-  const resultQ = useQuery({
-    queryKey: ['riasec-latest'],
-    queryFn: () => assessmentApi.getLatest().then((response) => response.data.data),
-    retry: false,
-  })
-
-  const counselorQ = useQuery({
-    queryKey: ['student-counselor'],
-    queryFn: () => dashboardApi.getStudentCounselor().then((response) => response.data.data),
-  })
-
-  const notificationsQ = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => notificationsApi.getList().then((response) => response.data.data),
-  })
-
-  const interventionsQ = useQuery({
-    queryKey: ['student', 'interventions'],
-    queryFn: () => studentsApi.getInterventions().then((response) => response.data.data),
-  })
-
-  const subjects = subjectsQ.data ?? []
-  const gradeQueries = useQueries({
-    queries: subjects.map((subject) => ({
-      queryKey: ['student-grades', subject.id],
-      queryFn: () => studentsApi.getGrades(subject.id).then((response) => response.data.data),
-      staleTime: 60_000,
-    })),
-  })
-
-  const profile = profileQ.data ?? null
-  const result = resultQ.data ?? null
-  const counselor = counselorQ.data ?? null
-  const notifications = notificationsQ.data ?? []
-  const evidence = evidenceQ.data ?? null
-  const choices = choicesQ.data ?? []
-
-  if (
-    profileQ.isLoading ||
-    subjectsQ.isLoading ||
-    evidenceQ.isLoading ||
-    choicesQ.isLoading ||
-    interventionsQ.isLoading
-  ) {
+  if (dashboardQ.isLoading) {
     return (
       <div className="lv-loading" aria-label="Loading dashboard">
         <div className="skeleton lv-loading__hero" />
@@ -100,25 +47,16 @@ export default function StudentDashboard() {
   }
 
   if (
-    profileQ.isError ||
-    subjectsQ.isError ||
-    evidenceQ.isError ||
-    choicesQ.isError ||
-    interventionsQ.isError ||
+    dashboardQ.isError ||
     !profile ||
-    !evidence
+    !evidence ||
+    !gradeSummary
   ) {
     return (
       <ErrorState
         title="Your dashboard could not load"
         description="Check your connection and try loading your learner evidence and choices again."
-        onRetry={() => {
-          profileQ.refetch()
-          subjectsQ.refetch()
-          evidenceQ.refetch()
-          choicesQ.refetch()
-          interventionsQ.refetch()
-        }}
+        onRetry={() => dashboardQ.refetch()}
       />
     )
   }
@@ -133,8 +71,8 @@ export default function StudentDashboard() {
     : null
 
   const gradeBuckets = new Map<string, { year: number; term: number; scores: number[] }>()
-  gradeQueries.forEach((query) => {
-    ;(query.data ?? []).forEach((grade) => {
+  gradeSummary.subjects.forEach((subject) => {
+    subject.grades.forEach((grade) => {
       const key = `${grade.year}-${grade.term}`
       const bucket = gradeBuckets.get(key) ?? { year: grade.year, term: grade.term, scores: [] }
       bucket.scores.push(GRADE_LEVEL_POINTS[grade.level])
@@ -163,7 +101,7 @@ export default function StudentDashboard() {
     gradeLabel: `Grade ${profile.grade}`,
     county: profile.county,
     quizDone,
-    subjectsCount: subjects.length,
+    subjectsCount: gradeSummary.total_subjects,
     academicReady: evidence.academic_evidence.status === 'ready',
     savedChoicesCount: evidence.saved_combination_count,
     hasProvisionalChoice: choices.some((choice) => choice.status === 'provisional'),
@@ -199,9 +137,9 @@ export default function StudentDashboard() {
       time: formatRelativeTime(notification.created_at),
       actor: notification.type === 'counselor_note' && counselorName ? counselorName : fullName,
     })),
-    interventions: interventionsQ.data ?? [],
+    interventions: dashboardQ.data?.interventions ?? [],
     onOpenActivity: () => setDrawerOpen(true),
-    onDownloadReport: (quizDone || subjects.length > 0) && user
+    onDownloadReport: (quizDone || gradeSummary.total_subjects > 0) && user
       ? () => downloadReport(user.id)
       : undefined,
     reportDownloading: downloadingId !== null,
