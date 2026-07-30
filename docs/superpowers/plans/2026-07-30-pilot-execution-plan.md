@@ -7,11 +7,12 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 1 - Correctness and safety blockers
+**Active sprint:** Sprint 2 - Shared authenticated design system
 
-**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.4
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers
 
-**Next:** Task 1.5 high-risk recommendation language correction
+**Next:** Task 2.1 reusable dashboard primitives
+
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
 | Commit | Delivered change |
@@ -24,6 +25,7 @@
 | `2e3d9cf` | Current Grade 10 pilot catalogue with safe retirement of obsolete records |
 | `3eec101` | Authenticated API cache exclusion and logout data cleanup |
 | `f30a99a` | Active-school validation and pending learner membership |
+| `b24ba8d` | Advisory interest-alignment language across learner, parent, counsellor, public and PDF surfaces |
 
 ## 1. How to use this plan
 
@@ -409,17 +411,27 @@ Files:
 
 Work:
 
-- [ ] Replace "fit percentage" presentation with "interest alignment."
-- [ ] Add a clear advisory explanation.
-- [ ] Remove placement/success implications.
-- [ ] Keep the numeric value internal only if needed for ranking during the pilot.
+- [x] Replace "fit percentage" presentation with "interest alignment."
+- [x] Add a clear advisory explanation.
+- [x] Remove placement/success implications.
+- [x] Keep the numeric value internal only if needed for ranking during the pilot.
+
+Verification:
+
+- Backend report/PDF suite: 29 passed.
+- Focused learner, parent, counsellor, dashboard and public-page frontend suites: 56 passed.
+- Full frontend regression suite: passed, including 10 PWA tests.
+- Production build: passed; main JS gzip 136.29 kB, CSS gzip 21.08 kB.
+- Removed the percentage-based pathway donut and replaced it with an explicitly ranked exploration list.
+- Static terminology audit found no remaining user-facing fit/match percentage claims in application or report surfaces.
+- Commit: `b24ba8d`.
 
 Exit gate:
 
-- Focused backend/frontend tests pass.
-- Production build passes.
-- Manual shared-device PWA check passes.
-- Correct terminology appears in learner, parent, counsellor and PDF surfaces.
+- [x] Focused backend/frontend tests pass.
+- [x] Production build passes.
+- [x] Shared-device PWA protections remain covered by the 10-test PWA suite and the generated service worker build.
+- [x] Correct terminology appears in learner, parent, counsellor and PDF surfaces.
 
 ## 8. Sprint 2 - Shared authenticated design system
 
