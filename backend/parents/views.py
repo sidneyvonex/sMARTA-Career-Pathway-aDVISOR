@@ -7,7 +7,11 @@ from rest_framework import status
 from accounts.permissions import IsParent, IsEmailVerified, IsStudent
 from accounts.response import _success, _error
 from accounts.models import StudentProfile
-from counselors.models import CounselorAssignment, CounselorNote
+from counselors.models import (
+    CounselorAssignment,
+    CounselorIntervention,
+    CounselorNote,
+)
 from guidance.models import LearnerCombinationChoice
 from riasec.models import RIASECAssessment
 from students.models import StudentSubject
@@ -110,6 +114,13 @@ class ParentChildDetailView(APIView):
                             deleted_at__isnull=True,
                         ).order_by('-created_at'),
                         to_attr='parent_visible_notes',
+                    ),
+                    Prefetch(
+                        'user__counselor_interventions_received',
+                        queryset=CounselorIntervention.objects.filter(
+                            parent_visible=True,
+                        ).select_related('student'),
+                        to_attr='parent_visible_interventions',
                     ),
                 )
                 .get(user_id=student_id)

@@ -188,3 +188,65 @@ def test_counselor_cannot_update_another_counselors_intervention(
     )
 
     assert response.status_code == 404
+
+
+def test_learner_sees_only_learner_visible_interventions(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    visible = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Review your milestone dates.',
+        learner_visible=True,
+    )
+    CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_OTHER,
+        action_agreed='Internal staff action.',
+        learner_visible=False,
+    )
+    _auth(client, profile.user)
+
+    response = client.get(reverse('student-interventions'))
+
+    assert response.status_code == 200
+    assert [item['id'] for item in response.json()['data']] == [visible.id]
+
+
+def test_approved_parent_sees_only_parent_visible_interventions(
+    client,
+    intervention_context,
+):
+    from tests.factories import ParentFactory, ParentStudentLinkFactory
+
+    counselor, profile = intervention_context
+    parent = ParentFactory()
+    ParentStudentLinkFactory(parent=parent, student=profile.user)
+    visible = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Discuss the reviewed learner plan.',
+        parent_visible=True,
+    )
+    CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_OTHER,
+        action_agreed='Counsellor-only action.',
+        parent_visible=False,
+    )
+    _auth(client, parent)
+
+    response = client.get(
+        f'/api/v1/parents/children/{profile.user_id}/'
+    )
+
+    assert response.status_code == 200
+    assert [item['id'] for item in response.json()['data']['interventions']] == [
+        visible.id,
+    ]

@@ -12,6 +12,7 @@ from tests.factories import (
 from students.models import Subject
 from counselors.models import CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
+from guidance.models import PlanMilestone
 
 pytestmark = pytest.mark.django_db
 
@@ -126,6 +127,59 @@ class TestCounselorStudentDetailView:
         _auth(client, counselor)
         r = client.get(reverse('counselor-student-detail', args=[other_student.id]))
         assert r.status_code == 404
+
+    def test_returns_attention_evidence_choices_plan_and_interventions(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        combination = SubjectCombinationFactory()
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=assigned_student,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+            learner_reason='I want to explore this route.',
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=assigned_student,
+            provisional_choice=choice,
+            learner_reason='This route connects to my interests.',
+            review_status=LearnerPlan.STATUS_READY,
+        )
+        PlanMilestone.objects.create(
+            plan=plan,
+            title='Discuss the pilot school offering',
+            position=1,
+        )
+        intervention = CounselorIntervention.objects.create(
+            counselor=counselor,
+            student=assigned_student.user,
+            category=CounselorIntervention.CATEGORY_PLAN,
+            action_agreed='Review the provisional combination together.',
+        )
+        _auth(client, counselor)
+
+        response = client.get(
+            reverse(
+                'counselor-student-detail',
+                args=[assigned_student.user_id],
+            )
+        )
+        data = response.json()['data']
+
+        assert 'assessment_missing' in [
+            reason['code'] for reason in data['attention_reasons']
+        ]
+        assert data['evidence_summary']['academic']['status'] == 'not_started'
+        assert data['evidence_summary']['assessment']['status'] == 'not_started'
+        assert data['combination_choices'][0]['code'] == combination.code
+        assert data['combination_choices'][0]['status'] == 'provisional'
+        assert data['plan']['status'] == 'ready_for_review'
+        assert data['plan']['milestones'][0]['title'] == (
+            'Discuss the pilot school offering'
+        )
+        assert data['interventions'][0]['id'] == intervention.id
 
 
 class TestCounselorStatsView:

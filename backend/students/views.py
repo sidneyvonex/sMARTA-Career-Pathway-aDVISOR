@@ -19,6 +19,8 @@ from guidance.models import (
     PlanMilestone,
     SchoolOffering,
 )
+from counselors.models import CounselorIntervention
+from counselors.serializers import CounselorInterventionSerializer
 from guidance.selectors import active_combination_queryset
 from guidance.serializers import (
     LearnerCombinationChoiceCreateSerializer,
@@ -147,6 +149,22 @@ class EvidenceSummaryView(APIView):
                     plan_status=plan_status,
                 ),
             }
+        )
+
+
+class StudentInterventionsView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        interventions = CounselorIntervention.objects.filter(
+            student=request.user,
+            learner_visible=True,
+        ).select_related('student')
+        return _success(
+            data=CounselorInterventionSerializer(
+                interventions,
+                many=True,
+            ).data
         )
 
 

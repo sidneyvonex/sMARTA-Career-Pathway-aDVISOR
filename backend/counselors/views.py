@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsCounselor, IsEmailVerified
 from accounts.models import StudentProfile
 from accounts.response import _success, _error
+from guidance.models import LearnerCombinationChoice, LearnerPlan
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
@@ -68,7 +69,9 @@ class CounselorStudentDetailView(APIView):
 
     def get(self, request, student_id):
         try:
-            profile = _get_assigned_profiles(request.user).get(user_id=student_id)
+            profile = attention_profiles(
+                _get_assigned_profiles(request.user)
+            ).get(user_id=student_id)
         except StudentProfile.DoesNotExist:
             return _error('Student not found.', status.HTTP_404_NOT_FOUND)
 
@@ -111,12 +114,107 @@ class CounselorStudentDetailView(APIView):
         notes_count = CounselorNote.objects.filter(
             counselor=request.user, student_id=student_id, deleted_at__isnull=True,
         ).count()
+        academic_subjects = profile.attention_subjects
+        subjects_with_evidence = sum(
+            bool(subject.attention_grades) for subject in academic_subjects
+        )
+        total_grade_records = sum(
+            len(subject.attention_grades) for subject in academic_subjects
+        )
+        if (
+            len(academic_subjects) >= 3
+            and subjects_with_evidence == len(academic_subjects)
+        ):
+            academic_status = 'ready'
+        elif academic_subjects or total_grade_records:
+            academic_status = 'in_progress'
+        else:
+            academic_status = 'not_started'
+
+        choices = (
+            LearnerCombinationChoice.objects
+            .filter(student_profile=profile)
+            .select_related(
+                'combination__track__pathway',
+                'combination__subject_one',
+                'combination__subject_two',
+                'combination__subject_three',
+            )
+        )
+        choice_data = [
+            {
+                'id': choice.id,
+                'status': choice.status,
+                'learner_reason': choice.learner_reason,
+                'code': choice.combination.code,
+                'title': choice.combination.title,
+                'pathway': choice.combination.track.pathway.name,
+                'track': choice.combination.track.name,
+                'subjects': [
+                    choice.combination.subject_one.name,
+                    choice.combination.subject_two.name,
+                    choice.combination.subject_three.name,
+                ],
+            }
+            for choice in choices
+        ]
+        plan = (
+            LearnerPlan.objects
+            .filter(student_profile=profile)
+            .prefetch_related('milestones')
+            .first()
+        )
+        plan_data = None
+        if plan is not None:
+            plan_data = {
+                'status': plan.review_status,
+                'learner_reason': plan.learner_reason,
+                'milestones': [
+                    {
+                        'id': milestone.id,
+                        'title': milestone.title,
+                        'due_date': (
+                            milestone.due_date.isoformat()
+                            if milestone.due_date
+                            else None
+                        ),
+                        'is_complete': milestone.is_complete,
+                    }
+                    for milestone in plan.milestones.all()
+                ],
+            }
+        interventions = CounselorIntervention.objects.filter(
+            counselor=request.user,
+            student_id=student_id,
+        ).select_related('student')
 
         return _success(data={
             'student': student_data,
             'riasec_result': riasec_result,
             'grades': grades,
             'notes_count': notes_count,
+            'attention_reasons': attention_reasons_for(profile),
+            'evidence_summary': {
+                'academic': {
+                    'status': academic_status,
+                    'total_subjects': len(academic_subjects),
+                    'subjects_with_evidence': subjects_with_evidence,
+                    'total_grade_records': total_grade_records,
+                },
+                'assessment': {
+                    'status': (
+                        'complete'
+                        if profile.attention_assessments
+                        else 'not_started'
+                    ),
+                },
+            },
+            'combination_choices': choice_data,
+            'plan': plan_data,
+            'interventions': CounselorInterventionSerializer(
+                interventions,
+                many=True,
+            ).data,
         })
 
 

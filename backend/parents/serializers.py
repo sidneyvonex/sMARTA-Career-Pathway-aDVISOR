@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from counselors.serializers import CounselorInterventionSerializer
 from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
 from students.summaries import next_action_for, profile_completion_summary
@@ -311,6 +312,7 @@ class ChildDetailSerializer(serializers.Serializer):
     counselor = serializers.SerializerMethodField()
     latest_note = serializers.SerializerMethodField()
     parent_visible_notes = serializers.SerializerMethodField()
+    interventions = serializers.SerializerMethodField()
 
     def get_profile(self, profile):
         return ChildProfileSerializer(profile).data
@@ -425,3 +427,14 @@ class ChildDetailSerializer(serializers.Serializer):
     def get_parent_visible_notes(self, profile):
         notes = getattr(profile.user, 'parent_visible_notes', [])
         return ChildNoteSerializer(notes, many=True).data
+
+    def get_interventions(self, profile):
+        interventions = getattr(
+            profile.user,
+            'parent_visible_interventions',
+            [],
+        )
+        return CounselorInterventionSerializer(
+            interventions,
+            many=True,
+        ).data

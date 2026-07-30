@@ -4,6 +4,7 @@ from .views import (
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
     StudentCounselorView, EvidenceSummaryView, GradeSummaryView,
+    StudentInterventionsView,
     LearnerCombinationChoiceDetailView,
     LearnerCombinationChoiceListCreateView,
     LearnerCombinationChoiceProvisionalView,
@@ -34,6 +35,11 @@ urlpatterns = [
         name='student-parent-access-revoke',
     ),
     path('evidence-summary/', EvidenceSummaryView.as_view(), name='student-evidence-summary'),
+    path(
+        'interventions/',
+        StudentInterventionsView.as_view(),
+        name='student-interventions',
+    ),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
     path(
         'combination-choices/',
