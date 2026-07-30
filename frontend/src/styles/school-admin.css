@@ -1,9 +1,9 @@
 /* ===== School Admin Dashboard ===== */
 
 .school-admin-dashboard {
-  max-width: 900px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding-bottom: var(--space-8);
 }
 
 .school-admin-dashboard__header {
@@ -14,11 +14,11 @@
 }
 
 .school-admin-dashboard__logo {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-md);
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-lg);
   object-fit: cover;
-  border: 2px solid var(--color-primary-surface);
+  border: 2px solid var(--color-overlay-light);
 }
 
 .school-admin-dashboard__title {
@@ -38,6 +38,100 @@
   display: flex;
   gap: var(--space-3);
   margin-top: var(--space-6);
+}
+
+.school-operations > section:not(.db-hero) {
+  margin-top: var(--space-7);
+}
+
+.school-operations__overview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.school-operations__journey {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.school-operations__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+  gap: var(--space-5);
+  margin-top: var(--space-7);
+}
+
+.school-operations__workspace > section {
+  margin-top: 0;
+}
+
+.school-workload {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.school-workload li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+}
+
+.school-workload strong {
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+}
+
+.school-offerings-status {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.school-offerings-status strong {
+  font-size: var(--font-size-xl);
+}
+
+.school-offerings-status p,
+.school-operations__empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.school-operations__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 950px) {
+  .school-operations__overview,
+  .school-operations__journey {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .school-operations__workspace,
+  .school-operations__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .school-operations__overview,
+  .school-operations__journey {
+    grid-template-columns: 1fr;
+  }
+
+  .school-workload li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 /* ===== Stat Cards Grid (reused across admin pages) ===== */

@@ -48,6 +48,18 @@ export interface SchoolStats {
   total_counselors: number
   assessed: number
   unassigned: number
+  pending_memberships: number
+  evidence_complete: number
+  choices_saved: number
+  plans_created: number
+  reviews_completed: number
+  offerings_count: number
+  offerings_configured: boolean
+  counselor_workload: {
+    counselor_id: number
+    counselor_name: string
+    student_count: number
+  }[]
 }
 
 export const schoolAdminApi = {

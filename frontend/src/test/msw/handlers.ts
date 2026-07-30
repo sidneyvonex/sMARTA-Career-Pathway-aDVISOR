@@ -843,7 +843,23 @@ export const handlers = [
 
   http.get('/api/v1/school-admin/stats/', () => {
     return HttpResponse.json({
-      data: { total_students: 24, total_counselors: 3, assessed: 18, unassigned: 6 },
+      data: {
+        total_students: 24,
+        total_counselors: 3,
+        assessed: 18,
+        unassigned: 6,
+        pending_memberships: 2,
+        evidence_complete: 16,
+        choices_saved: 14,
+        plans_created: 10,
+        reviews_completed: 7,
+        offerings_count: 12,
+        offerings_configured: true,
+        counselor_workload: [
+          { counselor_id: 10, counselor_name: 'Alice Wanjiku', student_count: 9 },
+          { counselor_id: 11, counselor_name: 'Bob Ochieng', student_count: 8 },
+        ],
+      },
       error: null, message: '',
     })
   }),

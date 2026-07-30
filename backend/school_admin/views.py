@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q
+from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import status
@@ -630,22 +630,95 @@ class SchoolStatsView(APIView):
                 mode='school_linked',
                 school_membership_status='active',
             )
-            .annotate(has_assessment=Exists(has_assessment))
+            .annotate(
+                has_assessment=Exists(has_assessment),
+                enrolled_subject_count=Count(
+                    'enrolled_subjects',
+                    distinct=True,
+                ),
+                subjects_with_evidence=Count(
+                    'enrolled_subjects',
+                    filter=Q(enrolled_subjects__grades__isnull=False),
+                    distinct=True,
+                ),
+            )
         )
         total_students = profiles.count()
         assessed = profiles.filter(has_assessment=True).count()
+        evidence_complete = profiles.filter(
+            enrolled_subject_count__gte=3,
+            subjects_with_evidence=F('enrolled_subject_count'),
+        ).count()
+        choices_saved = profiles.filter(
+            combination_choices__isnull=False,
+        ).distinct().count()
+        plans_created = profiles.filter(
+            learner_plan__isnull=False,
+        ).count()
+        reviews_completed = profiles.filter(
+            learner_plan__review_status='reviewed',
+        ).count()
+        pending_memberships = StudentProfile.objects.filter(
+            school=school,
+            mode='school_linked',
+            school_membership_status='pending',
+        ).count()
         assigned_ids = set(
             CounselorAssignment.objects.filter(school=school, is_active=True)
             .values_list('student_profile_id', flat=True)
         )
         unassigned = profiles.exclude(pk__in=assigned_ids).count()
-        total_counselors = User.objects.filter(school=school, role='counselor').count()
+        counselors = list(
+            User.objects.filter(school=school, role='counselor')
+            .annotate(
+                active_student_count=Count(
+                    'student_assignments',
+                    filter=Q(
+                        student_assignments__is_active=True,
+                        student_assignments__school=school,
+                        student_assignments__student_profile__school_membership_status='active',
+                    ),
+                    distinct=True,
+                ),
+            )
+            .order_by('first_name', 'last_name', 'pk')
+        )
+        total_counselors = len(counselors)
+        framework = FrameworkVersion.objects.current()
+        offerings_count = (
+            SchoolOffering.objects.filter(
+                school=school,
+                is_active=True,
+                combination__framework_version=framework,
+                combination__is_active=True,
+                combination__track__is_active=True,
+            ).count()
+            if framework is not None
+            else 0
+        )
 
         return _success(data={
             'total_students': total_students,
             'total_counselors': total_counselors,
             'assessed': assessed,
             'unassigned': unassigned,
+            'pending_memberships': pending_memberships,
+            'evidence_complete': evidence_complete,
+            'choices_saved': choices_saved,
+            'plans_created': plans_created,
+            'reviews_completed': reviews_completed,
+            'offerings_count': offerings_count,
+            'offerings_configured': offerings_count > 0,
+            'counselor_workload': [
+                {
+                    'counselor_id': counselor.id,
+                    'counselor_name': (
+                        f'{counselor.first_name} {counselor.last_name}'
+                    ),
+                    'student_count': counselor.active_student_count,
+                }
+                for counselor in counselors
+            ],
         })
 
 

@@ -79,6 +79,19 @@ describe('SchoolAdminDashboard', () => {
     expect(screen.getByText('6')).toBeInTheDocument()
     expect(screen.getByText('Unassigned')).toBeInTheDocument()
   })
+
+  it('shows approval, journey, workload and offerings readiness', async () => {
+    renderPage()
+
+    expect(await screen.findByText('Pending school links')).toBeInTheDocument()
+    expect(screen.getByText('Evidence ready')).toBeInTheDocument()
+    expect(screen.getByText('Choices saved')).toBeInTheDocument()
+    expect(screen.getByText('Plans created')).toBeInTheDocument()
+    expect(screen.getByText('Reviews completed')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Counsellor workload' })).toBeInTheDocument()
+    expect(screen.getByText('Alice Wanjiku')).toBeInTheDocument()
+    expect(screen.getByText('Offerings configured')).toBeInTheDocument()
+  })
 })
 
 describe('SchoolProfilePage', () => {

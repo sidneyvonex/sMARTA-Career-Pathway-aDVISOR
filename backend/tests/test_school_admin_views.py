@@ -4,9 +4,22 @@ from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework.test import APIClient
-from tests.factories import SchoolAdminFactory, SchoolFactory, StudentProfileFactory, CounselorFactory, CounselorAssignmentFactory
+from tests.factories import (
+    CBCGradeFactory,
+    CounselorAssignmentFactory,
+    CounselorFactory,
+    FrameworkVersionFactory,
+    SchoolAdminFactory,
+    SchoolFactory,
+    SchoolOfferingFactory,
+    StudentProfileFactory,
+    StudentSubjectFactory,
+    SubjectCombinationFactory,
+    SubjectFactory,
+)
 from riasec.models import RIASECAssessment
 from counselors.models import CounselorAssignment
+from guidance.models import LearnerCombinationChoice, LearnerPlan
 from notifications.models import Notification
 from system_admin.models import AuditLog
 
@@ -390,6 +403,14 @@ class TestSchoolStatsView:
         assert data['total_counselors'] == 0
         assert data['assessed'] == 0
         assert data['unassigned'] == 0
+        assert data['pending_memberships'] == 0
+        assert data['evidence_complete'] == 0
+        assert data['choices_saved'] == 0
+        assert data['plans_created'] == 0
+        assert data['reviews_completed'] == 0
+        assert data['offerings_count'] == 0
+        assert data['offerings_configured'] is False
+        assert data['counselor_workload'] == []
 
     def test_stats_with_data(self):
         CounselorFactory(school=self.school)
@@ -405,6 +426,79 @@ class TestSchoolStatsView:
         assert data['total_counselors'] == 2
         assert data['assessed'] == 1
         assert data['unassigned'] == 2
+
+    def test_stats_describe_real_cohort_progress_and_workload(self):
+        pending = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+        learner = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        counselor = CounselorFactory(
+            school=self.school,
+            first_name='Alice',
+            last_name='Wanjiku',
+        )
+        CounselorAssignmentFactory(
+            counselor=counselor,
+            student_profile=learner,
+            school=self.school,
+        )
+        RIASECAssessment.objects.create(student_profile=learner)
+        for index in range(3):
+            enrollment = StudentSubjectFactory(
+                student_profile=learner,
+                subject=SubjectFactory(
+                    code=f'EV{index}9',
+                    grade=9,
+                    category='Core',
+                ),
+            )
+            CBCGradeFactory(student_subject=enrollment, term=index + 1)
+
+        framework = FrameworkVersionFactory(is_active=True)
+        combination = SubjectCombinationFactory(
+            framework_version=framework,
+            track__framework_version=framework,
+        )
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=learner,
+            combination=combination,
+            status='provisional',
+        )
+        LearnerPlan.objects.create(
+            student_profile=learner,
+            provisional_choice=choice,
+            review_status='reviewed',
+        )
+        SchoolOfferingFactory(
+            school=self.school,
+            combination=combination,
+        )
+
+        response = self.client.get('/api/v1/school-admin/stats/')
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['total_students'] == 1
+        assert data['pending_memberships'] == 1
+        assert data['evidence_complete'] == 1
+        assert data['assessed'] == 1
+        assert data['choices_saved'] == 1
+        assert data['plans_created'] == 1
+        assert data['reviews_completed'] == 1
+        assert data['offerings_count'] == 1
+        assert data['offerings_configured'] is True
+        assert data['counselor_workload'] == [{
+            'counselor_id': counselor.id,
+            'counselor_name': 'Alice Wanjiku',
+            'student_count': 1,
+        }]
+        assert pending.user_id != learner.user_id
 
 
 class TestSchoolAssignmentView:
