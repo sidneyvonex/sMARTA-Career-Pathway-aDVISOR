@@ -1,6 +1,7 @@
 import io
 import os
 from datetime import date
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -25,6 +26,10 @@ DIMENSION_NAMES = {
     'E': 'Enterprising',
     'C': 'Conventional',
 }
+
+
+def _text(value):
+    return escape(str(value or ''))
 
 
 def build_student_report(data):
@@ -66,7 +71,7 @@ def build_student_report(data):
 
     elements.append(Paragraph('Student Progress Report', styles['ReportTitle']))
     elements.append(Paragraph(
-        f'Generated on {date.today().strftime("%d %B %Y")}',
+        f'Generated on {_text(data.get("generated_at") or date.today().strftime("%d %B %Y"))}',
         styles['SmallGrey'],
     ))
     elements.append(Spacer(1, 4 * mm))
@@ -93,6 +98,47 @@ def build_student_report(data):
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     elements.append(profile_table)
+    elements.append(Spacer(1, 4 * mm))
+
+    # --- Evidence provenance and readiness ---
+    evidence = data.get('evidence_summary', {})
+    elements.append(Paragraph('Evidence Sources', styles['SectionTitle']))
+    evidence_rows = [
+        [
+            'Academic evidence',
+            (
+                f"{evidence.get('subjects_with_evidence', 0)} of "
+                f"{evidence.get('total_subjects', 0)} enrolled subjects; "
+                f"{evidence.get('total_grade_records', 0)} recorded grades"
+            ),
+        ],
+        [
+            'Interest evidence',
+            (
+                f"RIASEC assessment submitted {evidence.get('assessment_submitted_at')}"
+                if evidence.get('assessment_submitted_at')
+                else 'No RIASEC assessment submitted'
+            ),
+        ],
+    ]
+    evidence_table = Table(evidence_rows, colWidths=[40 * mm, 125 * mm])
+    evidence_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (0, 0), (0, -1), TEXT_SECONDARY),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(evidence_table)
+
+    readiness = data.get('academic_readiness', {})
+    elements.append(Paragraph('Academic Readiness', styles['SectionTitle']))
+    elements.append(Paragraph(
+        f"<b>{_text(readiness.get('label') or 'Not started')}</b>. "
+        f"{_text(readiness.get('explanation') or 'No academic evidence has been recorded yet.')}",
+        styles['BodyText2'],
+    ))
     elements.append(Spacer(1, 4 * mm))
 
     # --- Grades table ---
@@ -135,7 +181,7 @@ def build_student_report(data):
             elements.append(Spacer(1, 3 * mm))
 
     # --- RIASEC results ---
-    elements.append(Paragraph('Career Personality (RIASEC)', styles['SectionTitle']))
+    elements.append(Paragraph('Interest Profile (RIASEC)', styles['SectionTitle']))
     riasec = data.get('riasec')
     if not riasec:
         elements.append(Paragraph('No assessment completed yet.', styles['BodyText2']))
@@ -210,12 +256,125 @@ def build_student_report(data):
         ]))
         elements.append(rec_table)
 
+        primary_explanation = recommendations[0].get('explanation') or {}
+        if primary_explanation.get('summary'):
+            elements.append(Spacer(1, 2 * mm))
+            elements.append(Paragraph(
+                f"<b>Why this is suggested:</b> {_text(primary_explanation['summary'])}",
+                styles['BodyText2'],
+            ))
+        if primary_explanation.get('limitations'):
+            elements.append(Paragraph(
+                _text(primary_explanation['limitations']),
+                styles['SmallGrey'],
+            ))
+        if primary_explanation.get('next_step'):
+            elements.append(Paragraph(
+                f"<b>Next step:</b> {_text(primary_explanation['next_step'])}",
+                styles['BodyText2'],
+            ))
+
+    # --- Provisional choice and learner plan ---
+    choice = data.get('provisional_choice')
+    elements.append(Paragraph('Provisional Combination', styles['SectionTitle']))
+    if not choice:
+        elements.append(Paragraph(
+            'No provisional subject combination has been selected.',
+            styles['BodyText2'],
+        ))
+    else:
+        choice_rows = [
+            ['Combination', f"{choice.get('code', '')} - {choice.get('title', '')}"],
+            ['Pathway / track', f"{choice.get('pathway', '')} / {choice.get('track', '')}"],
+            ['Subjects', ', '.join(choice.get('subjects', []))],
+        ]
+        choice_table = Table(choice_rows, colWidths=[40 * mm, 125 * mm])
+        choice_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BACKGROUND', (0, 0), (0, -1), LIGHT_GREEN),
+            ('TEXTCOLOR', (0, 0), (0, -1), BRAND_GREEN),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E0E0E0')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(choice_table)
+        if choice.get('learner_reason'):
+            elements.append(Paragraph(
+                f"<b>Learner reason:</b> {_text(choice['learner_reason'])}",
+                styles['BodyText2'],
+            ))
+
+    plan = data.get('plan')
+    elements.append(Paragraph('Plan Milestones', styles['SectionTitle']))
+    if not plan:
+        elements.append(Paragraph('No learner plan has been created.', styles['BodyText2']))
+    else:
+        status_label = str(plan.get('review_status', 'draft')).replace('_', ' ').title()
+        elements.append(Paragraph(
+            f"<b>Review status:</b> {_text(status_label)}",
+            styles['BodyText2'],
+        ))
+        if plan.get('learner_reason'):
+            elements.append(Paragraph(
+                f"<b>Plan rationale:</b> {_text(plan['learner_reason'])}",
+                styles['BodyText2'],
+            ))
+        milestones = plan.get('milestones', [])
+        if milestones:
+            milestone_rows = [['Milestone', 'Due date', 'Status']]
+            for milestone in milestones:
+                milestone_rows.append([
+                    milestone.get('title', ''),
+                    milestone.get('due_date') or 'No due date',
+                    'Complete' if milestone.get('is_complete') else 'Open',
+                ])
+            milestone_table = Table(
+                milestone_rows,
+                colWidths=[95 * mm, 35 * mm, 30 * mm],
+            )
+            milestone_table.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                ('TEXTCOLOR', (0, 0), (-1, 0), BRAND_GREEN),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E0E0E0')),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ]))
+            elements.append(milestone_table)
+        else:
+            elements.append(Paragraph('No milestones added yet.', styles['BodyText2']))
+
+    # --- Version and source provenance ---
+    framework = data.get('framework') or {}
+    elements.append(Paragraph('Report Provenance', styles['SectionTitle']))
+    provenance_rows = [
+        ['Framework', f"{framework.get('code') or 'Not available'} - {framework.get('title') or 'Not available'}"],
+        ['Framework effective date', framework.get('effective_date') or 'Not available'],
+        ['Framework source', framework.get('source_url') or 'Not available'],
+        ['RIASEC instrument', data.get('instrument_version') or 'Not available'],
+        ['Recommendation algorithm', data.get('algorithm_version') or 'Not available'],
+    ]
+    provenance_table = Table(provenance_rows, colWidths=[45 * mm, 120 * mm])
+    provenance_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TEXTCOLOR', (0, 0), (0, -1), TEXT_SECONDARY),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    elements.append(provenance_table)
     elements.append(Spacer(1, 8 * mm))
 
     # --- Footer disclaimer ---
     elements.append(Paragraph(
-        'Generated by Smarta Shauri — This report is advisory only and does not '
-        'constitute an official academic record.',
+        'Generated by Smarta Shauri. This report is advisory only and does not '
+        'predict success or determine placement. It does not submit official Senior '
+        'School choices or constitute an official academic record.',
         styles['SmallGrey'],
     ))
 

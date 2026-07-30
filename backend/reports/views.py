@@ -3,6 +3,7 @@ from datetime import date
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
@@ -10,6 +11,7 @@ from accounts.models import User, StudentProfile
 from accounts.permissions import IsEmailVerified
 from accounts.response import _error
 from counselors.models import CounselorAssignment
+from guidance.models import FrameworkVersion, LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
 from students.models import StudentSubject, GRADE_LEVEL_CHOICES
 from riasec.models import RIASECAssessment
@@ -46,6 +48,26 @@ class StudentReportView(APIView):
         if logo_path:
             logo_path = str(logo_path)
 
+        plan, provisional_choice = self._get_plan_context(profile)
+        framework = (
+            provisional_choice.combination.framework_version
+            if provisional_choice
+            else FrameworkVersion.objects.current()
+        )
+        subjects_with_evidence = sum(bool(subject['grades']) for subject in subjects_data)
+        total_grade_records = sum(len(subject['grades']) for subject in subjects_data)
+        total_subjects = len(subjects_data)
+        if total_subjects >= 3 and subjects_with_evidence == total_subjects:
+            readiness_status = 'ready'
+            readiness_label = 'Ready for discussion'
+        elif total_subjects or total_grade_records:
+            readiness_status = 'in_progress'
+            readiness_label = 'In progress'
+        else:
+            readiness_status = 'not_started'
+            readiness_label = 'Not started'
+
+        generated_at = timezone.localtime()
         data = {
             'student_name': f'{student.first_name} {student.last_name}'.strip(),
             'grade': profile.grade,
@@ -56,6 +78,47 @@ class StudentReportView(APIView):
             'subjects': subjects_data,
             'riasec': riasec_data,
             'recommendations': recommendations_data,
+            'evidence_summary': {
+                'subjects_with_evidence': subjects_with_evidence,
+                'total_subjects': total_subjects,
+                'total_grade_records': total_grade_records,
+                'assessment_submitted_at': (
+                    riasec_data['submitted_at'] if riasec_data else None
+                ),
+            },
+            'academic_readiness': {
+                'status': readiness_status,
+                'label': readiness_label,
+                'explanation': (
+                    f'{subjects_with_evidence} of {total_subjects} enrolled subjects '
+                    'have recorded academic evidence.'
+                ),
+            },
+            'provisional_choice': self._serialize_choice(provisional_choice),
+            'plan': self._serialize_plan(plan),
+            'framework': (
+                {
+                    'code': framework.code,
+                    'title': framework.title,
+                    'effective_date': framework.effective_date.strftime('%d %B %Y'),
+                    'source_url': framework.source_url,
+                }
+                if framework else None
+            ),
+            'instrument_version': (
+                riasec_data.get('instrument_version') if riasec_data else None
+            ),
+            'algorithm_version': (
+                next(
+                    (
+                        recommendation.get('algorithm_version')
+                        for recommendation in recommendations_data
+                        if recommendation.get('algorithm_version')
+                    ),
+                    None,
+                )
+            ),
+            'generated_at': generated_at.strftime('%d %B %Y %H:%M %Z'),
             'logo_path': logo_path,
         }
 
@@ -151,6 +214,10 @@ class StudentReportView(APIView):
         riasec_data = {
             'scores': scores,
             'holland_code': holland_code,
+            'instrument_version': assessment.instrument_version,
+            'submitted_at': timezone.localtime(
+                assessment.submitted_at
+            ).strftime('%d %B %Y'),
         }
 
         recommendations = []
@@ -159,6 +226,74 @@ class StudentReportView(APIView):
                 'rank': rec.rank,
                 'pathway_name': rec.pathway.name,
                 'fit_pct': rec.fit_pct,
+                'algorithm_version': rec.algorithm_version,
+                'explanation': rec.explanation,
             })
 
         return riasec_data, recommendations
+
+    def _get_plan_context(self, profile):
+        plan = (
+            LearnerPlan.objects
+            .filter(student_profile=profile)
+            .select_related(
+                'provisional_choice__combination__framework_version',
+                'provisional_choice__combination__track__pathway',
+                'provisional_choice__combination__subject_one',
+                'provisional_choice__combination__subject_two',
+                'provisional_choice__combination__subject_three',
+            )
+            .prefetch_related('milestones')
+            .first()
+        )
+        if plan:
+            return plan, plan.provisional_choice
+
+        choice = (
+            LearnerCombinationChoice.objects
+            .filter(
+                student_profile=profile,
+                status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+            )
+            .select_related(
+                'combination__framework_version',
+                'combination__track__pathway',
+                'combination__subject_one',
+                'combination__subject_two',
+                'combination__subject_three',
+            )
+            .first()
+        )
+        return None, choice
+
+    def _serialize_choice(self, choice):
+        if choice is None:
+            return None
+        combination = choice.combination
+        return {
+            'code': combination.code,
+            'title': combination.title,
+            'pathway': combination.track.pathway.name,
+            'track': combination.track.name,
+            'subjects': [subject.name for subject in combination.subjects],
+            'learner_reason': choice.learner_reason,
+        }
+
+    def _serialize_plan(self, plan):
+        if plan is None:
+            return None
+        return {
+            'review_status': plan.review_status,
+            'learner_reason': plan.learner_reason,
+            'milestones': [
+                {
+                    'title': milestone.title,
+                    'due_date': (
+                        milestone.due_date.strftime('%d %B %Y')
+                        if milestone.due_date else None
+                    ),
+                    'is_complete': milestone.is_complete,
+                }
+                for milestone in plan.milestones.all()
+            ],
+        }

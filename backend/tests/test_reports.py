@@ -1,6 +1,7 @@
 import io
 import pytest
 from pypdf import PdfReader
+from guidance.models import LearnerCombinationChoice, LearnerPlan, PlanMilestone
 from reports.pdf_builder import build_student_report
 from system_admin.models import AuditLog
 
@@ -47,10 +48,59 @@ class TestPDFBuilder:
                 'holland_code': 'IE',
             },
             'recommendations': [
-                {'rank': 1, 'pathway_name': 'Science & Technology', 'fit_pct': 87},
+                {
+                    'rank': 1,
+                    'pathway_name': 'Science & Technology',
+                    'fit_pct': 87,
+                    'algorithm_version': 'interest-alignment-1.0',
+                    'explanation': {
+                        'summary': 'Science & Technology aligns with Investigative interests.',
+                        'limitations': 'Interests alone do not predict success.',
+                        'next_step': 'Review academic evidence and school offerings.',
+                    },
+                },
                 {'rank': 2, 'pathway_name': 'Engineering', 'fit_pct': 72},
                 {'rank': 3, 'pathway_name': 'Business Studies', 'fit_pct': 65},
             ],
+            'evidence_summary': {
+                'subjects_with_evidence': 2,
+                'total_subjects': 2,
+                'total_grade_records': 3,
+                'assessment_submitted_at': '20 June 2026',
+            },
+            'academic_readiness': {
+                'status': 'in_progress',
+                'label': 'In progress',
+                'explanation': '2 of 2 enrolled subjects have recorded academic evidence.',
+            },
+            'provisional_choice': {
+                'code': 'STEM-PURE-01',
+                'title': 'Pure Sciences',
+                'pathway': 'STEM',
+                'track': 'Pure Sciences',
+                'subjects': ['Physics', 'Chemistry', 'Biology'],
+                'learner_reason': 'I enjoy laboratory work.',
+            },
+            'plan': {
+                'review_status': 'ready_for_review',
+                'learner_reason': 'I want to prepare for a science pathway.',
+                'milestones': [
+                    {
+                        'title': 'Discuss the choice with my counsellor',
+                        'due_date': '30 June 2026',
+                        'is_complete': False,
+                    },
+                ],
+            },
+            'framework': {
+                'code': 'CBC-SS-2026',
+                'title': 'Senior School Subject Combination Catalogue',
+                'effective_date': '01 January 2026',
+                'source_url': 'https://example.com/catalogue.pdf',
+            },
+            'instrument_version': 'riasec-pilot-1.0',
+            'algorithm_version': 'interest-alignment-1.0',
+            'generated_at': '21 June 2026 10:30 EAT',
             'logo_path': None,
         }
         base.update(overrides)
@@ -132,6 +182,26 @@ class TestPDFBuilder:
         assert '72%' not in text
         assert '65%' not in text
 
+    def test_pdf_contains_decision_context_and_provenance(self):
+        result = build_student_report(self._make_data())
+        text = _extract_pdf_text(result)
+        normalized_text = ' '.join(text.split())
+
+        assert 'Evidence Sources' in text
+        assert '2 of 2 enrolled subjects' in normalized_text
+        assert 'Interest Profile' in text
+        assert 'Science & Technology aligns with Investigative interests' in normalized_text
+        assert 'Academic Readiness' in text
+        assert 'In progress' in text
+        assert 'Provisional Combination' in text
+        assert 'STEM-PURE-01' in text
+        assert 'Discuss the choice with my counsellor' in normalized_text
+        assert 'CBC-SS-2026' in text
+        assert 'interest-alignment-1.0' in text
+        assert 'riasec-pilot-1.0' in text
+        assert '21 June 2026 10:30 EAT' in normalized_text
+        assert 'does not submit official Senior School choices' in normalized_text
+
 
 # ---------------------------------------------------------------------------
 # Task 2: StudentReportView — Permissions + Data Assembly
@@ -144,7 +214,8 @@ from tests.factories import (
     ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
     SubjectFactory, StudentSubjectFactory, CBCGradeFactory,
     RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
-    RecommendationFactory,
+    RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
+    SubjectCombinationFactory,
 )
 
 
@@ -317,6 +388,82 @@ class TestStudentReportViewEdgeCases:
         CBCGradeFactory(student_subject=ss)
         response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/')
         assert 'smarta-shauri-report-Jane-Doe' in response['Content-Disposition']
+
+    def test_report_assembles_choice_plan_evidence_and_versions(self, monkeypatch):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        CBCGradeFactory(student_subject=enrollment)
+        assessment = RIASECAssessmentFactory(
+            student_profile=profile,
+            instrument_version='riasec-pilot-test',
+        )
+        for dimension in ['R', 'I', 'A', 'S', 'E', 'C']:
+            RIASECScoreFactory(
+                assessment=assessment,
+                dimension=dimension,
+                raw_score=15,
+            )
+        pathway = PathwayFactory(name='Report STEM')
+        RecommendationFactory(
+            assessment=assessment,
+            pathway=pathway,
+            rank=1,
+            algorithm_version='alignment-test-2',
+            explanation={'summary': 'STEM aligns with Investigative interests.'},
+        )
+        framework = FrameworkVersionFactory(
+            code='CBC-REPORT-2026',
+            title='Report test catalogue',
+            is_active=True,
+        )
+        track = PathwayTrackFactory(
+            framework_version=framework,
+            pathway=pathway,
+            name='Pure Sciences',
+        )
+        combination = SubjectCombinationFactory(
+            framework_version=framework,
+            track=track,
+            code='PURE-REPORT-01',
+            title='Pure Sciences combination',
+        )
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=profile,
+            combination=combination,
+            status=LearnerCombinationChoice.STATUS_PROVISIONAL,
+            learner_reason='I enjoy experiments.',
+        )
+        plan = LearnerPlan.objects.create(
+            student_profile=profile,
+            provisional_choice=choice,
+            learner_reason='Prepare for a science pathway.',
+            review_status=LearnerPlan.STATUS_READY,
+        )
+        PlanMilestone.objects.create(
+            plan=plan,
+            title='Meet my counsellor',
+            position=1,
+        )
+        captured = {}
+
+        def capture_report(data):
+            captured.update(data)
+            return b'%PDF-1.4 test'
+
+        monkeypatch.setattr('reports.views.build_student_report', capture_report)
+
+        response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/')
+
+        assert response.status_code == 200
+        assert captured['evidence_summary']['total_grade_records'] == 1
+        assert captured['academic_readiness']['status'] == 'in_progress'
+        assert captured['provisional_choice']['code'] == 'PURE-REPORT-01'
+        assert captured['plan']['milestones'][0]['title'] == 'Meet my counsellor'
+        assert captured['framework']['code'] == 'CBC-REPORT-2026'
+        assert captured['instrument_version'] == 'riasec-pilot-test'
+        assert captured['algorithm_version'] == 'alignment-test-2'
+        assert captured['generated_at']
 
     def test_invalid_student_id_returns_404(self):
         # <int:student_id> URL converter rejects non-numeric IDs at routing level.
