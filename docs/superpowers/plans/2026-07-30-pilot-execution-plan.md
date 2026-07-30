@@ -7,11 +7,11 @@
 
 ## Current execution status
 
-**Active sprint:** Sprint 5 - Parent support and access
+**Active sprint:** Sprint 6 - Counsellor intervention workflow
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 Tasks 5.1-5.2 learner-approved parent access and support dashboard
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail
 
-**Next:** Task 5.3 child detail redesign
+**Next:** Task 6.1 explicit attention reasons
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -44,6 +44,7 @@
 | `7b2c62f` | Evidence-to-action learner dashboard with calculated next action |
 | `dac4407` | Learner-approved parent access, revocation and pilot identity notice |
 | `257b981` | Parent support dashboard with learner plan and next-action context |
+| `681d874` | Learner-approved parent child summary with evidence, plan, notes and report access |
 
 ## 1. How to use this plan
 
@@ -1075,9 +1076,21 @@ Sections:
 
 Acceptance:
 
-- Parent sees only approved data.
-- All empty/error/loading states are tested.
-- Mobile layout does not rely on wide rows.
+- [x] Parent sees only approved data.
+- [x] All empty/error/loading states are tested.
+- [x] Mobile layout does not rely on wide rows.
+
+Verification:
+
+- Child detail remains restricted to active learner-approved links and returns only non-deleted notes explicitly marked parent-visible.
+- Academic readiness, provisional choice, plan milestones and parent-visible notes are prefetched and serialized in the approved child summary.
+- Child detail uses responsive cards and stacked mobile sections rather than wide rows.
+- Parent detail and access backend suite: 35 tests passed.
+- Parent child-detail focused frontend suite: 11 tests passed.
+- Parent dashboard, child detail, reports and authenticated-shell frontend regression suite: 26 tests passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `681d874`.
 
 ## 12. Sprint 6 - Counsellor intervention workflow
 
