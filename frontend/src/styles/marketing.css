@@ -13,6 +13,24 @@
   --mk-min-touch: 44px;
 }
 
+.mk-skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
+  transform: translateY(calc(-100% - var(--space-6)));
+  transition: transform var(--transition-fast);
+}
+
+.mk-skip-link:focus {
+  color: var(--color-text-on-primary);
+  transform: translateY(0);
+}
+
 /* ---------- SHARED BUTTONS (marketing scope) ---------- */
 .mk-btn {
   display: inline-flex;

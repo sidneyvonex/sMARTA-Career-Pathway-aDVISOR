@@ -98,6 +98,7 @@ export default function ForSchoolsPage() {
     <div className="mk-for-schools-page">
       <PublicNav />
 
+      <main id="main-content">
       <section className="mk-hero">
         <div className="mk-hero__grid">
           <div>
@@ -205,6 +206,7 @@ export default function ForSchoolsPage() {
         </section>
       </div>
 
+      </main>
       <PublicFooter />
     </div>
   )

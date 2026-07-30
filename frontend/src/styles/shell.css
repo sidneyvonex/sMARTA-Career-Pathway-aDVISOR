@@ -493,6 +493,7 @@
 
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
     transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     width: 236px !important;
     z-index: var(--z-modal);
@@ -500,6 +501,7 @@
 
   .sidebar--mobile-open {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .sidebar__mobile-close {

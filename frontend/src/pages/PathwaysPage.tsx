@@ -75,6 +75,7 @@ export default function PathwaysPage() {
     <div className="mk-pathways-page">
       <PublicNav />
 
+      <main id="main-content">
       {/* HERO */}
       <section className="mk-hero">
         <div className="mk-hero__grid">
@@ -220,6 +221,7 @@ export default function PathwaysPage() {
         </section>
       </div>
 
+      </main>
       <PublicFooter />
     </div>
   )

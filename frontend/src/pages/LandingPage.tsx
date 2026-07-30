@@ -15,34 +15,36 @@ export default function LandingPage() {
     <div className="landing-page">
       <PublicNav />
 
-      <LandingHero />
+      <main id="main-content">
+        <LandingHero />
 
-      <div className="landing-color-band landing-color-band--white">
-        <LandingPurpose />
-        <div className="landing-section landing-section--tight">
-          <LandingSpotlight />
+        <div className="landing-color-band landing-color-band--white">
+          <LandingPurpose />
+          <div className="landing-section landing-section--tight">
+            <LandingSpotlight />
+          </div>
         </div>
-      </div>
 
-      <div className="landing-color-band landing-color-band--green">
-        <LandingPathwayGrid />
-      </div>
+        <div className="landing-color-band landing-color-band--green">
+          <LandingPathwayGrid />
+        </div>
 
-      <div className="landing-color-band landing-color-band--ink">
-        <LandingSteps />
-      </div>
+        <div className="landing-color-band landing-color-band--ink">
+          <LandingSteps />
+        </div>
 
-      <div className="landing-color-band landing-color-band--white">
-        <LandingNotice />
-      </div>
+        <div className="landing-color-band landing-color-band--white">
+          <LandingNotice />
+        </div>
 
-      <div className="landing-color-band landing-color-band--ink">
-        <LandingCommunity />
-      </div>
+        <div className="landing-color-band landing-color-band--ink">
+          <LandingCommunity />
+        </div>
 
-      <div className="landing-color-band landing-color-band--gold">
-        <LandingCTA />
-      </div>
+        <div className="landing-color-band landing-color-band--gold">
+          <LandingCTA />
+        </div>
+      </main>
 
       <PublicFooter />
     </div>

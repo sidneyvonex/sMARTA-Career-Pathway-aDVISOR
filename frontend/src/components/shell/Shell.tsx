@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
@@ -17,6 +17,7 @@ export default function Shell({ children }: ShellProps) {
   const { sidebarCollapsed, mobileSidebarOpen, setMobileSidebarOpen } = useLayoutStore()
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const location = useLocation()
+  const mobileSidebarWasOpen = useRef(false)
 
   useEffect(() => {
     if (mobileSidebarOpen) {
@@ -45,6 +46,15 @@ export default function Shell({ children }: ShellProps) {
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [mobileSidebarOpen, setMobileSidebarOpen])
+
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      document.querySelector<HTMLButtonElement>('.sidebar__mobile-close')?.focus()
+    } else if (mobileSidebarWasOpen.current) {
+      document.querySelector<HTMLButtonElement>('.topbar__hamburger')?.focus()
+    }
+    mobileSidebarWasOpen.current = mobileSidebarOpen
+  }, [mobileSidebarOpen])
 
   return (
     <div className={`shell${sidebarCollapsed ? ' shell--collapsed' : ''}`}>

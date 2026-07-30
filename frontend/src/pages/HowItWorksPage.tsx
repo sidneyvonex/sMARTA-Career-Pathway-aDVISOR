@@ -104,6 +104,7 @@ export default function HowItWorksPage() {
     <div className="mk-how-it-works-page">
       <PublicNav />
 
+      <main id="main-content">
       {/* HERO */}
       <section className="mk-hero">
         <div className="mk-hero__grid">
@@ -203,6 +204,7 @@ export default function HowItWorksPage() {
         </section>
       </div>
 
+      </main>
       <PublicFooter />
     </div>
   )

@@ -66,6 +66,7 @@ export default function AboutPage() {
     <div className="mk-about-page">
       <PublicNav />
 
+      <main id="main-content">
       {/* HERO */}
       <section className="mk-hero">
         <div className="mk-hero__grid">
@@ -180,6 +181,7 @@ export default function AboutPage() {
         </section>
       </div>
 
+      </main>
       <PublicFooter />
     </div>
   )

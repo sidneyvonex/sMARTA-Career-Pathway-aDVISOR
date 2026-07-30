@@ -141,6 +141,7 @@ export default function Sidebar() {
         <button
           type="button"
           className="sidebar__mobile-close"
+          tabIndex={mobileSidebarOpen ? 0 : -1}
           onClick={() => setMobileSidebarOpen(false)}
           aria-label="Close navigation"
         >

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -68,6 +68,18 @@ describe('authenticated shell layout', () => {
     expect(screen.getByRole('link', { name: 'Open account home' })).toBeInTheDocument()
   })
 
+  it('starts keyboard navigation with the skip link and then the sidebar control', async () => {
+    const user = userEvent.setup()
+    renderShell()
+
+    const skipLink = screen.getByRole('link', { name: 'Skip to main content' })
+    await user.tab()
+    expect(skipLink).toHaveFocus()
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toHaveFocus()
+  })
+
   it('opens and closes mobile navigation with an announced expanded state', async () => {
     renderShell('/counselor/students')
     const openButton = screen.getByRole('button', { name: 'Open navigation' })
@@ -77,13 +89,18 @@ describe('authenticated shell layout', () => {
 
     expect(openButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByLabelText('Main navigation')).toHaveClass('sidebar--mobile-open')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Close navigation' })).toHaveFocus()
+    })
 
     await userEvent.keyboard('{Escape}')
     expect(openButton).toHaveAttribute('aria-expanded', 'false')
+    expect(openButton).toHaveFocus()
 
     await userEvent.click(openButton)
     await userEvent.click(screen.getByRole('button', { name: 'Close navigation' }))
     expect(openButton).toHaveAttribute('aria-expanded', 'false')
+    expect(openButton).toHaveFocus()
   })
 
   it('wraps page content in the shared authenticated content container', () => {
