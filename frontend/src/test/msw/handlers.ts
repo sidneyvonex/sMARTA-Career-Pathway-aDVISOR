@@ -898,6 +898,18 @@ export const handlers = [
         users_by_role: { student: 45, counselor: 8, school_admin: 3, parent: 20, system_admin: 1 },
         schools_by_county: { kiambu: 4, nyeri: 3, muranga: 2, kirinyaga: 1, nyandarua: 1 },
         total_schools: 11,
+        registered_learners: 45,
+        learners_by_county: { kiambu: 14, nyeri: 10, muranga: 9, kirinyaga: 6, nyandarua: 6 },
+        verified_learners: 38,
+        pending_school_links: 5,
+        assignment_coverage: { assigned: 28, eligible: 34, percent: 82 },
+        plans_completed: 17,
+        framework: {
+          code: 'CBC-SS-PILOT-2026',
+          title: 'CBC Senior School Pilot Catalogue 2026',
+          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          effective_date: '2026-01-01',
+        },
         recent_signups: 7,
         recent_audit: [
           { id: 1, action: 'school_created', target_type: 'school', target_id: 1, actor_email: 'admin@test.com', actor_name: 'Admin User', created_at: '2026-06-19T10:00:00Z' },

@@ -4,6 +4,22 @@ export interface DashboardData {
   users_by_role: Record<string, number>
   schools_by_county: Record<string, number>
   total_schools: number
+  registered_learners: number
+  learners_by_county: Record<string, number>
+  verified_learners: number
+  pending_school_links: number
+  assignment_coverage: {
+    assigned: number
+    eligible: number
+    percent: number
+  }
+  plans_completed: number
+  framework: {
+    code: string
+    title: string
+    source_url: string
+    effective_date: string
+  } | null
   recent_signups: number
   recent_audit: AuditEntry[]
 }

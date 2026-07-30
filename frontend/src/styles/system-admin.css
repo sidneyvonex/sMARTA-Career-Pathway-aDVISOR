@@ -376,3 +376,94 @@
 .sysadmin-details-toggle:hover {
   color: var(--color-primary);
 }
+.pilot-admin {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: var(--space-8);
+}
+
+.pilot-admin > section {
+  margin-top: var(--space-7);
+}
+
+.pilot-admin__health {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pilot-admin__counties {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pilot-county-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.pilot-county-card strong {
+  color: var(--color-primary);
+}
+
+.pilot-county-card span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.pilot-admin__workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+  gap: var(--space-5);
+  margin-top: var(--space-7);
+}
+
+.pilot-framework {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pilot-framework > strong {
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.06em;
+}
+
+.pilot-framework h3,
+.pilot-framework p {
+  margin: 0;
+}
+
+.pilot-framework p {
+  color: var(--color-text-secondary);
+}
+
+.pilot-framework a {
+  margin-top: var(--space-2);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .pilot-admin__workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: 1fr;
+  }
+}

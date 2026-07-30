@@ -109,6 +109,21 @@ describe('SystemAdminDashboard', () => {
       expect(screen.getByText('Schools by County')).toBeTruthy()
     })
   })
+
+  it('shows pilot health, assignment coverage and framework freshness', async () => {
+    renderPage()
+
+    expect(await screen.findByText('Verified learners')).toBeInTheDocument()
+    expect(screen.getByText('Pending school links')).toBeInTheDocument()
+    expect(screen.getByText('Assignment coverage')).toBeInTheDocument()
+    expect(screen.getByText('Plans completed')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Current guidance framework' })).toBeInTheDocument()
+    expect(screen.getByText('CBC-SS-PILOT-2026')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open official source' })).toHaveAttribute(
+      'href',
+      'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+    )
+  })
 })
 
 describe('SystemAdminSchoolsPage', () => {

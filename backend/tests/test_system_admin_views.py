@@ -1,12 +1,20 @@
 import pytest
 from rest_framework.test import APIClient
 from tests.factories import (
-    SystemAdminFactory, SchoolFactory, CounselorFactory,
-    StudentProfileFactory, AuditLogFactory, VerifiedUserFactory,
+    AuditLogFactory,
+    CounselorAssignmentFactory,
+    CounselorFactory,
+    FrameworkVersionFactory,
     SchoolAdminFactory,
+    SchoolFactory,
+    StudentProfileFactory,
+    SubjectCombinationFactory,
+    SystemAdminFactory,
+    VerifiedUserFactory,
 )
 from system_admin.models import AuditLog
-from accounts.models import School
+from accounts.models import School, StudentProfile
+from guidance.models import LearnerCombinationChoice, LearnerPlan
 
 pytestmark = pytest.mark.django_db
 
@@ -16,6 +24,17 @@ class TestDashboardView:
         self.client = APIClient()
         self.admin = SystemAdminFactory()
         self.client.force_authenticate(self.admin)
+        self.base_active_schools = School.objects.filter(is_active=True).count()
+        self.base_registered_learners = StudentProfile.objects.count()
+        self.base_verified_learners = StudentProfile.objects.filter(
+            user__is_email_verified=True,
+        ).count()
+        self.base_pending_links = StudentProfile.objects.filter(
+            school_membership_status='pending',
+        ).count()
+        self.base_completed_plans = LearnerPlan.objects.filter(
+            review_status='reviewed',
+        ).count()
 
     def test_dashboard_returns_stats(self):
         SchoolFactory()
@@ -27,9 +46,15 @@ class TestDashboardView:
         assert 'users_by_role' in data
         assert 'schools_by_county' in data
         assert 'total_schools' in data
-        assert data['total_schools'] == 2
+        assert data['total_schools'] == self.base_active_schools + 2
         assert 'recent_signups' in data
         assert 'recent_audit' in data
+        assert 'learners_by_county' in data
+        assert 'verified_learners' in data
+        assert 'pending_school_links' in data
+        assert 'assignment_coverage' in data
+        assert 'plans_completed' in data
+        assert 'framework' in data
 
     def test_dashboard_recent_audit_limited_to_10(self):
         for i in range(15):
@@ -48,7 +73,67 @@ class TestDashboardView:
         SchoolFactory(is_active=True)
         SchoolFactory(is_active=False)
         response = self.client.get('/api/v1/system-admin/dashboard/')
-        assert response.data['data']['total_schools'] == 1
+        assert (
+            response.data['data']['total_schools']
+            == self.base_active_schools + 1
+        )
+
+    def test_dashboard_reports_real_pilot_health(self):
+        school = SchoolFactory(county='kiambu', is_active=True)
+        assigned = StudentProfileFactory(
+            user__county='kiambu',
+            user__is_email_verified=True,
+            school=school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentProfileFactory(
+            user__county='nyeri',
+            user__is_email_verified=False,
+            school=SchoolFactory(county='nyeri'),
+            mode='school_linked',
+            school_membership_status='pending',
+        )
+        counselor = CounselorFactory(school=school)
+        CounselorAssignmentFactory(
+            counselor=counselor,
+            student_profile=assigned,
+            school=school,
+        )
+        framework = FrameworkVersionFactory(is_active=True)
+        combination = SubjectCombinationFactory(
+            framework_version=framework,
+            track__framework_version=framework,
+        )
+        choice = LearnerCombinationChoice.objects.create(
+            student_profile=assigned,
+            combination=combination,
+            status='provisional',
+        )
+        LearnerPlan.objects.create(
+            student_profile=assigned,
+            provisional_choice=choice,
+            review_status='reviewed',
+        )
+
+        response = self.client.get('/api/v1/system-admin/dashboard/')
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['registered_learners'] == self.base_registered_learners + 2
+        assert data['learners_by_county']['kiambu'] >= 1
+        assert data['learners_by_county']['nyeri'] >= 1
+        assert data['verified_learners'] == self.base_verified_learners + 1
+        assert data['pending_school_links'] == self.base_pending_links + 1
+        assert data['assignment_coverage'] == {
+            'assigned': 1,
+            'eligible': 1,
+            'percent': 100,
+        }
+        assert data['plans_completed'] == self.base_completed_plans + 1
+        assert data['framework']['code'] == framework.code
+        assert data['framework']['effective_date'] == framework.effective_date.isoformat()
+        assert data['framework']['source_url'] == framework.source_url
 
 
 class TestSchoolListView:
