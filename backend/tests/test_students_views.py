@@ -154,6 +154,15 @@ class TestSubjectListView:
         response = c.get('/api/v1/students/subjects/?grade=abc')
         assert response.status_code == 400
 
+    def test_grade10_catalogue_excludes_inactive_junior_style_subjects(self, db):
+        user = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=user, grade=10)
+        c = make_auth_client(user)
+        response = c.get('/api/v1/students/subjects/?grade=10')
+        codes = {subject['code'] for subject in response.data['data']}
+        assert {'CMT10', 'BIO10', 'HCT10', 'SRE10'} <= codes
+        assert {'MTH10', 'INT10', 'HSS10', 'ART10'}.isdisjoint(codes)
+
     def test_unverified_returns_403(self, db):
         user = UserFactory(role='student', is_email_verified=False)
         StudentProfileFactory(user=user, grade=9)
@@ -178,6 +187,19 @@ class TestMySubjectListView:
         subject = Subject.objects.get(code='MTH10')
         response = c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
         assert response.status_code == 400
+
+    def test_cannot_enroll_inactive_catalogue_subject(self, db):
+        user = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=user, grade=10)
+        subject = Subject.objects.get(code='INT10')
+        assert subject.grade == profile.grade
+        c = make_auth_client(user)
+        response = c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
+        assert response.status_code == 400
+        assert not StudentSubject.objects.filter(
+            student_profile=profile,
+            subject=subject,
+        ).exists()
 
     def test_duplicate_enrollment_returns_400(self, verified_profile):
         c = make_auth_client(verified_profile.user)

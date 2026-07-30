@@ -85,7 +85,7 @@ describe('PhotoUpload', () => {
 describe('SubjectList', () => {
   it('renders a list of enrolled subjects', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
@@ -93,10 +93,29 @@ describe('SubjectList', () => {
 
   it('renders a remove button per subject', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
+  })
+
+  it('identifies an enrolled subject retired from the current catalogue', () => {
+    const subjects = [
+      {
+        id: 11,
+        subject: {
+          id: 4,
+          name: 'Integrated Science',
+          code: 'INT10',
+          grade: 10 as const,
+          category: 'Core' as const,
+          is_active: false,
+        },
+        created_at: '',
+      },
+    ]
+    render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
+    expect(screen.getByText(/retired from the current catalogue/i)).toBeInTheDocument()
   })
 })
 

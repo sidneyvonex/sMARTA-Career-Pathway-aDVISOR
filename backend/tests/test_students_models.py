@@ -103,9 +103,57 @@ class TestSubjectSeed:
         from students.models import Subject
         assert Subject.objects.filter(grade=9).count() == 14
 
-    def test_grade10_subjects_seeded(self):
+    def test_grade10_active_catalogue_uses_senior_school_learning_areas(self):
         from students.models import Subject
-        assert Subject.objects.filter(grade=10).count() == 14
+        active = {
+            subject.code: subject.name
+            for subject in Subject.objects.filter(grade=10, is_active=True)
+        }
+        assert active == {
+            'AGR10': 'Agriculture',
+            'ARA10': 'Arabic',
+            'AVT10': 'Aviation',
+            'BCN10': 'Building Construction',
+            'BIO10': 'Biology',
+            'BST10': 'Business Studies',
+            'CHE10': 'Chemistry',
+            'CHR10': 'Christian Religious Education',
+            'CMT10': 'Core Mathematics',
+            'CPS10': 'Computer Studies',
+            'CSL10': 'Community Service Learning',
+            'ELC10': 'Electricity',
+            'EMT10': 'Essential Mathematics',
+            'ENG10': 'English',
+            'FAR10': 'Fine Arts',
+            'FKI10': 'Fasihi ya Kiswahili',
+            'FRN10': 'French',
+            'GEO10': 'Geography',
+            'GER10': 'German',
+            'GSC10': 'General Science',
+            'HCT10': 'History & Citizenship',
+            'HOM10': 'Home Science',
+            'HRE10': 'Hindu Religious Education',
+            'IRE10': 'Islamic Religious Education',
+            'KIS10': 'Kiswahili',
+            'LIE10': 'Literature in English',
+            'MDT10': 'Media Technology',
+            'MFT10': 'Marine & Fisheries',
+            'MDA10': 'Music & Dance',
+            'MTW10': 'Metal Work',
+            'PED10': 'Physical Education',
+            'PHY10': 'Physics',
+            'PME10': 'Power Mechanics',
+            'SRE10': 'Sports & Recreation',
+            'TFM10': 'Theatre & Film',
+            'WDW10': 'Woodwork',
+        }
+
+    def test_obsolete_junior_style_grade10_subjects_are_inactive(self):
+        from students.models import Subject
+        obsolete_codes = {'MTH10', 'INT10', 'HSS10', 'ART10', 'CRE10', 'MUS10'}
+        assert set(
+            Subject.objects.filter(grade=10, is_active=False).values_list('code', flat=True)
+        ) == obsolete_codes
 
     def test_math_grade9_exists(self):
         from students.models import Subject

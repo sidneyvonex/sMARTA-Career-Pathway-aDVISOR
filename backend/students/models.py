@@ -33,6 +33,7 @@ class Subject(models.Model):
         validators=[MinValueValidator(9), MaxValueValidator(10)],
     )
     category = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ['grade', 'category', 'name']

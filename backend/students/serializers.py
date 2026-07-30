@@ -35,13 +35,13 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
-        fields = ('id', 'name', 'code', 'grade', 'category')
+        fields = ('id', 'name', 'code', 'grade', 'category', 'is_active')
 
 
 class StudentSubjectSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     subject_id = serializers.PrimaryKeyRelatedField(
-        queryset=Subject.objects.all(), source='subject', write_only=True
+        queryset=Subject.objects.filter(is_active=True), source='subject', write_only=True
     )
 
     class Meta:

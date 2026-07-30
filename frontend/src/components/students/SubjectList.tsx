@@ -25,7 +25,11 @@ export default function SubjectList({ enrolledSubjects, onRemove }: Props) {
           </span>
           <span className="subject-list__copy">
             <strong>{studentSubject.subject.name}</strong>
-            <small>{studentSubject.subject.category}</small>
+            <small>
+              {studentSubject.subject.is_active === false
+                ? 'Retired from the current catalogue'
+                : studentSubject.subject.category}
+            </small>
           </span>
           <button
             type="button"

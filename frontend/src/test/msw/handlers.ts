@@ -77,8 +77,10 @@ export const handlers = [
     const grade = Number(url.searchParams.get('grade') ?? '9')
     return HttpResponse.json({
       data: [
-        { id: 1, name: 'Mathematics', code: `MTH${grade}`, grade, category: 'Core' },
-        { id: 2, name: 'English', code: `ENG${grade}`, grade, category: 'Core' },
+        grade === 10
+          ? { id: 1, name: 'Core Mathematics', code: 'CMT10', grade, category: 'Elective', is_active: true }
+          : { id: 1, name: 'Mathematics', code: 'MTH9', grade, category: 'Core', is_active: true },
+        { id: 2, name: 'English', code: `ENG${grade}`, grade, category: 'Core', is_active: true },
       ],
       error: null, message: '',
     })
@@ -87,7 +89,7 @@ export const handlers = [
   http.get('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
       data: [
-        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9, category: 'Core' }, created_at: '2026-06-14T10:00:00Z' },
+        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
       ],
       error: null, message: '',
     })
@@ -95,7 +97,7 @@ export const handlers = [
 
   http.post('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
-      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core' }, created_at: '2026-06-14T10:00:00Z' },
+      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
       error: null, message: 'Subject added.',
     }, { status: 201 })
   }),

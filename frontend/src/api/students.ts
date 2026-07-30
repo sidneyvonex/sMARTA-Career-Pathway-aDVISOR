@@ -19,7 +19,8 @@ export interface Subject {
   name: string
   code: string
   grade: 9 | 10
-  category: 'Core' | 'Optional'
+  category: 'Core' | 'Elective' | 'Optional'
+  is_active: boolean
 }
 
 export interface StudentSubject {

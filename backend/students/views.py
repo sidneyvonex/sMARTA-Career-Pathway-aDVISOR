@@ -93,7 +93,7 @@ class SubjectListView(APIView):
 
     def get(self, request):
         grade_param = request.query_params.get('grade')
-        qs = Subject.objects.all()
+        qs = Subject.objects.filter(is_active=True)
         if grade_param is not None:
             try:
                 qs = qs.filter(grade=int(grade_param))
