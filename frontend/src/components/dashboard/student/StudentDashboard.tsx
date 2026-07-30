@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { studentsApi, type GradeLevel } from '../../../api/students'
+import { GRADE_LEVEL_POINTS, studentsApi } from '../../../api/students'
 import { assessmentApi, type RIASECDimension } from '../../../api/assessment'
 import { dashboardApi } from '../../../api/dashboard'
 import { notificationsApi } from '../../../api/notifications'
@@ -16,17 +16,6 @@ const TRAIT_NAMES: Record<RIASECDimension, string> = {
   S: 'Social',
   E: 'Ambitious',
   C: 'Organised',
-}
-
-const GRADE_SCORE: Record<GradeLevel, number> = {
-  BE1: 34,
-  BE2: 43,
-  AE1: 50,
-  AE2: 58,
-  ME1: 65,
-  ME2: 73,
-  EE1: 83,
-  EE2: 92,
 }
 
 export default function StudentDashboard() {
@@ -113,7 +102,7 @@ export default function StudentDashboard() {
     ;(query.data ?? []).forEach((grade) => {
       const key = `${grade.year}-${grade.term}`
       const bucket = gradeBuckets.get(key) ?? { year: grade.year, term: grade.term, scores: [] }
-      bucket.scores.push(GRADE_SCORE[grade.level])
+      bucket.scores.push(GRADE_LEVEL_POINTS[grade.level])
       gradeBuckets.set(key, bucket)
     })
   })
@@ -122,7 +111,9 @@ export default function StudentDashboard() {
     .sort((a, b) => a.year - b.year || a.term - b.term)
     .map((bucket) => ({
       term: `T${bucket.term} '${String(bucket.year).slice(-2)}`,
-      score: Math.round(bucket.scores.reduce((total, score) => total + score, 0) / bucket.scores.length),
+      points: Number(
+        (bucket.scores.reduce((total, score) => total + score, 0) / bucket.scores.length).toFixed(1),
+      ),
     }))
 
   const fullName = `${profile.first_name} ${profile.last_name}`.trim()

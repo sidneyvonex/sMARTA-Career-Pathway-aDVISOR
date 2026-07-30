@@ -6,7 +6,18 @@ const MARIGOLD = 'var(--color-accent)'
 
 export interface GradePoint {
   term: string
-  score: number // e.g. average grade 0..100 or GPA-ish
+  points: number
+}
+
+const LEVEL_BY_POINTS: Record<number, string> = {
+  1: 'BE2',
+  2: 'BE1',
+  3: 'AE2',
+  4: 'AE1',
+  5: 'ME2',
+  6: 'ME1',
+  7: 'EE2',
+  8: 'EE1',
 }
 
 export default function GradeTrend({ data }: { data: GradePoint[] }) {
@@ -23,14 +34,22 @@ export default function GradeTrend({ data }: { data: GradePoint[] }) {
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-divider)" vertical={false} />
           <XAxis dataKey="term" tick={{ fill: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'DM Sans, sans-serif' }} axisLine={false} tickLine={false} width={38} domain={[0, 100]} />
+          <YAxis
+            tick={{ fill: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'DM Sans, sans-serif' }}
+            axisLine={false}
+            tickLine={false}
+            width={38}
+            domain={[1, 8]}
+            ticks={[1, 2, 3, 4, 5, 6, 7, 8]}
+            tickFormatter={(value) => LEVEL_BY_POINTS[Number(value)]}
+          />
           <Tooltip
             contentStyle={{ borderRadius: 12, border: '1px solid var(--color-divider)', fontFamily: 'DM Sans, sans-serif', fontSize: 12 }}
-            formatter={(v) => [`${Math.round(Number(v))}%`, 'Average']}
+            formatter={(value) => [`${Number(value).toFixed(1)} / 8`, 'Average level']}
           />
           <Area
             type="monotone"
-            dataKey="score"
+            dataKey="points"
             stroke={FOREST}
             strokeWidth={2.5}
             fill="url(#gradeFill)"

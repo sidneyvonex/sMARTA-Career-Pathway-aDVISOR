@@ -1,6 +1,33 @@
 import pytest
 from django.db import IntegrityError
 from accounts.models import StudentProfile
+from students.models import GRADE_LEVEL_CHOICES, GRADE_LEVEL_POINTS
+
+
+class TestGradeLevelScale:
+    def test_levels_are_ordered_from_highest_to_lowest(self):
+        assert [code for code, _label in GRADE_LEVEL_CHOICES] == [
+            'EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2',
+        ]
+
+    def test_level_one_is_higher_than_level_two_in_every_band(self):
+        assert GRADE_LEVEL_POINTS == {
+            'EE1': 8,
+            'EE2': 7,
+            'ME1': 6,
+            'ME2': 5,
+            'AE1': 4,
+            'AE2': 3,
+            'BE1': 2,
+            'BE2': 1,
+        }
+
+    def test_labels_describe_level_numbers_without_reversing_them(self):
+        labels = dict(GRADE_LEVEL_CHOICES)
+        assert labels['EE1'] == 'Exceeding Expectation - Level 1'
+        assert labels['EE2'] == 'Exceeding Expectation - Level 2'
+        assert labels['BE1'] == 'Below Expectation - Level 1'
+        assert labels['BE2'] == 'Below Expectation - Level 2'
 
 
 @pytest.mark.django_db

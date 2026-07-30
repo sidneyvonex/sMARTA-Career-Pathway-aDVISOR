@@ -5,6 +5,11 @@ import ProfileForm from '../components/students/ProfileForm'
 import PhotoUpload from '../components/students/PhotoUpload'
 import SubjectList from '../components/students/SubjectList'
 import GradeHistory from '../components/students/GradeHistory'
+import {
+  GRADE_LEVEL_LABELS,
+  GRADE_LEVEL_ORDER,
+  GRADE_LEVEL_POINTS,
+} from '../api/students'
 
 const makeClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -19,6 +24,31 @@ const mockProfile = {
   county: 'kiambu', grade: 9 as const, mode: 'self_guided' as const,
   bio: 'Hello', date_of_birth: null, career_interests: '', photo_url: null,
 }
+
+describe('CBE grade scale', () => {
+  it('orders Level 1 above Level 2 within every performance band', () => {
+    expect(GRADE_LEVEL_ORDER).toEqual([
+      'EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2',
+    ])
+    expect(GRADE_LEVEL_POINTS).toEqual({
+      EE1: 8,
+      EE2: 7,
+      ME1: 6,
+      ME2: 5,
+      AE1: 4,
+      AE2: 3,
+      BE1: 2,
+      BE2: 1,
+    })
+  })
+
+  it('uses unambiguous level labels', () => {
+    expect(GRADE_LEVEL_LABELS.EE1).toBe('Exceeding Expectation - Level 1')
+    expect(GRADE_LEVEL_LABELS.EE2).toBe('Exceeding Expectation - Level 2')
+    expect(GRADE_LEVEL_LABELS.BE1).toBe('Below Expectation - Level 1')
+    expect(GRADE_LEVEL_LABELS.BE2).toBe('Below Expectation - Level 2')
+  })
+})
 
 describe('ProfileForm', () => {
   it('renders bio, date_of_birth, and career_interests fields', () => {

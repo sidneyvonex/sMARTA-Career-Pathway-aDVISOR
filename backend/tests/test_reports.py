@@ -29,15 +29,15 @@ class TestPDFBuilder:
                     'name': 'Mathematics',
                     'code': 'MAT0019',
                     'grades': [
-                        {'term': 1, 'year': 2026, 'level': 'ME1', 'label': 'Meeting Expectation (lower)'},
-                        {'term': 2, 'year': 2026, 'level': 'EE1', 'label': 'Exceeding Expectation (lower)'},
+                        {'term': 1, 'year': 2026, 'level': 'ME1', 'label': 'Meeting Expectation - Level 1'},
+                        {'term': 2, 'year': 2026, 'level': 'EE1', 'label': 'Exceeding Expectation - Level 1'},
                     ],
                 },
                 {
                     'name': 'English',
                     'code': 'ENG0019',
                     'grades': [
-                        {'term': 1, 'year': 2026, 'level': 'AE2', 'label': 'Approaching Expectation (upper)'},
+                        {'term': 1, 'year': 2026, 'level': 'AE2', 'label': 'Approaching Expectation - Level 2'},
                     ],
                 },
             ],

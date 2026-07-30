@@ -3,15 +3,26 @@ from django.db import models
 from accounts.models import StudentProfile
 
 GRADE_LEVEL_CHOICES = [
-    ('EE1', 'Exceeding Expectation (lower)'),
-    ('EE2', 'Exceeding Expectation (upper)'),
-    ('ME1', 'Meeting Expectation (lower)'),
-    ('ME2', 'Meeting Expectation (upper)'),
-    ('AE1', 'Approaching Expectation (lower)'),
-    ('AE2', 'Approaching Expectation (upper)'),
-    ('BE1', 'Below Expectation (lower)'),
-    ('BE2', 'Below Expectation (upper)'),
+    ('EE1', 'Exceeding Expectation - Level 1'),
+    ('EE2', 'Exceeding Expectation - Level 2'),
+    ('ME1', 'Meeting Expectation - Level 1'),
+    ('ME2', 'Meeting Expectation - Level 2'),
+    ('AE1', 'Approaching Expectation - Level 1'),
+    ('AE2', 'Approaching Expectation - Level 2'),
+    ('BE1', 'Below Expectation - Level 1'),
+    ('BE2', 'Below Expectation - Level 2'),
 ]
+
+GRADE_LEVEL_POINTS = {
+    'EE1': 8,
+    'EE2': 7,
+    'ME1': 6,
+    'ME2': 5,
+    'AE1': 4,
+    'AE2': 3,
+    'BE1': 2,
+    'BE2': 1,
+}
 
 
 class Subject(models.Model):

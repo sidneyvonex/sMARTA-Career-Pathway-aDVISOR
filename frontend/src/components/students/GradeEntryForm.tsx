@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { studentsApi, GradeLevel, GRADE_LEVEL_LABELS } from '../../api/students'
+import {
+  studentsApi,
+  GradeLevel,
+  GRADE_LEVEL_LABELS,
+  GRADE_LEVEL_ORDER,
+} from '../../api/students'
 
 interface Props {
   studentSubjectId: number
@@ -64,7 +69,7 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
           onChange={(event) => setLevel(event.target.value as GradeLevel)}
           className="student-field__control"
         >
-          {(Object.keys(GRADE_LEVEL_LABELS) as GradeLevel[]).map((key) => (
+          {GRADE_LEVEL_ORDER.map((key) => (
             <option key={key} value={key}>{key} — {GRADE_LEVEL_LABELS[key]}</option>
           ))}
         </select>
