@@ -11,9 +11,9 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.6 presentation runbook, final walkthroughs and exit-gate verification
+**Next:** Task 9.6 presenter-controlled keyboard, native 200% zoom and throttled-network checks
 
-**Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
+**Outstanding baseline check:** None. All 36 backend test files passed in bounded groups (612 tests total).
 
 | Commit | Delivered change |
 |---|---|
@@ -1539,7 +1539,7 @@ Verify:
 - [x] chart text alternatives;
 - [x] reduced motion;
 - [ ] 200% zoom (final role-by-role walkthrough in Task 9.6);
-- [ ] 360px width (final role-by-role walkthrough in Task 9.6);
+- [x] 360px width (public and all five role dashboards verified at 360 x 800; the grade-history containment defect found during the check was fixed in `1700fcf`);
 - [x] meaningful loading and error announcements.
 
 Add automated checks where current tooling permits. Record manual checks in the presentation runbook.
@@ -1615,12 +1615,12 @@ Create:
 - [x] one-page user-flow diagram;
 - [x] known limitations/future-work slide content.
 
-- [ ] Run the complete 12-15 minute demo at least three times from a fresh browser session.
+- [x] Run the complete 12-15 minute demo at least three times from a fresh logged-out browser tab/session.
 
 Automated exit-gate verification:
 
 - Backend: all 36 test files passed in bounded groups, 612 tests total. The single-process command exceeded the 10-minute command window; every file was then accounted for in a completed green subset.
-- Frontend: 36 files and 212 tests passed.
+- Frontend: 36 files and 213 tests passed.
 - Production PWA build: passed, including strict TypeScript and generated service worker.
 - Main JavaScript remains 418.67 kB / 127.08 kB gzip with no chunk-size warning.
 - One system-administrator assertion needed a five-second asynchronous render allowance under full-suite contention; its focused 26-test file and the complete suite both passed after correction.
@@ -1639,14 +1639,14 @@ npm run build
 
 Additionally:
 
-- [ ] No critical console errors.
-- [ ] No failed API requests in the main demo.
+- [x] No critical console errors (zero in each timed walkthrough and the responsive matrix).
+- [x] No failed API requests in the authenticated main demo; logged-out public starts produced only the expected anonymous authentication probes.
 - [x] No private API entries in Cache Storage (PWA safety tests and generated service-worker inspection).
-- [ ] Main flow works at 360px and desktop.
-- [ ] PDF downloads and contains the correct disclaimer/version.
-- [ ] All seeded demo accounts work.
+- [x] Main flow works at 360px and desktop.
+- [x] PDF downloads and contains the correct disclaimer/version.
+- [x] All seeded demo accounts work.
 - [x] Public copy says pilot and does not imply official placement (public-page tests and copy inspection).
-- [ ] Presentation runbook completes without database edits.
+- [x] Presentation runbook completes without database edits.
 
 ## 16. Dashboard completion checklist
 

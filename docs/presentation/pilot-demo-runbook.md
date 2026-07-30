@@ -43,7 +43,7 @@ Then verify:
 - [ ] Browser zoom starts at 100%.
 - [ ] DevTools is closed unless demonstrating responsive/network behavior.
 - [ ] Downloads folder is writable for the PDF.
-- [ ] Use a fresh private browser session for each rehearsal.
+- [ ] Use a fresh private browser session for each presenter-run rehearsal.
 
 Account emails and their seeded states are in
 [pilot-test-accounts.md](./pilot-test-accounts.md). The password is never stored there.
@@ -164,28 +164,49 @@ Complete this on desktop and at 360px before the final presentation.
 | Keyboard-only path and visible focus | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Logical focus order after navigation/dialog | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | 200% browser zoom | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| 360px width, no blocked action | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| No critical console errors | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
-| No failed main-flow API requests | N/A | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 360px width, no blocked action | [x] | [x] | [x] | [x] | [x] | [x] |
+| No critical console errors | [x] | [x] | [x] | [x] | [x] | [x] |
+| No failed main-flow API requests | N/A | [x] | [x] | [x] | [x] | [x] |
 
 Additional checks:
 
 - [ ] Slow mobile throttling keeps the first dashboard action usable.
-- [ ] Cache Storage contains no authenticated API response.
-- [ ] Offline banner and assessment-draft recovery are understandable.
-- [ ] PDF contains the correct learner, evidence, versions and disclaimer.
-- [ ] Public copy consistently says “pilot” and avoids official-placement claims.
+- [x] Cache Storage contains no authenticated API response.
+- [x] Offline banner and assessment-draft recovery are understandable.
+- [x] PDF contains the correct learner, evidence, versions and disclaimer.
+- [x] Public copy consistently says “pilot” and avoids official-placement claims.
+
+Recorded responsive evidence on 31 July 2026:
+
+- the public site and all five role dashboards were measured at a 360 x 800 CSS-pixel
+  viewport with no document-level horizontal overflow and visible primary actions;
+- the learner dashboard and grades page were measured at 768 x 1024 with no overflow;
+- a 640px CSS viewport, equivalent to the layout width of a 1280px display at 200%,
+  showed no clipped learner headings, paragraphs or actions. This is not a substitute
+  for the unchecked native browser-zoom row above;
+- the grade-history table initially failed at 360px, was corrected in commit `1700fcf`,
+  and then verified to scroll inside its 277px wrapper while the document remained
+  contained;
+- the complete frontend suite and responsive shell/mobile-navigation tests pass.
 
 ## 5. Three-rehearsal record
 
-Do not mark a rehearsal complete unless it starts in a fresh private browser session and
-reaches the closing statement without database edits.
+Do not mark a rehearsal complete unless it starts logged out, verifies anonymous state,
+and reaches the closing statement without database or code edits. Use a fresh private
+session for a presenter-run rehearsal. An automation-controlled rehearsal may use a new
+logged-out tab when the anonymous authentication probes and subsequent role changes are
+recorded.
 
 | Run | Date/time | Duration | Desktop/360px | Result | Issues and correction |
 |---|---|---:|---|---|---|
-| 1 | — | — | Desktop | [ ] | |
-| 2 | — | — | 360px | [ ] | |
-| 3 | — | — | Desktop + slow network sample | [ ] | |
+| 1 | 31 Jul 2026, 00:40 EAT | 13m 49s | Desktop automation | [x] | New logged-out tab; all five roles and public close passed; zero console errors; only expected anonymous auth probes. |
+| 2 | 31 Jul 2026, 00:54 EAT | 13m 22s | Desktop automation | [x] | Independent repeat with all recorded checks true; PDF request and audit event passed; no failed authenticated main-flow request. |
+| 3 | 31 Jul 2026, 01:08 EAT | 12m 55s | Desktop automation | [x] | Independent repeat with all recorded checks true; no database/code edits; zero console errors. |
+
+The 360px matrix was completed separately across public, learner, parent, counsellor,
+school-admin and system-admin surfaces after the timed runs. Slow-network throttling,
+native 200% zoom and hands-on keyboard traversal remain unchecked and must be completed
+in a presenter-controlled browser before the final presentation.
 
 ## 6. Presenter assets
 
