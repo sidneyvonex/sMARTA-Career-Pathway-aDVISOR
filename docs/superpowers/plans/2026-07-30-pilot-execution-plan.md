@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow; Sprint 7 school approval, cohort assignment and offerings workflow; Sprint 8 system administration, audit coverage and truthful public alignment
 
-**Next:** Task 9.2 limited offline behavior
+**Next:** Task 9.3 accessibility pass
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -1512,12 +1512,19 @@ Verification:
 
 ### Task 9.2 - Limited offline behavior
 
-- cache application shell;
-- cache active public framework response by framework version;
-- never cache authenticated APIs;
-- user-scoped assessment draft with expiry;
-- offline banner;
-- clear retry for network-required actions.
+- [x] cache application shell;
+- [x] cache active public framework response by framework version;
+- [x] never cache authenticated APIs;
+- [x] user-scoped assessment draft with expiry;
+- [x] offline banner;
+- [x] clear retry for network-required actions.
+
+Verification:
+
+- PWA cache safety, assessment draft and offline shell suite: 18 tests passed.
+- Strict TypeScript check: passed.
+- Production PWA build: passed; generated service worker includes one exact public-framework API cache rule and no authenticated API cache rule.
+- Commit: `3b2f399`.
 
 ### Task 9.3 - Accessibility pass
 
