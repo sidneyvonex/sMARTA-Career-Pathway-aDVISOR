@@ -75,6 +75,7 @@ function getNavItems(role: User['role']): NavItem[] {
   if (role === 'system_admin') {
     return [
       { to: '/', label: 'Dashboard', icon: ICONS.grid },
+      { to: '/system-admin/catalogue', label: 'Catalogue', icon: ICONS.clipboard },
       { to: '/system-admin/schools', label: 'Schools', icon: ICONS.school },
       { to: '/system-admin/users', label: 'Users', icon: ICONS.users },
       { to: '/system-admin/audit-log', label: 'Audit Log', icon: ICONS.log },

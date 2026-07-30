@@ -921,6 +921,100 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/system-admin/catalogue/', () => {
+    return HttpResponse.json({
+      data: {
+        framework: {
+          id: 1,
+          code: 'CBC-SS-PILOT-2026',
+          title: 'CBC Senior School Pilot Catalogue 2026',
+          description: 'Curated five-county pilot catalogue.',
+          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          effective_date: '2026-01-01',
+          is_active: true,
+        },
+        combinations: [
+          {
+            id: 1,
+            code: 'ST1042',
+            title: 'Advanced Mathematics, Physics, Chemistry',
+            description: 'Pure sciences combination.',
+            related_routes: ['Engineering'],
+            is_active: true,
+            track: {
+              id: 1,
+              code: 'PURE-SCIENCES',
+              name: 'Pure Sciences',
+              is_active: true,
+              pathway: { id: 1, name: 'STEM' },
+            },
+            subjects: [
+              { id: 1, code: 'ADV-MATH', name: 'Advanced Mathematics' },
+              { id: 2, code: 'PHYS', name: 'Physics' },
+              { id: 3, code: 'CHEM', name: 'Chemistry' },
+            ],
+            active_school_count: 2,
+            learner_choice_count: 4,
+          },
+          {
+            id: 2,
+            code: 'ST1043',
+            title: 'Biology, Chemistry, Agriculture',
+            description: 'Applied sciences combination.',
+            related_routes: ['Agriculture'],
+            is_active: false,
+            track: {
+              id: 2,
+              code: 'APPLIED-SCIENCES',
+              name: 'Applied Sciences',
+              is_active: true,
+              pathway: { id: 1, name: 'STEM' },
+            },
+            subjects: [
+              { id: 4, code: 'BIO', name: 'Biology' },
+              { id: 3, code: 'CHEM', name: 'Chemistry' },
+              { id: 5, code: 'AGRI', name: 'Agriculture' },
+            ],
+            active_school_count: 0,
+            learner_choice_count: 1,
+          },
+        ],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch(/\/api\/v1\/system-admin\/catalogue\/combinations\/\d+\//, async ({ request }) => {
+    const body = await request.json() as { is_active: boolean }
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        code: 'ST1042',
+        title: 'Advanced Mathematics, Physics, Chemistry',
+        description: 'Pure sciences combination.',
+        related_routes: ['Engineering'],
+        is_active: body.is_active,
+        track: {
+          id: 1,
+          code: 'PURE-SCIENCES',
+          name: 'Pure Sciences',
+          is_active: true,
+          pathway: { id: 1, name: 'STEM' },
+        },
+        subjects: [
+          { id: 1, code: 'ADV-MATH', name: 'Advanced Mathematics' },
+          { id: 2, code: 'PHYS', name: 'Physics' },
+          { id: 3, code: 'CHEM', name: 'Chemistry' },
+        ],
+        active_school_count: 2,
+        learner_choice_count: 4,
+      },
+      error: null,
+      message: 'Combination status updated.',
+    })
+  }),
+
   http.get('/api/v1/system-admin/schools/', () => {
     return HttpResponse.json({
       data: {

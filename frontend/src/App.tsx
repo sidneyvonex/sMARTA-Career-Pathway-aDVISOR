@@ -29,6 +29,7 @@ import ChildDetailPage from './pages/parent/ChildDetailPage'
 import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
 import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
+import SystemAdminCataloguePage from './pages/system-admin/SystemAdminCataloguePage'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import PathwaysPage from './pages/PathwaysPage'
@@ -116,6 +117,7 @@ function AppRoutes() {
           </Route>
 
           <Route element={<ProtectedRoute roles={['system_admin']} />}>
+            <Route path="/system-admin/catalogue" element={<SystemAdminCataloguePage />} />
             <Route path="/system-admin/schools" element={<SystemAdminSchoolsPage />} />
             <Route path="/system-admin/users" element={<SystemAdminUsersPage />} />
             <Route path="/system-admin/audit-log" element={<SystemAdminAuditLogPage />} />

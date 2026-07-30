@@ -21,6 +21,10 @@ ACTION_CHOICES = [
     ('grade_verification_removed', 'Grade verification removed'),
     ('school_membership_approved', 'School membership approved'),
     ('school_membership_rejected', 'School membership rejected'),
+    (
+        'framework_combination_status_changed',
+        'Framework combination status changed',
+    ),
 ]
 
 TARGET_TYPE_CHOICES = [
@@ -28,6 +32,7 @@ TARGET_TYPE_CHOICES = [
     ('school', 'School'),
     ('assignment', 'Assignment'),
     ('grade', 'Grade'),
+    ('combination', 'Combination'),
 ]
 
 

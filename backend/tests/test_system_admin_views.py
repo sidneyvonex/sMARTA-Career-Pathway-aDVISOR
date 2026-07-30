@@ -136,11 +136,129 @@ class TestDashboardView:
         assert data['framework']['source_url'] == framework.source_url
 
 
+class TestFrameworkCatalogueView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+        self.framework = FrameworkVersionFactory(is_active=True)
+        self.active_combination = SubjectCombinationFactory(
+            framework_version=self.framework,
+            track__framework_version=self.framework,
+            is_active=True,
+        )
+        self.inactive_combination = SubjectCombinationFactory(
+            framework_version=self.framework,
+            track__framework_version=self.framework,
+            is_active=False,
+        )
+
+    def test_lists_current_framework_and_all_its_combinations(self):
+        response = self.client.get('/api/v1/system-admin/catalogue/')
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert data['framework']['id'] == self.framework.id
+        assert data['framework']['source_url'] == self.framework.source_url
+        assert data['framework']['effective_date'] == str(
+            self.framework.effective_date
+        )
+        combinations = {
+            item['id']: item for item in data['combinations']
+        }
+        assert combinations[self.active_combination.id]['is_active'] is True
+        assert combinations[self.inactive_combination.id]['is_active'] is False
+        assert len(combinations[self.active_combination.id]['subjects']) == 3
+
+    def test_list_only_includes_current_framework(self):
+        old_framework = FrameworkVersionFactory(is_active=False)
+        old_combination = SubjectCombinationFactory(
+            framework_version=old_framework,
+            track__framework_version=old_framework,
+        )
+
+        response = self.client.get('/api/v1/system-admin/catalogue/')
+
+        ids = {
+            item['id'] for item in response.data['data']['combinations']
+        }
+        assert old_combination.id not in ids
+
+    def test_update_combination_status_and_audit(self):
+        response = self.client.patch(
+            (
+                '/api/v1/system-admin/catalogue/combinations/'
+                f'{self.active_combination.id}/'
+            ),
+            {'is_active': False},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert response.data['data']['is_active'] is False
+        self.active_combination.refresh_from_db()
+        assert self.active_combination.is_active is False
+        entry = AuditLog.objects.get(
+            action='framework_combination_status_changed'
+        )
+        assert entry.target_type == 'combination'
+        assert entry.target_id == self.active_combination.id
+        assert entry.details['previous_is_active'] is True
+        assert entry.details['is_active'] is False
+
+    @pytest.mark.parametrize('value', ['false', 0, None])
+    def test_update_rejects_non_boolean_status(self, value):
+        response = self.client.patch(
+            (
+                '/api/v1/system-admin/catalogue/combinations/'
+                f'{self.active_combination.id}/'
+            ),
+            {'is_active': value},
+            format='json',
+        )
+
+        assert response.status_code == 400
+
+    def test_update_rejects_combination_from_old_framework(self):
+        old_framework = FrameworkVersionFactory(is_active=False)
+        old_combination = SubjectCombinationFactory(
+            framework_version=old_framework,
+            track__framework_version=old_framework,
+        )
+
+        response = self.client.patch(
+            (
+                '/api/v1/system-admin/catalogue/combinations/'
+                f'{old_combination.id}/'
+            ),
+            {'is_active': False},
+            format='json',
+        )
+
+        assert response.status_code == 404
+
+    def test_requires_system_admin(self):
+        client = APIClient()
+        client.force_authenticate(VerifiedUserFactory(role='student'))
+
+        response = client.get('/api/v1/system-admin/catalogue/')
+
+        assert response.status_code == 403
+
+
 class TestSchoolListView:
     def setup_method(self):
         self.client = APIClient()
         self.admin = SystemAdminFactory()
         self.client.force_authenticate(self.admin)
+        self.base_school_count = School.objects.count()
+        self.base_active_school_count = School.objects.filter(
+            is_active=True,
+        ).count()
+        self.base_county_counts = {
+            county: School.objects.filter(county=county).count()
+            for county in ('kiambu', 'nyeri')
+        }
 
     def test_list_all_schools(self):
         SchoolFactory(name='Alpha School')
@@ -148,16 +266,16 @@ class TestSchoolListView:
         response = self.client.get('/api/v1/system-admin/schools/')
         assert response.status_code == 200
         data = response.data['data']
-        assert data['total'] == 2
-        assert len(data['results']) == 2
+        assert data['total'] == self.base_school_count + 2
+        assert len(data['results']) == self.base_school_count + 2
 
     def test_filter_by_county(self):
         SchoolFactory(county='kiambu')
         SchoolFactory(county='nyeri')
         response = self.client.get('/api/v1/system-admin/schools/?county=kiambu')
         data = response.data['data']
-        assert data['total'] == 1
-        assert data['results'][0]['county'] == 'kiambu'
+        assert data['total'] == self.base_county_counts['kiambu'] + 1
+        assert all(result['county'] == 'kiambu' for result in data['results'])
 
     def test_search_by_name(self):
         SchoolFactory(name='Starehe Boys')
@@ -177,23 +295,33 @@ class TestSchoolListView:
         SchoolFactory(is_active=True)
         SchoolFactory(is_active=False)
         response = self.client.get('/api/v1/system-admin/schools/?active=true')
-        assert response.data['data']['total'] == 1
+        assert (
+            response.data['data']['total']
+            == self.base_active_school_count + 1
+        )
 
     def test_pagination(self):
         for i in range(25):
             SchoolFactory()
         response = self.client.get('/api/v1/system-admin/schools/?page=2')
         data = response.data['data']
-        assert data['total'] == 25
+        assert data['total'] == self.base_school_count + 25
         assert data['page'] == 2
-        assert len(data['results']) == 5
+        assert len(data['results']) == min(
+            20,
+            self.base_school_count + 25 - 20,
+        )
 
     def test_includes_student_and_counselor_counts(self):
         school = SchoolFactory()
         CounselorFactory(school=school)
         StudentProfileFactory(school=school, mode='school_linked')
         response = self.client.get('/api/v1/system-admin/schools/')
-        result = response.data['data']['results'][0]
+        result = next(
+            item
+            for item in response.data['data']['results']
+            if item['id'] == school.id
+        )
         assert result['student_count'] == 1
         assert result['counselor_count'] == 1
 

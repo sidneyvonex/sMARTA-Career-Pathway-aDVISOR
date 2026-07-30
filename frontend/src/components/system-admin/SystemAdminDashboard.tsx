@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { systemAdminApi } from '../../api/systemAdmin'
 import ActivityList from '../common/dashboard/ActivityList'
 import DashboardHero from '../common/dashboard/DashboardHero'
@@ -92,6 +93,7 @@ export default function SystemAdminDashboard() {
         ]}
         actions={[
           { label: 'Create School', to: '/system-admin/schools?create=1' },
+          { label: 'Manage Catalogue', to: '/system-admin/catalogue', variant: 'secondary' },
           { label: 'View Audit Log', to: '/system-admin/audit-log', variant: 'secondary' },
         ]}
       />
@@ -148,6 +150,9 @@ export default function SystemAdminDashboard() {
               <a href={stats.framework.source_url} target="_blank" rel="noreferrer">
                 Open official source
               </a>
+              <Link to="/system-admin/catalogue">
+                Manage catalogue status
+              </Link>
             </div>
           ) : (
             <EmptyState

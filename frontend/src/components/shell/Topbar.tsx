@@ -56,6 +56,7 @@ function getPageContext(pathname: string): PageContext {
     parent: { label: 'Dashboard', to: '/' },
   }
   if (pathname === '/system-admin/schools') return { title: 'Pilot schools' }
+  if (pathname === '/system-admin/catalogue') return { title: 'Framework catalogue' }
   if (pathname === '/system-admin/users') return { title: 'Users' }
   if (pathname === '/system-admin/audit-log') return { title: 'Audit log' }
   return { title: 'Page not found', parent: { label: 'Dashboard', to: '/' } }

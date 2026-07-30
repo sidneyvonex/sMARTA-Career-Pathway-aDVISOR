@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '../../store/authStore'
@@ -7,6 +8,7 @@ import SystemAdminDashboard from '../../components/system-admin/SystemAdminDashb
 import SystemAdminSchoolsPage from '../../pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from '../../pages/system-admin/SystemAdminUsersPage'
 import SystemAdminAuditLogPage from '../../pages/system-admin/SystemAdminAuditLogPage'
+import SystemAdminCataloguePage from '../../pages/system-admin/SystemAdminCataloguePage'
 
 vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
@@ -123,6 +125,70 @@ describe('SystemAdminDashboard', () => {
       'href',
       'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
     )
+  })
+})
+
+describe('SystemAdminCataloguePage', () => {
+  let qc: QueryClient
+
+  beforeEach(() => {
+    qc = makeClient()
+    setSystemAdmin()
+  })
+
+  afterEach(() => {
+    qc.clear()
+  })
+
+  function renderPage() {
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <SystemAdminCataloguePage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('shows framework provenance and active and inactive combinations', async () => {
+    renderPage()
+
+    expect(await screen.findByText('CBC Senior School Pilot Catalogue 2026')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open official source' })).toHaveAttribute(
+      'href',
+      'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+    )
+    expect(screen.getByText('Advanced Mathematics, Physics, Chemistry')).toBeInTheDocument()
+    expect(screen.getByText('Biology, Chemistry, Agriculture')).toBeInTheDocument()
+    expect(screen.getByText('Inactive')).toBeInTheDocument()
+  })
+
+  it('filters combinations by search term', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const search = await screen.findByRole('searchbox', {
+      name: 'Search combinations',
+    })
+    await user.type(search, 'agriculture')
+
+    expect(screen.getByText('Biology, Chemistry, Agriculture')).toBeInTheDocument()
+    expect(screen.queryByText('Advanced Mathematics, Physics, Chemistry')).not.toBeInTheDocument()
+  })
+
+  it('deactivates a combination and exposes its impact before the action', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText('2 active schools')).toBeInTheDocument()
+    expect(screen.getByText('4 learner choices')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', {
+      name: 'Deactivate Advanced Mathematics, Physics, Chemistry',
+    }))
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Inactive')).toHaveLength(2)
+    })
   })
 })
 
