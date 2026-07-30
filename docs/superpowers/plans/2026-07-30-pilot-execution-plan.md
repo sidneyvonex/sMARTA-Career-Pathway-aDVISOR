@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 1 - Correctness and safety blockers
 
-**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.2
+**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.3
 
-**Next:** Task 1.3 authenticated API cache safety
+**Next:** Task 1.4 active-school and pending-membership validation
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
 | Commit | Delivered change |
@@ -22,6 +22,7 @@
 | `39be6b4` | Public landing-page mobile overflow correction |
 | `ab53d07` | Canonical CBE grade ordering, labels, points, chart and PDF fixtures |
 | `2e3d9cf` | Current Grade 10 pilot catalogue with safe retirement of obsolete records |
+| `3eec101` | Authenticated API cache exclusion and logout data cleanup |
 
 ## 1. How to use this plan
 
@@ -349,11 +350,19 @@ Files:
 
 Work:
 
-- [ ] Remove the broad `/api/v1/` `StaleWhileRevalidate` rule.
-- [ ] Cache only explicitly public framework endpoints later.
-- [ ] Version the cache name.
-- [ ] Remove legacy private API caches during service-worker activation.
-- [ ] Clear user-scoped local drafts on logout where appropriate.
+- [x] Remove the broad `/api/v1/` `StaleWhileRevalidate` rule.
+- [x] Cache only explicitly public framework endpoints later. No API response is runtime-cached in the current build.
+- [x] Version the cache name.
+- [x] Remove legacy private API caches during service-worker activation.
+- [x] Clear user-scoped local drafts and in-memory queries on logout.
+
+Verification:
+
+- PWA cache and logout suites: 23 passed.
+- Full frontend suite: 25 files and 150 tests passed.
+- Production PWA build: passed; generated service worker has no API caching route.
+- Generated service worker imports legacy `api-cache` cleanup and excludes `/api/` image URLs.
+- Commit: `3eec101`.
 
 Acceptance:
 
