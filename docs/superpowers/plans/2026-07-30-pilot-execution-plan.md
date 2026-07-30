@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 4 - Complete learner decision-and-plan journey
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.5 learner summaries, grade verification, explainable assessment, combination choices and explorer
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 Tasks 4.1-4.6 learner summaries, grade verification, explainable assessment, combination choices, explorer and comparison
 
-**Next:** Task 4.6 learner combination comparison
+**Next:** Task 4.7 learner plan and milestones
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -39,6 +39,7 @@
 | `eee1684` | Versioned assessment attempts, explanation snapshots and expiring learner-scoped drafts |
 | `a9219f2` | Learner-saved and provisional combinations with pilot limits and summary integration |
 | `3d2db97` | Responsive five-county learner combination explorer with save actions |
+| `38836be` | Evidence-led two-or-three-choice comparison with curated related routes |
 
 ## 1. How to use this plan
 
@@ -896,6 +897,20 @@ Acceptance:
 
 - Comparison works with two or three saved combinations.
 - Mobile view uses stacked comparison sections instead of an unreadable table.
+
+Verification:
+
+- `/compare` is available in the learner shell and requires at least two saved combinations, with a direct recovery link to the explorer.
+- Two or three choices are compared across pathway, track, three electives, latest interest evidence, academic evidence, five-county school offerings, related routes, evidence gaps and source date.
+- Related routes are curated per pilot combination, persisted in the catalogue and returned through the public and learner-choice contracts.
+- Learners can promote a compared option to their single provisional choice with mutation feedback.
+- The comparison uses responsive evidence sections and never renders a compressed data table on mobile.
+- Focused catalogue and learner-choice backend suite: 50 tests passed.
+- Comparison, explorer, guidance-client and authenticated-shell frontend suite: 15 tests passed.
+- Strict TypeScript check: passed.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Commit: `38836be`.
 
 ### Task 4.7 - Add learner plan and milestones
 
