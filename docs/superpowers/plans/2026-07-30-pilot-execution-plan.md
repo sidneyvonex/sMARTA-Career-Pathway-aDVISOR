@@ -9,9 +9,9 @@
 
 **Active sprint:** Sprint 1 - Correctness and safety blockers
 
-**Completed:** Sprint 0 implementation baseline; Task 1.1 performance-level correction
+**Completed:** Sprint 0 implementation baseline; Tasks 1.1-1.2
 
-**Next:** Task 1.2 Grade 10 catalogue correction
+**Next:** Task 1.3 authenticated API cache safety
 **Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
 
 | Commit | Delivered change |
@@ -21,6 +21,7 @@
 | `3c09d4e` | Redesigned learner dashboard and student experience baseline |
 | `39be6b4` | Public landing-page mobile overflow correction |
 | `ab53d07` | Canonical CBE grade ordering, labels, points, chart and PDF fixtures |
+| `2e3d9cf` | Current Grade 10 pilot catalogue with safe retirement of obsolete records |
 
 ## 1. How to use this plan
 
@@ -319,10 +320,19 @@ Files:
 
 Work:
 
-- [ ] Keep Grade 9 learning areas required by the pilot.
-- [ ] Replace duplicate junior-style Grade 10 seed data with current Senior School core/elective names needed by the curated pilot combinations.
-- [ ] Preserve existing student records safely through a forward data migration.
-- [ ] Mark obsolete seeded subjects inactive rather than deleting referenced rows.
+- [x] Keep Grade 9 learning areas required by the pilot.
+- [x] Replace duplicate junior-style Grade 10 seed data with current Senior School core/elective names needed by the curated pilot combinations.
+- [x] Preserve existing student records safely through a forward data migration.
+- [x] Mark obsolete seeded subjects inactive rather than deleting referenced rows.
+
+Verification:
+
+- Source check: KICD Grade 10 curriculum designs and Ministry Senior School combinations, checked 2026-07-30.
+- Backend student/model/view suites: 53 passed.
+- Frontend student/dashboard suites: 17 passed.
+- Student migration drift check: no changes detected.
+- Production build: passed; main JS gzip 135.99 kB, CSS gzip 21.03 kB.
+- Commit: `2e3d9cf`.
 
 Acceptance:
 
