@@ -35,4 +35,3 @@ flowchart TD
 | Counsellor | Review evidence, document a note/intervention and follow up | Silently decide for the learner |
 | School administrator | Manage school membership, assignments and offerings | Access another school's private records |
 | System administrator | Monitor pilot health, catalogue status and audit events | Convert the pilot into an official placement decision |
-

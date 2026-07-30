@@ -219,8 +219,7 @@ guidance/
   serializers.py
   urls.py
   views.py
-  services.py
-  seed_data.py
+  selectors.py
 ```
 
 This app owns tracks, combinations, school offerings, learner choices and plans. Continue using the existing `riasec.Pathway` records for the three top-level pathways during the pilot.
@@ -230,14 +229,16 @@ This app owns tracks, combinations, school offerings, learner choices and plans.
 ```text
 frontend/src/api/guidance.ts
 frontend/src/components/common/dashboard/*
-frontend/src/components/guidance/*
-frontend/src/pages/ExplorePage.tsx
-frontend/src/pages/ComparePage.tsx
-frontend/src/pages/PlanPage.tsx
-frontend/src/pages/AccessPage.tsx
+frontend/src/pages/CombinationExplorerPage.tsx
+frontend/src/pages/CombinationComparePage.tsx
+frontend/src/pages/LearnerPlanPage.tsx
+frontend/src/pages/ParentAccessPage.tsx
 frontend/src/pages/admin/SchoolOfferingsPage.tsx
-frontend/src/pages/system-admin/SystemAdminFrameworkPage.tsx
-frontend/src/styles/guidance.css
+frontend/src/pages/system-admin/SystemAdminCataloguePage.tsx
+frontend/src/styles/explorer.css
+frontend/src/styles/compare.css
+frontend/src/styles/plan.css
+frontend/src/styles/access.css
 frontend/src/styles/role-dashboard.css
 ```
 
@@ -282,7 +283,7 @@ Acceptance:
 
 ### Task 0.3 - Establish quality baseline
 
-- [ ] Run the full backend test suite. Focused grade/student/report suites pass: 77 tests.
+- [x] Run the full backend test suite. Final exit-gate coverage: all 36 backend test files and 612 tests passed in bounded groups.
 - [x] Run frontend tests: 25 files and 141 tests passed.
 - [x] Run frontend production build.
 - [x] Record baseline bundle sizes and known warnings. Main JS gzip: 135.92 kB; CSS gzip: 20.94 kB before Task 1.1.
@@ -1608,13 +1609,22 @@ Verification:
 
 Create:
 
-- `docs/presentation/pilot-demo-runbook.md`
-- `docs/presentation/pilot-test-accounts.md` as a local-only/example template without real secrets
-- one-page architecture diagram;
-- one-page user-flow diagram;
-- known limitations/future-work slide content.
+- [x] `docs/presentation/pilot-demo-runbook.md`
+- [x] `docs/presentation/pilot-test-accounts.md` as a safe example without real secrets
+- [x] one-page architecture diagram;
+- [x] one-page user-flow diagram;
+- [x] known limitations/future-work slide content.
 
-Run the complete 12-15 minute demo at least three times from a fresh browser session.
+- [ ] Run the complete 12-15 minute demo at least three times from a fresh browser session.
+
+Automated exit-gate verification:
+
+- Backend: all 36 test files passed in bounded groups, 612 tests total. The single-process command exceeded the 10-minute command window; every file was then accounted for in a completed green subset.
+- Frontend: 36 files and 212 tests passed.
+- Production PWA build: passed, including strict TypeScript and generated service worker.
+- Main JavaScript remains 418.67 kB / 127.08 kB gzip with no chunk-size warning.
+- One system-administrator assertion needed a five-second asynchronous render allowance under full-suite contention; its focused 26-test file and the complete suite both passed after correction.
+- Remaining React Router v7 migration notices, Django storage deprecation notice and JSDOM download-navigation notices are non-failing development/test warnings.
 
 ### Final exit gate
 
@@ -1631,11 +1641,11 @@ Additionally:
 
 - [ ] No critical console errors.
 - [ ] No failed API requests in the main demo.
-- [ ] No private API entries in Cache Storage.
+- [x] No private API entries in Cache Storage (PWA safety tests and generated service-worker inspection).
 - [ ] Main flow works at 360px and desktop.
 - [ ] PDF downloads and contains the correct disclaimer/version.
 - [ ] All seeded demo accounts work.
-- [ ] Public copy says pilot and does not imply official placement.
+- [x] Public copy says pilot and does not imply official placement (public-page tests and copy inspection).
 - [ ] Presentation runbook completes without database edits.
 
 ## 16. Dashboard completion checklist

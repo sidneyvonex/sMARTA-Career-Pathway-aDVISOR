@@ -64,4 +64,3 @@ flowchart LR
 The data model and public copy are limited to Kiambu, Murang'a, Nyeri, Kirinyaga and
 Nyandarua. The current catalogue is curated and versioned for the final-project pilot,
 not represented as a national placement service.
-

@@ -42,4 +42,3 @@ boundaries of the pilot, not hidden claims.
 > Smart Ashauri helps learners make a more informed, explainable and supported provisional
 > choice. People remain responsible for the decision, and official policy remains the
 > authority.
-

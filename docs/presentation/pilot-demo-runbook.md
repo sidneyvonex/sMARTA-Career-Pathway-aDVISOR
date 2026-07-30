@@ -1,7 +1,9 @@
 # Smart Ashauri pilot demonstration runbook
 
-**Target duration:** 12–15 minutes  
-**Pilot boundary:** Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua  
+**Target duration:** 12–15 minutes
+
+**Pilot boundary:** Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua
+
 **Core claim:** explainable decision support with learner ownership and human review—not
 official placement.
 
