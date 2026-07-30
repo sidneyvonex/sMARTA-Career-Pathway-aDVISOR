@@ -48,7 +48,9 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: 'Career insights' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'This week' })).toBeInTheDocument()
     expect(screen.getByText('Your strength shape')).toBeInTheDocument()
-    expect(screen.getByText('Best-fit pathways')).toBeInTheDocument()
+    expect(screen.getByText('Interest-aligned pathways')).toBeInTheDocument()
+    expect(screen.getByText(/suggestions are starting points for exploration/i)).toBeInTheDocument()
+    expect(screen.queryByText('73%')).not.toBeInTheDocument()
   })
 
   it('renders CounselorDashboard for counselor role', async () => {

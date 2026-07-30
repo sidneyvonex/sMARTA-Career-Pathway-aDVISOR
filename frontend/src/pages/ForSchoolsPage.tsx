@@ -33,7 +33,7 @@ const TIERS: PricingTier[] = [
     priceSub: 'Forever — no card, no trial period',
     features: [
       'The full RIASEC interest assessment',
-      'Ranked CBC pathway matches',
+      'Ranked interest-aligned CBC pathways',
       'Subject & grade tracking every term',
       'Your own student dashboard',
     ],
@@ -79,7 +79,7 @@ const VALUES = [
       </svg>
     ),
     title: 'No price barrier for students',
-    body: 'The assessment, pathway match, and grade tracking stay free for every individual, indefinitely — that promise doesn’t change.',
+    body: 'The assessment, interest-aligned pathway suggestions, and grade tracking stay free for every individual, indefinitely — that promise doesn’t change.',
   },
   {
     icon: (
@@ -106,7 +106,7 @@ const FAQS = [
   {
     question: 'Will the free tier ever start charging students?',
     answer:
-      'No. The RIASEC assessment, pathway matching, and grade tracking stay free for every individual student, indefinitely — licensing only pays for the school-side analytics and reporting layer.',
+      'No. The RIASEC assessment, interest-aligned pathway suggestions, and grade tracking stay free for every individual student, indefinitely — licensing only pays for the school-side analytics and reporting layer.',
   },
   {
     question: 'How is the school license priced?',

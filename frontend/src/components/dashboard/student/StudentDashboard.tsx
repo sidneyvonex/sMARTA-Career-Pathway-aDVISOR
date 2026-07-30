@@ -131,7 +131,7 @@ export default function StudentDashboard() {
     quizDone,
     subjectsCount: subjects.length,
     topPathway: topPathway
-      ? { name: topPathway.pathway.name, pct: topPathway.fit_pct }
+      ? { name: topPathway.pathway.name }
       : null,
     topStrength: topDimension ? TRAIT_NAMES[topDimension] : null,
     radar: result
@@ -140,10 +140,10 @@ export default function StudentDashboard() {
           value: Math.round((result.scores[dimension] / 25) * 100),
         }))
       : null,
-    pathwaySlices: result
+    pathways: result
       ? result.recommendations.slice(0, 3).map((recommendation) => ({
           name: recommendation.pathway.name,
-          value: recommendation.fit_pct,
+          rank: recommendation.rank,
         }))
       : null,
     gradeTrend: gradeTrend.length ? gradeTrend : null,

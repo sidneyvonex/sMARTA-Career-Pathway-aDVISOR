@@ -178,19 +178,25 @@ def build_student_report(data):
 
     elements.append(Spacer(1, 4 * mm))
 
-    # --- Pathway recommendations ---
+    # --- Pathways suggested for exploration ---
     recommendations = data.get('recommendations', [])
     if recommendations:
-        elements.append(Paragraph('Recommended Career Pathways', styles['SectionTitle']))
-        rec_rows = [['Rank', 'Pathway', 'Fit']]
+        elements.append(Paragraph('Pathways Suggested for Exploration', styles['SectionTitle']))
+        elements.append(Paragraph(
+            'Interest alignment is an advisory starting point based on the learner\'s responses. '
+            'It does not predict success or determine placement.',
+            styles['BodyText2'],
+        ))
+        elements.append(Spacer(1, 2 * mm))
+        rec_rows = [['Rank', 'Pathway', 'Interest alignment']]
         for rec in recommendations[:3]:
             rec_rows.append([
                 str(rec['rank']),
                 rec['pathway_name'],
-                f"{rec['fit_pct']}%",
+                'Strongest' if rec['rank'] == 1 else 'Suggested',
             ])
 
-        rec_table = Table(rec_rows, colWidths=[20 * mm, 110 * mm, 25 * mm])
+        rec_table = Table(rec_rows, colWidths=[20 * mm, 95 * mm, 40 * mm])
         rec_table.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 10),

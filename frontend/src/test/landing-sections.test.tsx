@@ -73,12 +73,12 @@ describe('LandingSpotlight', () => {
 })
 
 describe('LandingSteps', () => {
-  it('renders 4 numbered step tiles: Discover, Plan, Choose, Succeed', () => {
+  it('renders 4 numbered step tiles without promising an outcome', () => {
     withRouter(<LandingSteps />)
     expect(screen.getByRole('heading', { name: 'Discover' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Choose' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Succeed' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Reflect' })).toBeInTheDocument()
     expect(screen.getByText('01')).toBeInTheDocument()
     expect(screen.getByText('04')).toBeInTheDocument()
   })

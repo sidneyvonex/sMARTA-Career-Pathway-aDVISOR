@@ -119,6 +119,18 @@ class TestPDFBuilder:
         text = _extract_pdf_text(result)
         assert 'advisory only' in text
 
+    def test_pdf_presents_advisory_interest_alignment_without_percentages(self):
+        data = self._make_data()
+        result = build_student_report(data)
+        text = _extract_pdf_text(result)
+        normalized_text = ' '.join(text.split())
+        assert 'Pathways Suggested for Exploration' in text
+        assert 'Interest alignment' in text
+        assert 'does not predict success or determine placement' in normalized_text
+        assert '87%' not in text
+        assert '72%' not in text
+        assert '65%' not in text
+
 
 # ---------------------------------------------------------------------------
 # Task 2: StudentReportView — Permissions + Data Assembly

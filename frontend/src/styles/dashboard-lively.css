@@ -418,6 +418,13 @@
   to { background-position: -200% 0; }
 }
 
+.lv-pathway-advisory {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
 .lv-legend {
   display: grid;
   gap: 0.45rem;

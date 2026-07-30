@@ -436,6 +436,17 @@
   letter-spacing: 0.15em;
 }
 
+.recommendation-advisory {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.65;
+}
+
 .recommendation-cards {
   display: grid;
   gap: var(--space-3);

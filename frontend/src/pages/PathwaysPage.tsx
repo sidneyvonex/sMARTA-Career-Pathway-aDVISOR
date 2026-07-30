@@ -5,7 +5,7 @@ import '../styles/marketing.css'
 
 type PathwayDetail = {
   name: string
-  fitChips: string[]
+  interestChips: string[]
   description: string
   subjectGroups: { label: string; subjects: string[] }[]
   careers: string[]
@@ -16,9 +16,9 @@ type PathwayDetail = {
 const PATHWAYS: PathwayDetail[] = [
   {
     name: 'STEM',
-    fitChips: ['Investigative 40%', 'Realistic 25%'],
+    interestChips: ['Investigative · primary signal', 'Realistic · supporting signal'],
     description:
-      "Science, Technology, Engineering & Mathematics — ideal for students who love investigating how things work and solving real-world technical problems.",
+      "Science, Technology, Engineering & Mathematics — often worth exploring for students who enjoy investigating how things work and solving real-world technical problems.",
     subjectGroups: [
       { label: 'Pure Sciences', subjects: ['Biology', 'Chemistry', 'Physics', 'Mathematics'] },
       { label: 'Applied Sciences', subjects: ['Agriculture', 'Computer Science', 'Home Science'] },
@@ -29,9 +29,9 @@ const PATHWAYS: PathwayDetail[] = [
   },
   {
     name: 'Social Sciences',
-    fitChips: ['Social 35%', 'Enterprising 25%'],
+    interestChips: ['Social · primary signal', 'Enterprising · supporting signal'],
     description:
-      'Languages, Humanities & Business — ideal for students interested in law, economics, education, governance, languages, and human behaviour.',
+      'Languages, Humanities & Business — often worth exploring for students interested in law, economics, education, governance, languages, and human behaviour.',
     subjectGroups: [
       { label: 'Languages & Literature', subjects: ['English', 'Kiswahili', 'French', 'Arabic', 'German'] },
       { label: 'Humanities & Business', subjects: ['History & Citizenship', 'Geography', 'Business Studies', 'Religious Education'] },
@@ -42,9 +42,9 @@ const PATHWAYS: PathwayDetail[] = [
   },
   {
     name: 'Arts & Sports Science',
-    fitChips: ['Artistic 45%', 'Realistic & Social 20%'],
+    interestChips: ['Artistic · primary signal', 'Realistic & Social · supporting signals'],
     description:
-      'Creative Arts & Athletics — ideal for students drawn to music, dance, theatre, fine arts, or sports coaching.',
+      'Creative Arts & Athletics — often worth exploring for students drawn to music, dance, theatre, fine arts, or sports coaching.',
     subjectGroups: [
       { label: 'Arts', subjects: ['Music & Dance', 'Theatre & Film', 'Fine Arts'] },
       { label: 'Sports', subjects: ['Sports & Recreation Science', 'Physical Education'] },
@@ -76,7 +76,7 @@ export default function PathwaysPage() {
             </p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Take the assessment</Link>
-              <Link className="mk-btn mk-btn-outline" to="/how-it-works">How matching works</Link>
+              <Link className="mk-btn mk-btn-outline" to="/how-it-works">How suggestions work</Link>
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function PathwaysPage() {
             </div>
             <div className="mk-pathway-detail__body">
               <div className="mk-pathway-detail__fit">
-                {pathway.fitChips.map((chip) => (
+                {pathway.interestChips.map((chip) => (
                   <span className="mk-fit-chip" key={chip}>{chip}</span>
                 ))}
               </div>
@@ -126,8 +126,8 @@ export default function PathwaysPage() {
 
         <p className="mk-disclaimer">
           Career examples are illustrative, not exhaustive — every pathway opens more doors than
-          we can list here. Fit percentages come from how each pathway is weighted against the 6
-          RIASEC dimensions, not a guarantee of outcome.
+          we can list here. Interest alignment is advisory: it does not predict success, determine
+          placement, or replace discussion with a counsellor.
         </p>
       </section>
 

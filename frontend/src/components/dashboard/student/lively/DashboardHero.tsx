@@ -9,7 +9,7 @@ interface Props {
   county?: string | null
   quizDone: boolean
   subjectsCount: number
-  topPathway: { name: string; pct: number } | null
+  topPathway: { name: string } | null
 }
 
 function StudentCharacter() {
@@ -81,8 +81,8 @@ export default function DashboardHero({
         </h1>
         <p className="lv-hero__sub">
           {topPathway
-            ? `You are building a strong route towards ${topPathway.name}.`
-            : 'Discover the strengths, subjects and careers that fit you.'}
+            ? `${topPathway.name} is a useful starting point for exploration.`
+            : 'Discover the strengths, subjects and careers that interest you.'}
         </p>
 
         <div className="lv-hero__progress">

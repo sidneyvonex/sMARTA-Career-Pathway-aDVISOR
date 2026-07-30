@@ -25,7 +25,7 @@ const STEPS: Step[] = [
     icon: 'forest',
     tag: 'Automatic',
     title: 'Plan',
-    body: "Your responses are scored across all 6 RIASEC dimensions, then matched against each CBC pathway's profile — ranked by fit, not a single verdict.",
+    body: "Your responses are scored across all 6 RIASEC dimensions, then compared with each CBC pathway's interest profile. The ranking is an exploration aid, not a placement or prediction.",
     alt: true,
   },
   {
@@ -182,7 +182,7 @@ export default function HowItWorksPage() {
             <span className="mk-eyebrow">Last step</span>
             <p className="mk-cta-band__heading">
               Ready to see
-              <span className="mk-script">where you actually fit?</span>
+              <span className="mk-script">what could you explore?</span>
             </p>
             <p className="mk-cta-band__sub">Free forever. No credit card, ever.</p>
             <Link className="mk-btn mk-btn-dark" to="/register">

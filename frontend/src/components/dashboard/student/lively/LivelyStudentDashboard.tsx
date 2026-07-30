@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom'
 import DashboardHero from './DashboardHero'
 import Avatar from '../../../common/Avatar'
 import type { RadarDatum } from './PersonalityRadar'
-import type { PathwaySlice } from './PathwayDonut'
 import type { GradePoint } from './GradeTrend'
 import '../../../../styles/dashboard-lively.css'
 
 const PersonalityRadar = lazy(() => import('./PersonalityRadar'))
-const PathwayDonut = lazy(() => import('./PathwayDonut'))
 const GradeTrend = lazy(() => import('./GradeTrend'))
 
 const ChartSkeleton = () => <div className="lv-chart-skeleton" aria-hidden="true" />
@@ -22,10 +20,10 @@ export interface LivelyData {
   profileComplete: boolean
   quizDone: boolean
   subjectsCount: number
-  topPathway: { name: string; pct: number } | null
+  topPathway: { name: string } | null
   topStrength: string | null
   radar: RadarDatum[] | null
-  pathwaySlices: PathwaySlice[] | null
+  pathways: { name: string; rank: number }[] | null
   gradeTrend: GradePoint[] | null
   counselor: { name: string; role: string; message?: string; photoUrl?: string | null } | null
   activity: { text: string; time: string; actor?: string }[]
@@ -50,7 +48,7 @@ function JourneyPanel({ data }: { data: LivelyData }) {
       ? { to: '/grades', label: 'Update your grades', detail: `${data.subjectsCount} subjects are ready to track`, icon: TASK_ICONS.subjects }
       : { to: '/grades', label: 'Add your subjects', detail: 'Start tracking your CBC progress', icon: TASK_ICONS.subjects },
     data.quizDone
-      ? { to: '/assessment/results', label: 'Explore matched careers', detail: data.topPathway ? `Start with ${data.topPathway.name}` : 'See your best-fit pathways', icon: TASK_ICONS.explore }
+      ? { to: '/assessment/results', label: 'Explore career ideas', detail: data.topPathway ? `Start with ${data.topPathway.name}` : 'See your interest-aligned pathways', icon: TASK_ICONS.explore }
       : { to: '/assessment', label: 'Take the career quiz', detail: 'Discover your natural strengths', icon: TASK_ICONS.quiz },
   ]
 
@@ -144,23 +142,23 @@ export default function LivelyStudentDashboard(data: LivelyData) {
 
           <article className="lv-card lv-card--pathway lv-anim" style={{ ['--i' as string]: 3 }}>
             <div className="lv-card__head">
-              <div><span className="lv-card__eyebrow">Direction</span><h3>Best-fit pathways</h3></div>
+              <div><span className="lv-card__eyebrow">Direction</span><h3>Interest-aligned pathways</h3></div>
             </div>
-            {data.pathwaySlices && data.topPathway ? (
-              <>
-                <Suspense fallback={<ChartSkeleton />}>
-                  <PathwayDonut data={data.pathwaySlices} topLabel={data.topPathway.name} topValue={data.topPathway.pct} />
-                </Suspense>
+            {data.pathways && data.topPathway ? (
+              <div>
+                <p className="lv-pathway-advisory">
+                  These suggestions are starting points for exploration, not predictions or placements.
+                </p>
                 <div className="lv-legend">
-                  {data.pathwaySlices.map((slice, index) => (
-                    <span key={slice.name} className="lv-legend__item">
+                  {data.pathways.map((pathway, index) => (
+                    <span key={pathway.name} className="lv-legend__item">
                       <i className={`lv-legend__dot lv-legend__dot--${index}`} />
-                      <span>{slice.name}</span>
-                      <strong>{slice.value}%</strong>
+                      <span>{pathway.name}</span>
+                      <strong>{pathway.rank === 1 ? 'Strongest alignment' : `Explore #${pathway.rank}`}</strong>
                     </span>
                   ))}
                 </div>
-              </>
+              </div>
             ) : <EmptyChart kind="quiz" />}
           </article>
 

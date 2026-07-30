@@ -73,7 +73,7 @@ export default function ParentDashboard() {
                     <div style={{ padding: 'var(--space-3)', background: 'var(--color-primary-surface)', borderRadius: 'var(--radius-md)' }}>
                       <div style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{child.top_pathway}</div>
                       <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                        Top career pathway · {child.fit_pct}% fit
+                        Strongest interest alignment
                       </div>
                     </div>
                   ) : (

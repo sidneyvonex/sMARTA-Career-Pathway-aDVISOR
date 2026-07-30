@@ -78,6 +78,13 @@ describe('StudentListPage', () => {
     renderPage()
     expect(await screen.findByText(/2 students assigned/)).toBeInTheDocument()
   })
+
+  it('shows ranked interest alignment without a fit percentage', async () => {
+    renderPage()
+    expect(await screen.findByRole('columnheader', { name: 'Interest alignment' })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: /fit/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('73%')).not.toBeInTheDocument()
+  })
 })
 
 describe('StudentDetailPage', () => {

@@ -22,7 +22,7 @@ function getNextStep(flags: {
   if (!flags.profileComplete) {
     return {
       title: 'Complete your profile',
-      desc: 'Tell us about yourself — your grade, interests, and county — so we can match you with the right career paths.',
+      desc: 'Tell us about yourself — your grade, interests, and county — so we can suggest career paths to explore.',
       cta: 'Complete profile',
       to: '/profile',
     }
@@ -30,7 +30,7 @@ function getNextStep(flags: {
   if (!flags.hasSubjects) {
     return {
       title: 'Add your subjects',
-      desc: 'Select the subjects you\'re taking this year. We\'ll use them alongside your quiz results to refine your career matches.',
+      desc: 'Select the subjects you\'re taking this year. We\'ll use them alongside your quiz results to support your exploration.',
       cta: 'Choose subjects',
       to: '/grades',
     }
@@ -38,14 +38,14 @@ function getNextStep(flags: {
   if (!flags.quizDone) {
     return {
       title: 'Take the career quiz',
-      desc: 'Answer 30 quick questions about what you enjoy. We\'ll map your personality to careers that fit you best.',
+      desc: 'Answer 30 quick questions about what you enjoy. We\'ll identify career ideas related to those interests.',
       cta: 'Start the quiz',
       to: '/assessment',
     }
   }
   return {
     title: 'Explore your results',
-    desc: 'Your career personality is ready. See which pathways match you best and what they look like in practice.',
+    desc: 'Your career personality is ready. Explore pathways connected to your interests and see what they involve.',
     cta: 'See my results',
     to: '/assessment/results',
   }

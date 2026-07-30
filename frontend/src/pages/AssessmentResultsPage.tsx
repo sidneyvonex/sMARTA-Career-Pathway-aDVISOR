@@ -23,7 +23,7 @@ export default function AssessmentResultsPage() {
         <div className="assessment-empty">
           <span aria-hidden="true">✦</span>
           <h1>Your career profile starts here</h1>
-          <p>Complete the quiz to reveal your interest shape and best-fit CBC pathways.</p>
+          <p>Complete the quiz to reveal your interest shape and pathways to explore.</p>
           <button type="button" className="assessment-button" onClick={() => navigate('/assessment')}>
             Take the Assessment
           </button>
@@ -33,7 +33,7 @@ export default function AssessmentResultsPage() {
   }
 
   const result = data.data.data
-  const topMatch = result.recommendations[0]
+  const firstSuggestion = result.recommendations[0]
 
   return (
     <div className="assessment-page assessment-page--results">
@@ -42,8 +42,8 @@ export default function AssessmentResultsPage() {
           <span className="assessment-eyebrow">Your career profile</span>
           <h1>Your interests have a shape.</h1>
           <p>
-            {topMatch
-              ? `${topMatch.pathway.name} is currently your strongest pathway match.`
+            {firstSuggestion
+              ? `${firstSuggestion.pathway.name} currently has the strongest alignment with your stated interests.`
               : 'Your RIASEC scores show the kinds of work and learning that may suit you.'}
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function AssessmentResultsPage() {
           <div className="results-panel__heading">
             <div>
               <span className="assessment-eyebrow">Direction</span>
-              <h2>Best-fit pathways</h2>
+              <h2>Pathways to explore</h2>
             </div>
             <span className="results-panel__spark" aria-hidden="true">✦</span>
           </div>

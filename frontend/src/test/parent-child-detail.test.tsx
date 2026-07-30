@@ -55,8 +55,10 @@ describe('ChildDetailPage', () => {
   it('renders career pathways', async () => {
     renderPage()
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
-    expect(screen.getByText('90%')).toBeInTheDocument()
+    expect(screen.getByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(screen.queryByText('90%')).not.toBeInTheDocument()
     expect(screen.getByText('Medicine')).toBeInTheDocument()
+    expect(screen.getByText(/starting points for discussion/i)).toBeInTheDocument()
   })
 
   it('renders subjects with grade badges', async () => {

@@ -42,8 +42,8 @@ const VALUES = [
     ),
   },
   {
-    title: 'No pay-to-recommend',
-    body: 'Pathway matches come from your RIASEC score, not from anyone paying for placement.',
+    title: 'No pay-to-promote',
+    body: 'Pathway suggestions come from your RIASEC interest pattern, not from anyone paying for promotion or placement.',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
         <path d="M12 3v18M5 8l7-5 7 5M5 8v8a2 2 0 002 2h10a2 2 0 002-2V8" />
@@ -80,7 +80,7 @@ export default function AboutPage() {
             <p>
               Smarta Shauri started with one frustrating form: the CBC subject selection sheet.
               Too many students filled it in based on what a friend picked, or what a parent
-              insisted on — not what actually fit them. We built something better.
+              insisted on — not what they had a chance to explore. We built something better.
             </p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Get Started</Link>

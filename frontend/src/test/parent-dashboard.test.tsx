@@ -57,6 +57,12 @@ describe('ParentDashboard', () => {
     expect(await screen.findByText(/Grade 10/)).toBeInTheDocument()
   })
 
+  it('describes the top pathway as an advisory interest alignment without a percentage', async () => {
+    renderDashboard()
+    expect(await screen.findByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(screen.queryByText(/% fit/i)).not.toBeInTheDocument()
+  })
+
   it('shows link to each child detail', async () => {
     renderDashboard()
     const links = await screen.findAllByRole('link', { name: /view profile/i })

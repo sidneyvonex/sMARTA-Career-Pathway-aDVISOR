@@ -16,6 +16,12 @@ export default function RecommendationCards({ recommendations, hollandCode, hide
         <p>Your Holland Code</p>
       </div>}
 
+      <p className="recommendation-advisory">
+        These interest-aligned pathways are starting points for exploration. They do not predict
+        success or decide placement; use them alongside your subjects, goals, opportunities, and
+        guidance from a counsellor.
+      </p>
+
       <div className="recommendation-cards">
         {recommendations.map((rec) => (
           <div
@@ -30,20 +36,9 @@ export default function RecommendationCards({ recommendations, hollandCode, hide
               </div>
               <span className="recommendation-name">{rec.pathway.name}</span>
             </div>
-            <div
-              className="recommendation-fit-bar"
-              role="progressbar"
-              aria-valuenow={rec.fit_pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Fit: ${rec.fit_pct}%`}
-            >
-              <div
-                className="recommendation-fit-fill"
-                style={{ width: `${rec.fit_pct}%` }}
-              />
-            </div>
-            <p className="recommendation-fit-pct">{rec.fit_pct}% match</p>
+            <p className="recommendation-fit-pct">
+              {rec.rank === 1 ? 'Strongest interest alignment' : 'Suggested for exploration'}
+            </p>
             <p className="recommendation-description">{rec.pathway.description}</p>
           </div>
         ))}

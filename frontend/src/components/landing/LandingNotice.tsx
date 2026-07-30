@@ -11,9 +11,10 @@ export default function LandingNotice() {
           </span>
         </h2>
         <p className="landing-section__lede" style={{ marginTop: '1rem', maxWidth: '60ch' }}>
-          Smarta Shauri helps you understand your RIASEC results, your CBC pathway fit, and
-          your subject options. It is a decision-support tool, not a government system — it
-          doesn&apos;t submit anything to KNEC or the Ministry of Education on your behalf.
+          Smarta Shauri helps you understand your RIASEC interests, explore CBC pathways, and
+          review your subject options. It does not predict success or make placement decisions.
+          It is a decision-support tool, not a government system — it doesn&apos;t submit anything
+          to KNEC or the Ministry of Education on your behalf.
         </p>
 
         <div className="landing-notice__grid">
@@ -35,7 +36,7 @@ export default function LandingNotice() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
-                Ranks the 3 CBC pathways by how well they fit you
+                Ranks the 3 CBC pathways by alignment with the interests you shared
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -78,7 +79,7 @@ export default function LandingNotice() {
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
                 Final placement weighs your choices, KJSEA performance, equity, and school
-                capacity — not just interest fit
+                capacity — an interest-alignment ranking is only an exploration aid
               </li>
             </ul>
           </div>

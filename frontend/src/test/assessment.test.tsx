@@ -120,9 +120,16 @@ describe('RecommendationCards', () => {
     expect(screen.getByText('Arts & Sports Science')).toBeInTheDocument()
   })
 
-  it('shows fit percentages', () => {
+  it('presents ranked interest alignment without exposing fit percentages', () => {
     render(<RecommendationCards recommendations={mockRecs} hollandCode="IRE" />, { wrapper: Wrapper })
-    expect(screen.getByText('73% match')).toBeInTheDocument()
-    expect(screen.getAllByText('59% match')).toHaveLength(2)
+    expect(screen.getByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(screen.getAllByText('Suggested for exploration')).toHaveLength(2)
+    expect(screen.queryByText(/73%|59%|match/i)).not.toBeInTheDocument()
+  })
+
+  it('explains that pathway suggestions are advisory', () => {
+    render(<RecommendationCards recommendations={mockRecs} hollandCode="IRE" />, { wrapper: Wrapper })
+    expect(screen.getByText(/starting points for exploration/i)).toBeInTheDocument()
+    expect(screen.getByText(/do not predict success or decide placement/i)).toBeInTheDocument()
   })
 })

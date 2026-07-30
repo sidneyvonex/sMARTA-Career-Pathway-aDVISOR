@@ -136,7 +136,11 @@ export default function ChildDetailPage() {
       {/* Career Pathways */}
       {assessment && assessment.recommendations.length > 0 && (
         <div className="child-detail__section">
-          <h2 className="child-detail__section-title">Best career pathways</h2>
+          <h2 className="child-detail__section-title">Pathways to explore</h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>
+            These interest-aligned suggestions are starting points for discussion. They do not
+            predict success or determine placement.
+          </p>
           {assessment.recommendations.map((rec) => (
             <div className="pathway-row" key={rec.rank}>
               <div className={`pathway-row__rank pathway-row__rank--${rec.rank}`}>
@@ -146,7 +150,9 @@ export default function ChildDetailPage() {
                 <div className="pathway-row__name">{rec.pathway.name}</div>
                 <div className="pathway-row__desc">{rec.pathway.description}</div>
               </div>
-              <div className="pathway-row__pct">{rec.fit_pct}%</div>
+              <div className="pathway-row__pct">
+                {rec.rank === 1 ? 'Strongest interest alignment' : 'Suggested for exploration'}
+              </div>
             </div>
           ))}
         </div>

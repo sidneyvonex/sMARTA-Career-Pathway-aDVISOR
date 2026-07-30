@@ -14,8 +14,8 @@ export default function LandingSpotlight() {
         <span className="landing-eyebrow">Featured &middot; Free assessment</span>
         <h3 className="landing-featured__title">The RIASEC Assessment.</h3>
         <p className="landing-featured__desc">
-          Answer questions about your interests and get ranked pathway recommendations based
-          on how you scored across all 6 RIASEC dimensions.
+          Answer questions about your interests and see pathways suggested for exploration
+          from your scores across all 6 RIASEC dimensions.
         </p>
         <div className="landing-featured__stats">
           <div>
@@ -32,7 +32,7 @@ export default function LandingSpotlight() {
           </div>
         </div>
         <p className="landing-featured__statement">
-          One assessment. Three ranked pathways. Zero guesswork.
+          One assessment. Three pathways to explore. A clearer conversation.
         </p>
         <Link to="/register" className="mk-btn mk-btn-dark landing-featured__cta">
           Start Assessment
