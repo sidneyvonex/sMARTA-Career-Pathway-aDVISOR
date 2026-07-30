@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
 
-**Next:** Task 7.2 school dashboard redesign
+**Next:** Task 7.3 responsive student and counsellor management
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -51,6 +51,7 @@
 | `578f7b0` | Learner intervention context and visibility-filtered counsellor, learner and parent APIs |
 | `8fdfd46` | Responsive counsellor caseload, intervention workspace and shared agreed-action views |
 | `da44227` | School-scoped learner-link approval queue with audit history and notifications |
+| `ab4d5be` | Evidence-led school operations dashboard with cohort and workload metrics |
 
 ## 1. How to use this plan
 
@@ -1259,14 +1260,27 @@ Verification:
 
 Show:
 
-- pending link requests;
-- total approved students;
-- unassigned learners;
-- counsellor workload;
-- evidence completion;
-- plans completed;
-- review completion;
-- school offerings status.
+- [x] pending link requests;
+- [x] total approved students;
+- [x] unassigned learners;
+- [x] counsellor workload;
+- [x] evidence completion;
+- [x] plans completed;
+- [x] review completion;
+- [x] school offerings status.
+
+Verification:
+
+- Dashboard uses the shared authenticated design system and identifies the five-county pilot.
+- Operational counts distinguish pending school links from approved learners and unassigned approved learners.
+- Evidence ready requires grades across at least three enrolled subjects; assessment, choice, plan and review counts are derived independently.
+- Counsellor workload counts only active assignments for approved learners at the school.
+- Offerings readiness counts active school combinations in the current framework.
+- Focused backend dashboard metrics suite: 3 tests passed.
+- School dashboard, shared-primitives, role-dashboard and shell frontend regression: 32 tests passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `ab4d5be`.
 
 ### Task 7.3 - Redesign students and counsellors
 
