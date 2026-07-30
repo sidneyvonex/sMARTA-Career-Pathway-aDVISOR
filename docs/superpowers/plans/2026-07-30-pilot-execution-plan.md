@@ -11,7 +11,7 @@
 
 **Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 pilot framework and combination domain; Sprint 4 complete learner evidence, interest, comparison and action-plan journey; Sprint 5 learner-approved parent access, support dashboard and child detail; Sprint 6 reason-led counsellor intervention workflow
 
-**Next:** Task 7.3 responsive student and counsellor management
+**Next:** Task 7.4 school offerings page
 
 **Outstanding baseline check:** Full backend regression suite (Task 3.2 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests during Task 3.1)
 
@@ -52,6 +52,7 @@
 | `8fdfd46` | Responsive counsellor caseload, intervention workspace and shared agreed-action views |
 | `da44227` | School-scoped learner-link approval queue with audit history and notifications |
 | `ab4d5be` | Evidence-led school operations dashboard with cohort and workload metrics |
+| `7ac4f68` | Responsive learner and counsellor management with safe bulk assignment |
 
 ## 1. How to use this plan
 
@@ -1284,12 +1285,27 @@ Verification:
 
 ### Task 7.3 - Redesign students and counsellors
 
-- shared responsive data-list component;
-- search/filter;
-- explicit assignment status;
-- bulk assignment where safe;
-- useful zero/error states;
-- workload counts.
+- [x] shared responsive data-list component;
+- [x] search/filter;
+- [x] explicit assignment status;
+- [x] bulk assignment where safe;
+- [x] useful zero/error states;
+- [x] workload counts.
+
+Verification:
+
+- Learner and counsellor management both use the shared responsive data-list that converts rows into labelled mobile cards.
+- Learners can be searched and filtered by assignment, assessment and pending school-link status.
+- Membership and assignment states are explicit; pending or rejected learners cannot be assigned or have reports downloaded.
+- Counsellor search and learner-count workload indicators remain visible before assignment.
+- Bulk assignment is limited to 1-50 unique, approved, unassigned learners at the administrator's school and is atomic.
+- Invalid, duplicate, pending, cross-school or already-assigned selections cause no partial assignments.
+- Focused backend bulk-assignment safety suite: 8 tests passed.
+- School-management, shared-data-list and shell frontend regression: 29 tests passed.
+- Django system check: passed.
+- Strict TypeScript check: passed.
+- Diff whitespace check: passed.
+- Commit: `7ac4f68`.
 
 ### Task 7.4 - Build school offerings page
 
