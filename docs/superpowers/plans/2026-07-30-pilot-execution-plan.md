@@ -9,11 +9,11 @@
 
 **Active sprint:** Sprint 3 - Pilot framework and combination domain
 
-**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system
+**Completed:** Sprint 0 implementation baseline; Sprint 1 correctness and safety blockers; Sprint 2 shared authenticated design system; Sprint 3 Task 3.1 guidance domain foundation
 
-**Next:** Task 3.1 guidance app and framework models
+**Next:** Task 3.2 curated pilot catalogue seed
 
-**Outstanding baseline check:** Full backend regression suite (focused grade/student/report suites pass)
+**Outstanding baseline check:** Full backend regression suite (Task 3.1 focused and affected-domain suites pass; the full run exceeded the 120-second command window after 57 passing tests)
 
 | Commit | Delivered change |
 |---|---|
@@ -29,6 +29,7 @@
 | `ba721c6` | Shared, role-aware dashboard primitives with parent and counsellor adoption |
 | `3204ce1` | Standardized authenticated shell, route context, mobile navigation and offline status |
 | `2897357` | Application and route error boundaries with retryable query recovery |
+| `ea4e7ab` | Source-dated guidance framework, pathway tracks, three-subject combinations and school offerings |
 
 ## 1. How to use this plan
 
@@ -569,6 +570,15 @@ Tests:
 - unique code per framework version;
 - active-version behavior;
 - school offering uniqueness.
+
+Verification:
+
+- Guidance model contract: 15 tests passed.
+- Affected accounts, students, RIASEC, school-admin and shared-factory regressions: 66 tests passed including the guidance contract.
+- Django system check: no issues.
+- Guidance migration drift check: no changes detected.
+- Full backend run: exceeded the 120-second command window after 57 passing tests with no failure reported; the full-suite baseline remains outstanding.
+- Commit: `ea4e7ab`.
 
 ### Task 3.2 - Seed the curated pilot catalogue
 
