@@ -1,11 +1,31 @@
 # Content Audit
 
 **Baseline:** `origin/main` at `65fd088f9af97fddaea208796aca265ae9310c70`
-**Status:** Inventory pending
+**Status:** Initial claim inventory in progress
 
 | ID | Page or file | Audience | Claim | Source | Status | Risk | Required fix |
 |---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — |
+| AUD-CONTENT-001 | `frontend/src/components/landing/LandingNotice.tsx:74` | Learner and parent | Official Senior School choices are submitted at `placements.education.go.ke`, presented through an “Apply officially” action. | Current Ministry selection and placement platforms checked 2026-07-31. | `CONTRADICTED` | Critical: the app sends a learner to the wrong hostname. The official selection service is `selection.education.go.ke`; placement outcomes use `placement.education.go.ke`. | Replace the plural hostname everywhere, distinguish selection from placement outcomes and add a checked date near the external action. |
+| AUD-CONTENT-002 | `frontend/src/components/landing/LandingCommunity.tsx:60` | All public visitors | Every pictured and named school is real and lies within the supported five-county region. | Image credits exist separately, but the claim has no per-school verification record or checked date. | `UNSUPPORTED` | The product makes a factual institutional claim it cannot currently trace. Photos and captions may also imply school participation or endorsement. | Add provenance and a non-affiliation explanation per item, or replace the section with clearly labelled illustrative material. |
+| AUD-CONTENT-003 | `frontend/src/components/landing/LandingNotice.tsx:81` | Learner and parent | Final placement weighs choices, KJSEA performance, equity and school capacity. | No citation stored with the claim. | `UNVERIFIED` | Placement criteria can change by cohort; incomplete wording may influence real choices. | Verify against the current MoE placement communication and date-stamp the explanation. |
+| AUD-CONTENT-004 | `backend/guidance/migrations/0002_seed_pilot_catalogue.py:10` | All catalogue consumers | The curated catalogue was verified against the Ministry’s subject-combination list on 2026-07-30. | One KEMIS-hosted PDF URL is stored at framework level; no research-log entry or per-record verification evidence existed at audit start. | `UNVERIFIED` | A database description asserts verification more strongly than the available audit trail supports. | Recheck the source, log the evidence, and attach provenance to each imported combination. |
+| AUD-CONTENT-005 | Public and authenticated guidance pages | Learner, parent and counsellor | Smarta Shauri is advisory and does not predict success, perform placement or submit official choices. | Internal product positioning; consistently visible in reviewed pages. | `VERIFIED` | Positive safeguard; regression could reintroduce misleading claims. | Retain and cover the disclaimer in content tests. |
+| AUD-CONTENT-006 | `frontend/src/components/landing/LandingHero.tsx:9` | Learner and parent | The pilot is for “Form 2–4 learners.” | The official selection system describes Grade 9 learners transitioning to Grade 10; the application model supports Grades 9 and 10. | `CONTRADICTED` | The terminology targets the wrong cohort and mixes the former form system with CBE grade terminology. | Replace with the verified pilot audience after the five-county scope is confirmed; at minimum use “Grade 9–10 learners” for the implemented product. |
+| AUD-CONTENT-007 | `frontend/src/pages/AboutPage.tsx:9` | Public visitors and schools | Registration is “county-verified.” | Current code accepts a county choice but contains no county-verification process. | `CONTRADICTED` | Users may believe their residence or eligibility was independently checked. | Use “county-limited” or explain the actual validation performed. |
+| AUD-CONTENT-008 | `backend/students/migrations/0005_correct_grade10_catalogue.py:9` | Learners, parents, counsellors and reports | Physical Education is core, while Core/Essential Mathematics are elective. | KICD Grade 10 addendum, December 2025, checked 2026-07-31. | `CONTRADICTED` | Incorrect curriculum classification can distort guidance and subject summaries. | Correct the data model and content without preventing Mathematics from appearing in official subject combinations. |
+
+## Implemented corrections
+
+- **AUD-CONTENT-001:** corrected public selection links to
+  `https://selection.education.go.ke`, added the verified official catalogue
+  and separated the placement-outcome action.
+- **AUD-CONTENT-006:** changed the public audience label from Forms 2–4 to
+  Grades 9–10.
+- **AUD-CONTENT-007:** changed “county-verified” to “county-limited” because the
+  application does not independently verify residence.
+
+These corrections were verified by 14 focused frontend tests and a successful
+production build on 2026-07-31.
 
 ## Priority checks
 
