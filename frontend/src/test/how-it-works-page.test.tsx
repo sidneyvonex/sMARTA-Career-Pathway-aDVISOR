@@ -28,5 +28,5 @@ test('How It Works shows the implemented five-stage learner journey', () => {
   ;['Evidence', 'Interests', 'Compare', 'Plan', 'Review'].forEach((step) =>
     expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
   )
-  expect(screen.getAllByText(/five-county pilot/i).length).toBeGreaterThan(0)
+  expect(screen.getAllByText(/five-county rollout/i).length).toBeGreaterThan(0)
 })
