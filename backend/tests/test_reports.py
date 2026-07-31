@@ -64,7 +64,6 @@ class TestPDFBuilder:
                 {
                     'rank': 1,
                     'pathway_name': 'Science & Technology',
-                    'fit_pct': 87,
                     'algorithm_version': 'interest-alignment-1.0',
                     'explanation': {
                         'summary': 'Science & Technology aligns with Investigative interests.',
@@ -72,8 +71,8 @@ class TestPDFBuilder:
                         'next_step': 'Review academic evidence and school offerings.',
                     },
                 },
-                {'rank': 2, 'pathway_name': 'Engineering', 'fit_pct': 72},
-                {'rank': 3, 'pathway_name': 'Business Studies', 'fit_pct': 65},
+                {'rank': 2, 'pathway_name': 'Engineering'},
+                {'rank': 3, 'pathway_name': 'Business Studies'},
             ],
             'evidence_summary': {
                 'subjects_with_evidence': 2,

@@ -282,7 +282,7 @@ class LearnerCombinationChoice(models.Model):
             or not combination.track.is_active
         ):
             raise ValidationError({
-                'combination': 'Choose an active combination from the current pilot framework.'
+                'combination': 'Choose an active combination from the current guidance framework.'
             })
 
     def __str__(self):

@@ -89,7 +89,7 @@ export default function PathwaysPage() {
           <div className="mk-hero__side">
             <p>
               Explore current pathway tracks, illustrative subjects and possible directions
-              in the five-county pilot.
+              in the project&apos;s five-county rollout.
             </p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Take the assessment</Link>
@@ -102,7 +102,7 @@ export default function PathwaysPage() {
       <section className="mk-section mk-section--tight" aria-labelledby="current-catalogue-title">
         <div className="mk-catalogue-provenance">
           <div>
-            <span className="mk-eyebrow">Current pilot catalogue</span>
+            <span className="mk-eyebrow">Current curated catalogue</span>
             <h2 id="current-catalogue-title">
               {catalogueQ.data?.framework.title ?? 'Loading current framework'}
             </h2>

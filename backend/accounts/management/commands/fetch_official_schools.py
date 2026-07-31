@@ -17,7 +17,7 @@ from accounts.official_school_data import (
 
 
 class Command(BaseCommand):
-    help = 'Fetch a dated Ministry school-identity snapshot for pilot counties.'
+    help = 'Fetch a dated Ministry school-identity snapshot for rollout counties.'
 
     def add_arguments(self, parser):
         parser.add_argument('--output', required=True)
@@ -165,4 +165,3 @@ class Command(BaseCommand):
         if sub_county not in existing['sub_counties']:
             existing['sub_counties'].append(sub_county)
             existing['sub_counties'].sort()
-

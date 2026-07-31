@@ -34,8 +34,6 @@ export interface Pathway {
 
 export interface AssessmentRecommendation {
   rank: number
-  fit_score: number
-  fit_pct: number
   algorithm_version?: string
   explanation?: {
     summary: string

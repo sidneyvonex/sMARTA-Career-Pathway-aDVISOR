@@ -92,11 +92,11 @@ export default function SystemAdminDashboard() {
         tone="system"
         eyebrow="System administration"
         title="System Admin Dashboard"
-        description="Monitor the five-county pilot, current guidance framework and important operational events."
+        description="Monitor the five-county project rollout, current guidance framework and important operational events."
         meta={[
           `${stats.total_schools} active schools`,
           `${stats.registered_learners} registered learners`,
-          'Five pilot counties',
+          'Five rollout counties',
         ]}
         actions={[
           { label: 'Create School', to: '/system-admin/schools?create=1' },
@@ -118,8 +118,8 @@ export default function SystemAdminDashboard() {
           <MetricCard label="Pending school links" value={stats.pending_school_links} detail="Awaiting school decision" tone="warning" />
           <MetricCard label="Assignment coverage" value={`${stats.assignment_coverage.percent}%`} detail={`${stats.assignment_coverage.assigned} of ${stats.assignment_coverage.eligible}`} tone="info" />
           <MetricCard label="Plans completed" value={stats.plans_completed} detail="Counsellor reviewed" tone="positive" />
-          <MetricCard label="Schools" value={stats.total_schools} detail="Active pilot schools" to="/system-admin/schools" tone="info" />
-          <MetricCard label="Counselors" value={roles.counselor ?? 0} detail="Across pilot schools" to="/system-admin/users?role=counselor" tone="neutral" />
+          <MetricCard label="Schools" value={stats.total_schools} detail="Active rollout schools" to="/system-admin/schools" tone="info" />
+          <MetricCard label="Counselors" value={roles.counselor ?? 0} detail="Across rollout schools" to="/system-admin/users?role=counselor" tone="neutral" />
           <MetricCard label="Parents" value={roles.parent ?? 0} detail="Supporter accounts" to="/system-admin/users?role=parent" tone="neutral" />
         </div>
       </section>
@@ -129,7 +129,7 @@ export default function SystemAdminDashboard() {
           eyebrow="Pilot footprint"
           title="Schools by County"
           titleId="county-title"
-          description="Learners and active schools remain limited to the five pilot counties."
+          description="This project currently limits registration and school discovery to five rollout counties."
         />
         <div className="pilot-admin__counties">
           {Object.entries(COUNTY_LABELS).map(([county, label]) => (
@@ -184,7 +184,7 @@ export default function SystemAdminDashboard() {
               time: formatTime(entry.created_at),
             }))}
             ariaLabel="Recent important audit events"
-            empty={<EmptyState title="No recent activity" description="Important pilot actions will appear here." />}
+            empty={<EmptyState title="No recent activity" description="Important rollout actions will appear here." />}
           />
         </section>
       </div>

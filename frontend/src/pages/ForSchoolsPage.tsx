@@ -3,7 +3,7 @@ import PublicNav from '../components/marketing/PublicNav'
 import PublicFooter from '../components/marketing/PublicFooter'
 import '../styles/marketing.css'
 
-const SCHOOL_MAILTO = 'mailto:schools@smartashauri.app?subject=Smarta%20Shauri%20five-county%20pilot'
+const SCHOOL_MAILTO = 'mailto:schools@smartashauri.app?subject=Smarta%20Shauri%20school%20rollout'
 
 const WORKFLOW = [
   {
@@ -57,8 +57,8 @@ const OPERATIONS = [
 
 const BOUNDARIES = [
   {
-    title: 'Pilot geography',
-    body: "The final-project pilot is limited to Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua.",
+    title: 'Current project geography',
+    body: "The project rollout is currently limited to Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua. This is a product boundary, not a Ministry pilot designation.",
   },
   {
     title: 'Advisory guidance',
@@ -66,7 +66,7 @@ const BOUNDARIES = [
   },
   {
     title: 'Official selection stays official',
-    body: 'Smarta Shauri does not submit Senior School choices. Learners still use the official placement service.',
+    body: 'Smarta Shauri does not submit Senior School choices. Learners still use the official Ministry selection service.',
   },
 ]
 
@@ -89,7 +89,7 @@ const FAQS = [
   {
     question: 'Is this a national rollout?',
     answer:
-      "No. This is a five-county final-project pilot for Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua.",
+      "No. The current project rollout covers Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua.",
   },
 ]
 
@@ -102,7 +102,7 @@ export default function ForSchoolsPage() {
       <section className="mk-hero">
         <div className="mk-hero__grid">
           <div>
-            <span className="mk-eyebrow">For pilot schools</span>
+            <span className="mk-eyebrow">For rollout schools</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               One journey.
               <span className="mk-script"> Clear handoffs.</span>
@@ -111,10 +111,10 @@ export default function ForSchoolsPage() {
           <div className="mk-hero__side">
             <p>
               Run learner approval, counsellor assignment, evidence review and subject
-              combination planning in one accountable five-county pilot workflow.
+              combination planning in one accountable five-county project workflow.
             </p>
             <div className="mk-hero__ctas">
-              <a className="mk-btn mk-btn-dark" href={SCHOOL_MAILTO}>Discuss the pilot</a>
+              <a className="mk-btn mk-btn-dark" href={SCHOOL_MAILTO}>Discuss the rollout</a>
               <Link className="mk-btn mk-btn-outline" to="/how-it-works">See the learner journey</Link>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function ForSchoolsPage() {
             Practical pilot controls.
           </h2>
           <p className="mk-section__lede" style={{ marginTop: '1rem' }}>
-            These capabilities are implemented in the current pilot and available through role-based dashboards.
+            These capabilities are implemented in the current project and available through role-based dashboards.
           </p>
 
           <div className="mk-value-grid">

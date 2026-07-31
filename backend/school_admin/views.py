@@ -109,7 +109,7 @@ class SchoolOfferingsView(APIView):
         )
         if eligible_ids != set(combination_ids):
             return _error(
-                'Only active combinations from the current pilot framework '
+                'Only active combinations from the current guidance framework '
                 'can be selected.'
             )
 

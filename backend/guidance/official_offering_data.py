@@ -1,3 +1,6 @@
+from accounts.official_school_data import COUNTY_SUB_COUNTIES
+
+
 OFFICIAL_COMBINATIONS_ENDPOINT = (
     'https://selection.education.go.ke/api/open/subject-combinations-by-track'
 )
@@ -5,7 +8,7 @@ OFFICIAL_OFFERINGS_ENDPOINT = (
     'https://selection.education.go.ke/api/open/schools-by-combination'
 )
 
-ROLLOUT_COUNTIES = ('kiambu', 'muranga', 'nyeri', 'kirinyaga', 'nyandarua')
+ROLLOUT_COUNTIES = tuple(COUNTY_SUB_COUNTIES)
 
 # UUIDs are resolved from the Ministry's public combination endpoint. They are
 # source identifiers for queries, not locally invented catalogue identifiers.
@@ -65,4 +68,3 @@ OFFICIAL_COMBINATIONS = {
         'title': 'Biology,Geography,Sports & Recreation',
     },
 }
-

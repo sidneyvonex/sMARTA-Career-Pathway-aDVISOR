@@ -33,6 +33,9 @@ export interface SchoolItem {
   email: string
   logo_url: string | null
   is_active: boolean
+  verification_status: 'unverified' | 'verified' | 'demonstration'
+  source_url: string
+  source_checked_at: string | null
   student_count: number
   counselor_count: number
 }

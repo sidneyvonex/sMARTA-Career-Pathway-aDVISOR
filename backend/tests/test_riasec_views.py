@@ -101,12 +101,14 @@ class TestAssessmentSubmitView:
         assert len(recs) == 3
         assert [rec['rank'] for rec in recs] == [1, 2, 3]
 
-    def test_each_recommendation_has_fit_pct(self, verified_profile):
+    def test_public_recommendations_do_not_expose_numeric_fit(self, verified_profile):
         c = make_auth_client(verified_profile.user)
         r = c.post('/api/v1/students/assessment/', {'responses': all_responses(3)}, format='json')
         for rec in r.data['data']['recommendations']:
-            assert 'fit_pct' in rec
-            assert 0 <= rec['fit_pct'] <= 100
+            assert 'fit_pct' not in rec
+            assert 'fit_score' not in rec
+            assert 'rank' in rec
+            assert 'explanation' in rec
 
     def test_scores_and_recommendations_saved_to_db(self, verified_profile):
         from riasec.models import RIASECAssessment, RIASECScore, Recommendation

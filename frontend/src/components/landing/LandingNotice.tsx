@@ -78,8 +78,8 @@ export default function LandingNotice() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
-                Final placement weighs your choices, KJSEA performance, equity, and school
-                capacity — an interest-alignment ranking is only an exploration aid
+                The Ministry handles final placement. Confirm the current cohort&apos;s criteria,
+                deadlines, and results on its official services
               </li>
             </ul>
           </div>

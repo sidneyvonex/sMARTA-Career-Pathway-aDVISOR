@@ -252,7 +252,7 @@ export default function LearnerPlanPage() {
                   value={milestoneTitle}
                   onChange={(event) => setMilestoneTitle(event.target.value)}
                   maxLength={160}
-                  placeholder="For example, review two pilot schools"
+                  placeholder="For example, review two rollout schools"
                   required
                 />
               </label>
