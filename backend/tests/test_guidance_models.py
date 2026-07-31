@@ -70,14 +70,25 @@ class TestPathwayTrack:
 
 
 class TestSubjectCombination:
-    def test_combination_has_exactly_three_distinct_elective_subjects(self):
+    def test_combination_has_exactly_three_distinct_selectable_subjects(self):
         combination = SubjectCombinationFactory()
 
         subjects = combination.subjects
         assert len(subjects) == 3
         assert len({subject.pk for subject in subjects}) == 3
         assert all(subject.grade == 10 for subject in subjects)
-        assert all(subject.category == 'Elective' for subject in subjects)
+        assert all(subject.is_selectable_in_combination for subject in subjects)
+
+    def test_core_mathematics_can_be_used_in_a_combination(self):
+        combination = SubjectCombinationFactory()
+        combination.subject_one = SubjectFactory(
+            grade=10,
+            category='Core',
+            is_selectable_in_combination=True,
+        )
+        combination.related_routes = ['Mathematics-enabled route']
+
+        combination.full_clean()
 
     def test_seeded_pilot_combination_has_related_routes(self):
         combination = SubjectCombination.objects.get(code='ST1042')
@@ -97,12 +108,26 @@ class TestSubjectCombination:
     @pytest.mark.parametrize(
         ('subject_overrides', 'expected_message'),
         [
-            ({'grade': 9, 'category': 'Elective'}, 'Grade 10'),
-            ({'grade': 10, 'category': 'Core'}, 'elective'),
-            ({'grade': 10, 'category': 'Elective', 'is_active': False}, 'active'),
+            (
+                {'grade': 9, 'category': 'Elective', 'is_selectable_in_combination': True},
+                'Grade 10',
+            ),
+            (
+                {'grade': 10, 'category': 'Core', 'is_selectable_in_combination': False},
+                'selectable',
+            ),
+            (
+                {
+                    'grade': 10,
+                    'category': 'Elective',
+                    'is_selectable_in_combination': True,
+                    'is_active': False,
+                },
+                'active',
+            ),
         ],
     )
-    def test_subjects_must_be_active_grade_10_electives(
+    def test_subjects_must_be_active_grade_10_selectable_subjects(
         self,
         subject_overrides,
         expected_message,

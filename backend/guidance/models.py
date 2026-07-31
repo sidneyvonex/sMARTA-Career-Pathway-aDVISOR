@@ -156,8 +156,8 @@ class SubjectCombination(models.Model):
             messages = []
             if subject.grade != 10:
                 messages.append('Subject must be a Grade 10 subject.')
-            if subject.category.casefold() != 'elective':
-                messages.append('Subject must be an elective.')
+            if not subject.is_selectable_in_combination:
+                messages.append('Subject must be selectable in an official combination.')
             if not subject.is_active:
                 messages.append('Subject must be active.')
             if messages:

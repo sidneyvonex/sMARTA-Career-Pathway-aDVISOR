@@ -40,7 +40,8 @@ export interface GuidanceSubject {
   code: string
   name: string
   grade: 10
-  category: 'Elective'
+  category: 'Core' | 'Elective'
+  is_selectable_in_combination?: boolean
 }
 
 export interface GuidanceSchool {

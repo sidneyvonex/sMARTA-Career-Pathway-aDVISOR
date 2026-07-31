@@ -91,6 +91,7 @@ class SubjectFactory(factory.django.DjangoModelFactory):
     code = factory.Sequence(lambda n: f'TST{n:04d}9')
     grade = 9
     category = 'Core'
+    is_selectable_in_combination = False
 
 
 class StudentSubjectFactory(factory.django.DjangoModelFactory):
@@ -176,9 +177,24 @@ class SubjectCombinationFactory(factory.django.DjangoModelFactory):
     code = factory.Sequence(lambda n: f'COMBO-{n:04d}')
     title = factory.Sequence(lambda n: f'Pilot Combination {n}')
     description = 'Three-subject pilot combination.'
-    subject_one = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
-    subject_two = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
-    subject_three = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
+    subject_one = factory.SubFactory(
+        SubjectFactory,
+        grade=10,
+        category='Elective',
+        is_selectable_in_combination=True,
+    )
+    subject_two = factory.SubFactory(
+        SubjectFactory,
+        grade=10,
+        category='Elective',
+        is_selectable_in_combination=True,
+    )
+    subject_three = factory.SubFactory(
+        SubjectFactory,
+        grade=10,
+        category='Elective',
+        is_selectable_in_combination=True,
+    )
     is_active = True
 
 

@@ -12,7 +12,7 @@
 | AUD-CONTENT-005 | Public and authenticated guidance pages | Learner, parent and counsellor | Smarta Shauri is advisory and does not predict success, perform placement or submit official choices. | Internal product positioning; consistently visible in reviewed pages. | `VERIFIED` | Positive safeguard; regression could reintroduce misleading claims. | Retain and cover the disclaimer in content tests. |
 | AUD-CONTENT-006 | `frontend/src/components/landing/LandingHero.tsx:9` | Learner and parent | The pilot is for “Form 2–4 learners.” | The official selection system describes Grade 9 learners transitioning to Grade 10; the application model supports Grades 9 and 10. | `CONTRADICTED` | The terminology targets the wrong cohort and mixes the former form system with CBE grade terminology. | Replace with the verified pilot audience after the five-county scope is confirmed; at minimum use “Grade 9–10 learners” for the implemented product. |
 | AUD-CONTENT-007 | `frontend/src/pages/AboutPage.tsx:9` | Public visitors and schools | Registration is “county-verified.” | Current code accepts a county choice but contains no county-verification process. | `CONTRADICTED` | Users may believe their residence or eligibility was independently checked. | Use “county-limited” or explain the actual validation performed. |
-| AUD-CONTENT-008 | `backend/students/migrations/0005_correct_grade10_catalogue.py:9` | Learners, parents, counsellors and reports | Physical Education is core, while Core/Essential Mathematics are elective. | KICD Grade 10 addendum, December 2025, checked 2026-07-31. | `CONTRADICTED` | Incorrect curriculum classification can distort guidance and subject summaries. | Correct the data model and content without preventing Mathematics from appearing in official subject combinations. |
+| AUD-CONTENT-008 | `backend/students/migrations/0005_correct_grade10_catalogue.py:9` | Learners, parents, counsellors and reports | Physical Education was core, while Core/Essential Mathematics were elective. | KICD Grade 10 addendum, December 2025, checked 2026-07-31. | `FIXED` | Incorrect curriculum classification could distort guidance and subject summaries. | Implemented through a new curriculum-role/combination-selectability distinction and corrective data migration. |
 
 ## Implemented corrections
 
@@ -23,9 +23,12 @@
   Grades 9–10.
 - **AUD-CONTENT-007:** changed “county-verified” to “county-limited” because the
   application does not independently verify residence.
+- **AUD-CONTENT-008:** classified Core and Essential Mathematics as core,
+  Physical Education as separately required, and preserved Mathematics as
+  selectable within official subject combinations.
 
-These corrections were verified by 14 focused frontend tests and a successful
-production build on 2026-07-31.
+These corrections were verified by 14 focused frontend tests, 72 focused
+backend tests and a successful production build on 2026-07-31.
 
 ## Priority checks
 

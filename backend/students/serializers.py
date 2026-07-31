@@ -36,7 +36,15 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
-        fields = ('id', 'name', 'code', 'grade', 'category', 'is_active')
+        fields = (
+            'id',
+            'name',
+            'code',
+            'grade',
+            'category',
+            'is_active',
+            'is_selectable_in_combination',
+        )
 
 
 class StudentSubjectSerializer(serializers.ModelSerializer):

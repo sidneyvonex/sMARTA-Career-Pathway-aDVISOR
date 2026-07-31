@@ -165,6 +165,30 @@ class TestSubjectSeed:
         s = Subject.objects.get(code='FRN9')
         assert s.category == 'Optional'
 
+    def test_grade10_curriculum_roles_match_current_kicd_structure(self):
+        from students.models import Subject
+
+        core_codes = {'ENG10', 'KIS10', 'CMT10', 'EMT10', 'CSL10'}
+        assert set(
+            Subject.objects.filter(
+                grade=10,
+                category='Core',
+                is_active=True,
+            ).values_list('code', flat=True)
+        ) == core_codes
+
+        physical_education = Subject.objects.get(code='PED10')
+        assert physical_education.category == 'Required'
+        assert physical_education.is_selectable_in_combination is False
+
+    def test_math_is_core_and_selectable_in_official_combinations(self):
+        from students.models import Subject
+
+        mathematics = Subject.objects.filter(code__in={'CMT10', 'EMT10'})
+        assert mathematics.count() == 2
+        assert all(subject.category == 'Core' for subject in mathematics)
+        assert all(subject.is_selectable_in_combination for subject in mathematics)
+
 
 @pytest.mark.django_db
 class TestFactories:
