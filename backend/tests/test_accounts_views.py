@@ -1,7 +1,14 @@
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from accounts.models import School, StudentProfile
+from accounts.models import School
+from accounts.tokens import (
+    make_email_verify_token,
+    make_invite_token,
+    make_parent_invite_token,
+    make_password_reset_token,
+)
+from parents.models import ParentStudentLink
 
 User = get_user_model()
 
@@ -167,7 +174,7 @@ class TestStudentRegistration:
 class TestLogin:
     def test_login_returns_200_and_sets_cookies(self, client):
         from tests.factories import UserFactory
-        user = UserFactory(email='login@test.com', is_email_verified=True)
+        UserFactory(email='login@test.com', is_email_verified=True)
         response = client.post('/api/v1/auth/login/', {
             'email': 'login@test.com',
             'password': 'TestPass123!',
@@ -250,9 +257,6 @@ class TestMeView:
         assert response.status_code == 401
 
 
-from accounts.tokens import make_email_verify_token, make_password_reset_token
-
-
 @pytest.mark.django_db
 class TestEmailVerification:
     def test_valid_token_verifies_email(self, client):
@@ -284,11 +288,13 @@ class TestPasswordReset:
     def test_password_reset_request_returns_200(self, client):
         from tests.factories import UserFactory
         UserFactory(email='reset@test.com')
-        response = client.post('/api/v1/auth/password-reset/', {'email': 'reset@test.com'}, format='json')
+        response = client.post('/api/v1/auth/password-reset/',
+                               {'email': 'reset@test.com'}, format='json')
         assert response.status_code == 200
 
     def test_password_reset_nonexistent_email_still_returns_200(self, client):
-        response = client.post('/api/v1/auth/password-reset/', {'email': 'nobody@test.com'}, format='json')
+        response = client.post('/api/v1/auth/password-reset/',
+                               {'email': 'nobody@test.com'}, format='json')
         assert response.status_code == 200
 
     def test_password_reset_sends_email(self, client, mailoutbox):
@@ -315,10 +321,6 @@ class TestPasswordReset:
             'password': 'NewSecurePass456!',
         }, format='json')
         assert response.status_code == 400
-
-
-from accounts.tokens import make_invite_token, make_parent_invite_token
-from parents.models import ParentStudentLink
 
 
 @pytest.mark.django_db

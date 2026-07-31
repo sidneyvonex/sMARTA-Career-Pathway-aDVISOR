@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from guidance.models import FrameworkVersion, SchoolOffering, SubjectCombination
+from guidance.models import SchoolOffering, SubjectCombination
 from system_admin.models import AuditLog
 from tests.factories import (
     FrameworkVersionFactory,

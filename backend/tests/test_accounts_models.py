@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from tests.factories import SchoolFactory, StudentProfileFactory, UserFactory
 
 User = get_user_model()
 
@@ -64,9 +65,6 @@ class TestUserModel:
             county=None,
         )
         assert admin.county is None
-
-
-from tests.factories import SchoolFactory, StudentProfileFactory, UserFactory
 
 
 @pytest.mark.django_db

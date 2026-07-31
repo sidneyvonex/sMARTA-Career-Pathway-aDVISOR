@@ -45,8 +45,9 @@ class TestParentChildrenView:
 
     def test_parent_with_one_child(self):
         parent = ParentFactory()
-        student = VerifiedUserFactory(role='student', first_name='Tom', last_name='Doe', county='kiambu')
-        profile = StudentProfileFactory(user=student, grade=9)
+        student = VerifiedUserFactory(role='student', first_name='Tom',
+                                      last_name='Doe', county='kiambu')
+        StudentProfileFactory(user=student, grade=9)
         ParentStudentLinkFactory(parent=parent, student=student)
         self.client.force_authenticate(user=parent)
 
@@ -225,7 +226,7 @@ class TestParentChildDetailView:
     def test_linked_child_returns_profile(self):
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student', first_name='Tom', last_name='Doe')
-        profile = StudentProfileFactory(user=student, grade=9, bio='Loves math')
+        StudentProfileFactory(user=student, grade=9, bio='Loves math')
         ParentStudentLinkFactory(parent=parent, student=student)
         self.client.force_authenticate(user=parent)
 
@@ -391,7 +392,7 @@ class TestRIASECParentNotification:
     def test_parent_notified_on_child_assessment(self):
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student')
-        profile = StudentProfileFactory(user=student, grade=9)
+        StudentProfileFactory(user=student, grade=9)
         ParentStudentLinkFactory(parent=parent, student=student)
 
         self.client.force_authenticate(user=student)
@@ -471,7 +472,7 @@ class TestVisibleToParentNote:
     def test_no_visible_notes_returns_null(self):
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student')
-        profile = StudentProfileFactory(user=student, grade=9)
+        StudentProfileFactory(user=student, grade=9)
         counselor = CounselorFactory()
         CounselorNoteFactory(
             counselor=counselor, student=student,

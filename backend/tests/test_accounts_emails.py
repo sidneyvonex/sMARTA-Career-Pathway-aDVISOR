@@ -32,7 +32,8 @@ class TestEmailTasks:
 
     def test_send_parent_invite_email(self, mailoutbox):
         from accounts.emails import send_parent_invite_email
-        send_parent_invite_email.delay(student_id=5, parent_email='parent@test.com', student_name='Jane Doe')
+        send_parent_invite_email.delay(
+            student_id=5, parent_email='parent@test.com', student_name='Jane Doe')
         assert len(mailoutbox) == 1
         msg = mailoutbox[0]
         assert msg.to == ['parent@test.com']

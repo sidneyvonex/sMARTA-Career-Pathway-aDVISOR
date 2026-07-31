@@ -532,7 +532,7 @@ class TestUserDetailView:
 
     def test_get_student_detail(self):
         student = VerifiedUserFactory(role='student')
-        profile = StudentProfileFactory(user=student, grade=9, mode='self_guided')
+        StudentProfileFactory(user=student, grade=9, mode='self_guided')
         response = self.client.get(f'/api/v1/system-admin/users/{student.id}/')
         assert response.status_code == 200
         data = response.data['data']
@@ -623,7 +623,8 @@ class TestAuditLogListView:
 
     def test_filter_by_date_range(self):
         AuditLogFactory(action='school_created')
-        response = self.client.get('/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
+        response = self.client.get(
+            '/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
         data = response.data['data']
         assert data['total'] >= 1
 
@@ -720,7 +721,8 @@ class TestInputValidation:
 
     def test_audit_logs_valid_dates_still_filter(self):
         AuditLogFactory(actor=self.admin, action='school_created', target_id=1)
-        response = self.client.get('/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
+        response = self.client.get(
+            '/api/v1/system-admin/audit-logs/?date_from=2026-01-01&date_to=2026-12-31')
         assert response.status_code == 200
         assert response.data['data']['total'] >= 1
 

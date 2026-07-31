@@ -92,7 +92,7 @@ class TestCounselorNote:
         from counselors.models import CounselorNote
         counselor = CounselorFactory()
         student = VerifiedUserFactory(role='student')
-        n1 = CounselorNote.objects.create(counselor=counselor, student=student, body='First')
+        CounselorNote.objects.create(counselor=counselor, student=student, body='First')
         n2 = CounselorNote.objects.create(counselor=counselor, student=student, body='Second')
         notes = list(CounselorNote.objects.all())
         assert notes[0].pk == n2.pk

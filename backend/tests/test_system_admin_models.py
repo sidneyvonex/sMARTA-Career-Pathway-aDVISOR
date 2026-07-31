@@ -2,7 +2,6 @@ import pytest
 from tests.factories import AuditLogFactory, SystemAdminFactory, SchoolFactory
 from system_admin.models import AuditLog
 from system_admin.utils import log_action
-from accounts.models import School
 
 pytestmark = pytest.mark.django_db
 

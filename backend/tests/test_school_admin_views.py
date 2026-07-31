@@ -2,7 +2,6 @@ import pytest
 from io import BytesIO
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
 from rest_framework.test import APIClient
 from tests.factories import (
     CBCGradeFactory,
@@ -125,7 +124,8 @@ class TestSchoolLogoUpload:
 
     def test_upload_logo_png(self):
         logo = _make_image('PNG')
-        response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': logo}, format='multipart')
+        response = self.client.post('/api/v1/school-admin/school/logo/',
+                                    {'logo': logo}, format='multipart')
         assert response.status_code == 200
         assert response.data['data']['logo_url'] is not None
         self.school.refresh_from_db()
@@ -133,7 +133,8 @@ class TestSchoolLogoUpload:
 
     def test_upload_logo_jpeg(self):
         logo = _make_image('JPEG')
-        response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': logo}, format='multipart')
+        response = self.client.post('/api/v1/school-admin/school/logo/',
+                                    {'logo': logo}, format='multipart')
         assert response.status_code == 200
 
     def test_upload_rejects_no_file(self):
@@ -143,13 +144,15 @@ class TestSchoolLogoUpload:
 
     def test_upload_rejects_oversized_file(self):
         large = SimpleUploadedFile('big.png', b'\x00' * (6 * 1024 * 1024), content_type='image/png')
-        response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': large}, format='multipart')
+        response = self.client.post('/api/v1/school-admin/school/logo/',
+                                    {'logo': large}, format='multipart')
         assert response.status_code == 400
         assert '5MB' in response.data['message']
 
     def test_upload_rejects_non_image(self):
         txt = SimpleUploadedFile('doc.txt', b'hello', content_type='text/plain')
-        response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': txt}, format='multipart')
+        response = self.client.post('/api/v1/school-admin/school/logo/',
+                                    {'logo': txt}, format='multipart')
         assert response.status_code == 400
 
     def test_remove_logo(self):
@@ -164,7 +167,8 @@ class TestSchoolLogoUpload:
         orphan = SchoolAdminFactory(school=None)
         self.client.force_authenticate(orphan)
         logo = _make_image()
-        response = self.client.post('/api/v1/school-admin/school/logo/', {'logo': logo}, format='multipart')
+        response = self.client.post('/api/v1/school-admin/school/logo/',
+                                    {'logo': logo}, format='multipart')
         assert response.status_code == 404
 
 
@@ -176,8 +180,8 @@ class TestSchoolCounselorsView:
         self.client.force_authenticate(self.admin)
 
     def test_list_counselors(self):
-        c1 = CounselorFactory(school=self.school, first_name='Alice', last_name='Wanjiku')
-        c2 = CounselorFactory(school=self.school, first_name='Bob', last_name='Ochieng')
+        CounselorFactory(school=self.school, first_name='Alice', last_name='Wanjiku')
+        CounselorFactory(school=self.school, first_name='Bob', last_name='Ochieng')
         CounselorFactory(school=SchoolFactory())  # different school — should not appear
         response = self.client.get('/api/v1/school-admin/counselors/')
         assert response.status_code == 200
@@ -195,7 +199,8 @@ class TestSchoolCounselorsView:
 
     def test_add_counselor_to_school(self):
         counselor = CounselorFactory(school=None, email='new@school.co.ke')
-        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'new@school.co.ke'})
+        response = self.client.post('/api/v1/school-admin/counselors/add/',
+                                    {'email': 'new@school.co.ke'})
         assert response.status_code == 200
         counselor.refresh_from_db()
         assert counselor.school == self.school
@@ -203,17 +208,20 @@ class TestSchoolCounselorsView:
     def test_add_counselor_already_at_another_school(self):
         other_school = SchoolFactory()
         CounselorFactory(school=other_school, email='taken@school.co.ke')
-        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'taken@school.co.ke'})
+        response = self.client.post('/api/v1/school-admin/counselors/add/',
+                                    {'email': 'taken@school.co.ke'})
         assert response.status_code == 400
         assert 'already assigned' in response.data['message']
 
     def test_add_non_counselor_fails(self):
         SchoolAdminFactory(email='admin@school.co.ke', school=None)
-        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'admin@school.co.ke'})
+        response = self.client.post('/api/v1/school-admin/counselors/add/',
+                                    {'email': 'admin@school.co.ke'})
         assert response.status_code == 404
 
     def test_add_nonexistent_email_fails(self):
-        response = self.client.post('/api/v1/school-admin/counselors/add/', {'email': 'nobody@school.co.ke'})
+        response = self.client.post('/api/v1/school-admin/counselors/add/',
+                                    {'email': 'nobody@school.co.ke'})
         assert response.status_code == 404
 
     def test_remove_counselor_from_school(self):
@@ -241,8 +249,8 @@ class TestSchoolStudentsView:
         self.client.force_authenticate(self.admin)
 
     def test_list_students(self):
-        sp1 = StudentProfileFactory(school=self.school, mode='school_linked')
-        sp2 = StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(school=self.school, mode='school_linked')
         StudentProfileFactory(school=SchoolFactory(), mode='school_linked')  # different school
         StudentProfileFactory(mode='self_guided')  # no school
         response = self.client.get('/api/v1/school-admin/students/')
@@ -415,8 +423,8 @@ class TestSchoolStatsView:
     def test_stats_with_data(self):
         CounselorFactory(school=self.school)
         sp1 = StudentProfileFactory(school=self.school, mode='school_linked')
-        sp2 = StudentProfileFactory(school=self.school, mode='school_linked')
-        sp3 = StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(school=self.school, mode='school_linked')
         RIASECAssessment.objects.create(student_profile=sp1)
         c = CounselorFactory(school=self.school)
         CounselorAssignmentFactory(counselor=c, student_profile=sp1, school=self.school)

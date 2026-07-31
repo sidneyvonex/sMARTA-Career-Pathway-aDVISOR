@@ -1,8 +1,4 @@
-"""
-Pure unit tests for riasec/scoring.py — no database, no Django fixtures.
-All inputs are plain Python dicts.
-"""
-import pytest
+"""Pure unit tests for scoring with plain Python inputs and no database fixtures."""
 
 
 # ---------------------------------------------------------------------------
@@ -43,14 +39,17 @@ QUESTIONS = [
 ]
 
 PATHWAYS = [
-    {'id': 1, 'name': 'STEM',                 'description': '...', 'weight_r': 0.25, 'weight_i': 0.40, 'weight_a': 0.05, 'weight_s': 0.05, 'weight_e': 0.15, 'weight_c': 0.10},
-    {'id': 2, 'name': 'Social Sciences',       'description': '...', 'weight_r': 0.05, 'weight_i': 0.15, 'weight_a': 0.10, 'weight_s': 0.35, 'weight_e': 0.25, 'weight_c': 0.10},
-    {'id': 3, 'name': 'Arts & Sports Science', 'description': '...', 'weight_r': 0.20, 'weight_i': 0.05, 'weight_a': 0.45, 'weight_s': 0.20, 'weight_e': 0.05, 'weight_c': 0.05},
+    {'id': 1, 'name': 'STEM',                 'description': '...', 'weight_r': 0.25,
+        'weight_i': 0.40, 'weight_a': 0.05, 'weight_s': 0.05, 'weight_e': 0.15, 'weight_c': 0.10},
+    {'id': 2, 'name': 'Social Sciences',       'description': '...', 'weight_r': 0.05,
+        'weight_i': 0.15, 'weight_a': 0.10, 'weight_s': 0.35, 'weight_e': 0.25, 'weight_c': 0.10},
+    {'id': 3, 'name': 'Arts & Sports Science', 'description': '...', 'weight_r': 0.20,
+        'weight_i': 0.05, 'weight_a': 0.45, 'weight_s': 0.20, 'weight_e': 0.05, 'weight_c': 0.05},
 ]
 
 
 def make_responses(scores_by_dim):
-    """Build {question_id: score} from {dimension: score} — all 5 questions for a dim get the same score."""
+    """Build question scores with one shared score for each dimension."""
     responses = {}
     for q in QUESTIONS:
         responses[q['id']] = scores_by_dim[q['dimension']]

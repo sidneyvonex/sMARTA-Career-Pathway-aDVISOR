@@ -212,7 +212,6 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     read = False
 
 
-
 class CounselorAssignmentFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CounselorAssignment

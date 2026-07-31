@@ -1,9 +1,19 @@
 import io
 import pytest
 from pypdf import PdfReader
+from rest_framework.test import APIClient
 from guidance.models import LearnerCombinationChoice, LearnerPlan, PlanMilestone
 from reports.pdf_builder import build_student_report
 from system_admin.models import AuditLog
+from tests.factories import (
+    VerifiedUserFactory, StudentProfileFactory, CounselorFactory,
+    CounselorAssignmentFactory, SchoolFactory, SchoolAdminFactory,
+    ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
+    StudentSubjectFactory, CBCGradeFactory,
+    RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
+    RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
+    SubjectCombinationFactory,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -31,15 +41,18 @@ class TestPDFBuilder:
                     'name': 'Mathematics',
                     'code': 'MAT0019',
                     'grades': [
-                        {'term': 1, 'year': 2026, 'level': 'ME1', 'label': 'Meeting Expectation - Level 1'},
-                        {'term': 2, 'year': 2026, 'level': 'EE1', 'label': 'Exceeding Expectation - Level 1'},
+                        {'term': 1, 'year': 2026, 'level': 'ME1',
+                            'label': 'Meeting Expectation - Level 1'},
+                        {'term': 2, 'year': 2026, 'level': 'EE1',
+                            'label': 'Exceeding Expectation - Level 1'},
                     ],
                 },
                 {
                     'name': 'English',
                     'code': 'ENG0019',
                     'grades': [
-                        {'term': 1, 'year': 2026, 'level': 'AE2', 'label': 'Approaching Expectation - Level 2'},
+                        {'term': 1, 'year': 2026, 'level': 'AE2',
+                            'label': 'Approaching Expectation - Level 2'},
                     ],
                 },
             ],
@@ -206,18 +219,6 @@ class TestPDFBuilder:
 # ---------------------------------------------------------------------------
 # Task 2: StudentReportView — Permissions + Data Assembly
 # ---------------------------------------------------------------------------
-
-from rest_framework.test import APIClient
-from tests.factories import (
-    VerifiedUserFactory, StudentProfileFactory, CounselorFactory,
-    CounselorAssignmentFactory, SchoolFactory, SchoolAdminFactory,
-    ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
-    SubjectFactory, StudentSubjectFactory, CBCGradeFactory,
-    RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
-    RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
-    SubjectCombinationFactory,
-)
-
 
 class TestStudentReportViewPermissions:
     def setup_method(self):

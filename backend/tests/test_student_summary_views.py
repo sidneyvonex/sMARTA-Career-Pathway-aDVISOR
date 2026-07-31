@@ -210,7 +210,7 @@ class TestGradeSummaryView:
             student_profile=self.profile,
             subject=SubjectFactory(code='GSUM19', name='Mathematics'),
         )
-        second = StudentSubjectFactory(
+        StudentSubjectFactory(
             student_profile=self.profile,
             subject=SubjectFactory(code='GSUM29', name='English'),
         )

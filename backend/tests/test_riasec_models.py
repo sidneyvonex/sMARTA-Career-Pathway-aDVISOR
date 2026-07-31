@@ -24,7 +24,11 @@ class TestRIASECQuestionModel:
         questions = list(RIASECQuestion.objects.order_by('order'))
         for i in range(len(questions) - 1):
             assert questions[i].dimension != questions[i + 1].dimension, \
-                f'Adjacent questions {questions[i].order} and {questions[i+1].order} share dimension {questions[i].dimension}'
+                (
+                    f'Adjacent questions {questions[i].order} and '
+                    f'{questions[i + 1].order} share dimension '
+                    f'{questions[i].dimension}'
+                )
 
 
 @pytest.mark.django_db

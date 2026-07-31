@@ -5,11 +5,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
     CounselorFactory, SchoolFactory, StudentProfileFactory,
     VerifiedUserFactory, CounselorAssignmentFactory, CounselorNoteFactory,
-    SubjectFactory, StudentSubjectFactory, CBCGradeFactory,
-    RIASECAssessmentFactory,
     SubjectCombinationFactory,
 )
-from students.models import Subject
 from counselors.models import CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from guidance.models import PlanMilestone
@@ -371,7 +368,12 @@ class TestCounselorNotesView:
         }, content_type='application/json')
         assert r.status_code == 400
 
-    def test_create_note_body_over_2000_chars_returns_400(self, client, counselor, assigned_student):
+    def test_create_note_body_over_2000_chars_returns_400(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
         _auth(client, counselor)
         r = client.post(reverse('counselor-notes'), {
             'student_id': assigned_student.user.id,
@@ -403,7 +405,6 @@ class TestCounselorNotesView:
         assert r.status_code == 404
 
     def test_delete_note_soft_deletes(self, client, counselor, assigned_student):
-        from counselors.models import CounselorNote
         note = CounselorNoteFactory(counselor=counselor, student=assigned_student.user)
         _auth(client, counselor)
         r = client.delete(reverse('counselor-note-detail', args=[note.id]))

@@ -19,7 +19,7 @@ os.environ.setdefault('DB_USER', '')
 os.environ.setdefault('DB_PASSWORD', '')
 os.environ.setdefault('DB_HOST', 'localhost')
 
-from .development import *  # noqa: F401,F403
+from .development import *  # noqa: E402,F401,F403
 
 
 DATABASES = {

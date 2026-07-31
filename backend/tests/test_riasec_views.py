@@ -163,11 +163,11 @@ class TestAssessmentSubmitView:
 
     def test_fewer_than_30_responses_returns_400(self, verified_profile):
         c = make_auth_client(verified_profile.user)
-        r = c.post('/api/v1/students/assessment/', {'responses': all_responses()[:15]}, format='json')
+        r = c.post('/api/v1/students/assessment/',
+                   {'responses': all_responses()[:15]}, format='json')
         assert r.status_code == 400
 
     def test_duplicate_question_id_returns_400(self, verified_profile):
-        from riasec.models import RIASECQuestion
         responses = all_responses()
         first_id = responses[0]['question_id']
         responses[1]['question_id'] = first_id  # duplicate

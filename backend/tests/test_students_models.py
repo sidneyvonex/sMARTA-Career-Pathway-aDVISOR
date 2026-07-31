@@ -1,6 +1,5 @@
 import pytest
 from django.db import IntegrityError
-from accounts.models import StudentProfile
 from students.models import GRADE_LEVEL_CHOICES, GRADE_LEVEL_POINTS
 
 
