@@ -32,6 +32,8 @@ class Command(BaseCommand):
             raise CommandError('Offering snapshot checksum mismatch.')
         if payload.get('schema_version') != 1:
             raise CommandError('Unsupported offering snapshot schema.')
+        if payload.get('complete') is False:
+            raise CommandError('Offering snapshot is an incomplete checkpoint.')
         if payload.get('source', {}).get('endpoint') != OFFICIAL_OFFERINGS_ENDPOINT:
             raise CommandError('Unexpected offering source endpoint.')
         records = payload.get('records')
@@ -90,4 +92,3 @@ class Command(BaseCommand):
             f'Imported {len(records)} verified offerings '
             f'({created} created, {updated} updated).'
         ))
-

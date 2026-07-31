@@ -7,8 +7,66 @@ OFFICIAL_COMBINATIONS_ENDPOINT = (
 OFFICIAL_OFFERINGS_ENDPOINT = (
     'https://selection.education.go.ke/api/open/schools-by-combination'
 )
+OFFICIAL_CATALOGUE_URL = (
+    'https://selection.education.go.ke/uploads/'
+    '1750333580754-subject-combinations-1750333524964.pdf'
+)
 
 ROLLOUT_COUNTIES = tuple(COUNTY_SUB_COUNTIES)
+OFFICIAL_COUNTY_QUERY_VALUES = {
+    **{county: county.upper() for county in ROLLOUT_COUNTIES},
+    'muranga': "MURANG'A",
+}
+
+OFFICIAL_TRACKS = {
+    'PURE SCIENCES': 'PURE-SCIENCES',
+    'APPLIED SCIENCES': 'APPLIED-SCIENCES',
+    'TECHNICAL STUDIES': 'TECHNICAL-STUDIES',
+    'LANGUAGES & LITERATURE': 'LANGUAGES-LITERATURE',
+    'HUMANITIES & BUSINESS STUDIES': 'HUMANITIES-BUSINESS',
+    'ARTS': 'ARTS',
+    'SPORTS': 'SPORTS-RECREATION',
+}
+
+OFFICIAL_SUBJECT_CODES = {
+    'Agriculture': 'AGR10',
+    'Arabic': 'ARA10',
+    'Aviation': 'AVT10',
+    'Biology': 'BIO10',
+    'Building & Construction': 'BCN10',
+    'Business Studies': 'BST10',
+    'Chemistry': 'CHE10',
+    'Christian Religious Education': 'CHR10',
+    # The Ministry endpoint currently returns "Code Mathematics" for one row.
+    'Code Mathematics': 'CMT10',
+    'Computer Studies': 'CPS10',
+    'Core Mathematics': 'CMT10',
+    'Electricity': 'ELC10',
+    'Fasihi ya Kiswahili': 'FKI10',
+    'Fine Arts': 'FAR10',
+    'French': 'FRN10',
+    'General Science': 'GSC10',
+    'Geography': 'GEO10',
+    'German': 'GER10',
+    'Hindu Religious Education': 'HRE10',
+    'History & Citizenship': 'HCT10',
+    'Home Science': 'HOM10',
+    'Indigenous Language': 'IND10',
+    'Islamic Religious Education': 'IRE10',
+    'Kenya Sign Language': 'KSL10',
+    'Literature in English': 'LIE10',
+    # Preserve the Ministry label in evidence; use the standard spelling locally.
+    'Mandarine Chinese': 'MCH10',
+    'Marine & Fisheries': 'MFT10',
+    'Media Technology': 'MDT10',
+    'Metal Work': 'MTW10',
+    'Music & Dance': 'MDA10',
+    'Physics': 'PHY10',
+    'Power Mechanics': 'PME10',
+    'Sports & Recreation': 'SRE10',
+    'Theatre & Film': 'TFM10',
+    'Wood Work': 'WDW10',
+}
 
 # UUIDs are resolved from the Ministry's public combination endpoint. They are
 # source identifiers for queries, not locally invented catalogue identifiers.

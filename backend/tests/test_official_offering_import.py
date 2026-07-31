@@ -1,4 +1,5 @@
 import hashlib
+import io
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -19,6 +20,13 @@ OFFICIAL_OFFERING_SNAPSHOT = (
 )
 OFFICIAL_OFFERING_SHA256 = (
     '25e316202d3c1ec060c13dc72d8310e91fbd5de0d39320a631b74b2e3681ffdc'
+)
+FULL_OFFERING_SNAPSHOT = (
+    REPOSITORY_ROOT / 'data' / 'schools' /
+    'official-offerings-full-2026-07-31.json'
+)
+FULL_OFFERING_SHA256 = (
+    '06fffc6180ab758e39a5d24725996427750c916b270a8d4097fa6cce1e8fc971'
 )
 
 
@@ -74,6 +82,34 @@ def test_committed_offering_snapshot_integrity():
         (row['school_source_record_id'], row['combination_code'])
         for row in payload['records']
     }) == 623
+
+
+def test_committed_full_offering_snapshot_integrity():
+    raw = FULL_OFFERING_SNAPSHOT.read_bytes()
+    payload = json.loads(raw)
+
+    assert hashlib.sha256(raw).hexdigest() == FULL_OFFERING_SHA256
+    assert payload['complete'] is True
+    assert payload['combination_count'] == 511
+    assert payload['request_count'] == 2555
+    assert payload['expected_request_count'] == 2555
+    assert payload['matched_count'] == 10263
+    assert payload['quarantined_count'] == 0
+    records = payload['records']
+    assert len({
+        (row['school_source_record_id'], row['combination_code'])
+        for row in records
+    }) == 10263
+    assert {
+        county: sum(row['county'] == county for row in records)
+        for county in payload['county_scope']
+    } == {
+        'kiambu': 3131,
+        'muranga': 2796,
+        'nyeri': 1779,
+        'kirinyaga': 1263,
+        'nyandarua': 1294,
+    }
 
 
 def test_offering_import_is_dry_run_by_default(tmp_path):
@@ -163,3 +199,23 @@ def test_fetch_quarantines_non_exact_school_names(tmp_path):
         'no_exact_identity_match'
     )
 
+
+def test_muranga_offering_query_uses_official_apostrophe_spelling():
+    from guidance.management.commands.fetch_official_offerings import Command
+
+    response = io.BytesIO(json.dumps({
+        'message': 'success',
+        'subject_combination': 'Test',
+        'response': [],
+    }).encode('utf-8'))
+    response.__enter__ = lambda value: value
+    response.__exit__ = lambda *_args: response.close()
+
+    with patch(
+        'guidance.management.commands.fetch_official_offerings.urlopen',
+        return_value=response,
+    ) as mocked_urlopen:
+        Command()._fetch('combination-id', 'muranga', timeout=10, retries=1)
+
+    requested_url = mocked_urlopen.call_args.args[0].full_url
+    assert 'county=MURANG%27A' in requested_url

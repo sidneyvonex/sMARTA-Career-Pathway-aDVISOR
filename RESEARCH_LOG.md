@@ -16,6 +16,7 @@ project document.
 
 | 2026-07-31 | Which official schools are present in the five-county rollout scope? | The Ministry public directory returned 1,253 unique source records from 49 uppercase sub-county queries: Kiambu 334, Murang'a 341, Nyeri 226, Kirinyaga 158 and Nyandarua 194. The endpoint exposes a Ministry UUID but not a KNEC school code. | https://selection.education.go.ke/schools and its public `school-search` endpoint | Tier 1 — Ministry selection system | `VERIFIED` identity snapshot | High |
 | 2026-07-31 | Which rollout schools offer the 10 curated combinations? | Fifty official combination/county queries returned 623 school/combination rows. Every row matched exactly to one Ministry identity; zero were ambiguous or unmatched. | Ministry public `subject-combinations-by-track` and `schools-by-combination` endpoints under https://selection.education.go.ke | Tier 1 — Ministry selection system | `VERIFIED` offering snapshot | High |
+| 2026-07-31 | Can the complete catalogue be reconciled within the five rollout counties? | All 511 unique combinations across seven tracks were reconciled to 35 local Grade 10 subjects. A checkpointed run of 2,555 combination/county queries produced 10,263 exact offering relationships, including 2,796 for Murang'a; zero rows were ambiguous or unmatched. | Ministry public `subject-combinations-by-track` and `schools-by-combination` endpoints under https://selection.education.go.ke | Tier 1 — Ministry selection system | `VERIFIED` full catalogue and offering snapshots | High |
 
 ## Status definitions
 
@@ -27,8 +28,6 @@ project document.
 
 ## Open verification queue
 
-1. Full pathway, track and subject-combination catalogue reconciliation beyond
-   the 10 curated combinations.
-2. Current school-selection quantities and submission rules.
-3. Current KJSEA result-checking and SMS instructions.
-4. KNEC codes and SNE provisions not exposed by the public school directory.
+1. Current school-selection quantities and submission rules.
+2. Current KJSEA result-checking and SMS instructions.
+3. KNEC codes and SNE provisions not exposed by the public school directory.
