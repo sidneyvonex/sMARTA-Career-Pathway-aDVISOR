@@ -1,7 +1,7 @@
 # Code Audit
 
 **Baseline:** `origin/main` at `65fd088f9af97fddaea208796aca265ae9310c70`
-**Status:** Initial repository inventory complete; deeper flow and test review in progress
+**Status:** High-priority remediation complete; medium-risk findings and full-suite performance remain open
 
 | ID | Severity | Area | Finding | Evidence | User impact | Recommendation | Verification |
 |---|---|---|---|---|---|---|---|
@@ -26,11 +26,16 @@
 - Frontend production build: **passed** on 2026-07-31.
 - Focused backend guidance/catalogue/model suite: **89 passed** on 2026-07-31.
 - Focused frontend guidance/content regression suite: **42 passed** on 2026-07-31.
-- Backend full suite: started successfully but exceeded the 60-second audit command
-  window; split-suite results are pending.
-- Frontend full suite: started successfully with React Router warnings and two
-  jsdom navigation warnings, then exceeded the command window; split-suite
-  results are pending.
+- Backend full suite: no failure appeared before the expanded 300-second command
+  window expired at 11% completion. Three parallel module batches likewise
+  remained failure-free before expiring between 40% and 47%; a definitive full
+  run requires a less resource-constrained test environment.
+- Frontend full suite: the fully parallel run completed with seven asynchronous
+  loading-state timeouts across otherwise passing files. The implicated
+  counselor, parent, school-admin and system-admin files pass in focused runs.
+  A serial full-suite attempt, run alongside the backend batches, exceeded 300
+  seconds. Treat the seven failures as unresolved suite-level
+  concurrency/resource findings, not confirmed product defects.
 - Initial frontend attempts inside the restricted sandbox were invalid because
   esbuild could not read `vite.config.ts`; the authorized production build
   confirmed that this was environmental rather than a source-code build error.

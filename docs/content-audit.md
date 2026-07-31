@@ -1,7 +1,7 @@
 # Content Audit
 
 **Baseline:** `origin/main` at `65fd088f9af97fddaea208796aca265ae9310c70`
-**Status:** Initial claim inventory in progress
+**Status:** Initial claim inventory complete; one placement-policy claim remains unverified
 
 | ID | Page or file | Audience | Claim | Source | Status | Risk | Required fix |
 |---|---|---|---|---|---|---|---|
