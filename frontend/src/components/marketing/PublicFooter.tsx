@@ -49,18 +49,25 @@ export default function PublicFooter() {
         </p>
         <nav aria-label="Official guidance sources">
           <a
-            href="https://selection-placement.kemis.go.ke/uploads/catalogue.pdf"
+            href="https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf"
             target="_blank"
             rel="noreferrer"
           >
-            Current pilot catalogue
+            Official subject catalogue
           </a>
           <a
-            href="https://placements.education.go.ke"
+            href="https://selection.education.go.ke"
             target="_blank"
             rel="noreferrer"
           >
-            Official placement service
+            Official selection service
+          </a>
+          <a
+            href="https://placement.education.go.ke/my-placements"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Placement outcomes
           </a>
           <a
             href="https://kicd.ac.ke/curriculum-reform/"

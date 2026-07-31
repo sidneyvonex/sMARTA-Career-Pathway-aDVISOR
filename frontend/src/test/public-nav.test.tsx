@@ -24,5 +24,7 @@ test('starts the keyboard path with a skip link before public navigation', async
   expect(skipLink).toHaveFocus()
 
   await user.tab()
-  expect(screen.getByRole('link', { name: 'placements.education.go.ke' })).toHaveFocus()
+  const selectionLink = screen.getByRole('link', { name: 'selection.education.go.ke' })
+  expect(selectionLink).toHaveAttribute('href', 'https://selection.education.go.ke')
+  expect(selectionLink).toHaveFocus()
 })

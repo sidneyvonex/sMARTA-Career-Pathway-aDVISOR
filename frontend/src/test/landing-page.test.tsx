@@ -25,7 +25,7 @@ describe('LandingPage', () => {
 
     // Official-application notice links to the government portal
     const officialLink = screen.getByRole('link', { name: /apply officially/i })
-    expect(officialLink).toHaveAttribute('href', 'https://placements.education.go.ke')
+    expect(officialLink).toHaveAttribute('href', 'https://selection.education.go.ke')
 
     // Every register CTA points to /register
     const registerLinks = screen.getAllByRole('link', { name: /register|get started|create your free account|start assessment|take the riasec assessment/i })

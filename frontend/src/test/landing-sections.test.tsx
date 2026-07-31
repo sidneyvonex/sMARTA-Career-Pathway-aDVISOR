@@ -91,9 +91,10 @@ describe('LandingNotice', () => {
     withRouter(<LandingNotice />)
     expect(screen.getByText(/decision-support tool/i)).toBeInTheDocument()
     const applyLink = screen.getByRole('link', { name: /apply officially/i })
-    expect(applyLink).toHaveAttribute('href', 'https://placements.education.go.ke')
+    expect(applyLink).toHaveAttribute('href', 'https://selection.education.go.ke')
     const resultsLink = screen.getByRole('link', { name: /check kjsea results/i })
     expect(resultsLink).toHaveAttribute('href', 'https://kjsea.knec.ac.ke')
+    expect(screen.getByText(/official service links checked 31 july 2026/i)).toBeInTheDocument()
   })
 })
 

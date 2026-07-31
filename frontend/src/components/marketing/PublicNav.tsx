@@ -20,8 +20,8 @@ export default function PublicNav() {
           <span>
             Smarta Shauri helps you decide. It doesn&apos;t submit your official Senior School
             choices. That&apos;s done at{' '}
-            <a href="https://placements.education.go.ke" target="_blank" rel="noopener noreferrer">
-              placements.education.go.ke
+            <a href="https://selection.education.go.ke" target="_blank" rel="noopener noreferrer">
+              selection.education.go.ke
             </a>
             .
           </span>
