@@ -59,4 +59,3 @@ def test_full_catalogue_import_dry_run_does_not_create_rows():
     )
 
     assert SubjectCombination.objects.count() == initial_count
-
