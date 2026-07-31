@@ -1,5 +1,10 @@
 # Smarta Shauri Five-County Pilot Execution Plan
 
+> **Audit status (2026-07-31):** Historical execution plan retained as an audit
+> input. Completion statements below are claims to verify, not accepted audit
+> evidence. The audit branch is based on the latest `origin/main` commit
+> `65fd088f9af97fddaea208796aca265ae9310c70`, which includes PR #64.
+
 **Date:** 2026-07-30  
 **Specification:** `docs/superpowers/specs/2026-07-30-pilot-product-spec.md`  
 **Execution style:** Sequential vertical slices, test-first, one logical commit per task  

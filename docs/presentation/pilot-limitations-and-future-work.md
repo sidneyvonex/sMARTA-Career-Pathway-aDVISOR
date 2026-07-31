@@ -1,5 +1,9 @@
 # Known limitations and future work
 
+> **Audit status (2026-07-31):** These are previously documented pilot
+> limitations. The audit must confirm that the application and presentation
+> disclose them consistently and identify any additional limitations.
+
 Use this content as the final presentation slide. The limitations are deliberate
 boundaries of the pilot, not hidden claims.
 

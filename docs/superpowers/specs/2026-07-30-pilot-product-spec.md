@@ -1,5 +1,10 @@
 # Smarta Shauri Five-County Pilot Product Specification
 
+> **Audit status (2026-07-31):** This specification records intended pilot
+> behavior. It must not be treated as evidence that the behavior exists or that
+> its education-policy claims are current. The audit will verify implementation
+> against `main` and policy claims against authoritative sources.
+
 **Date:** 2026-07-30  
 **Status:** Execution baseline for the final-project pilot  
 **Pilot counties:** Kiambu, Murang'a, Nyeri, Kirinyaga, Nyandarua  

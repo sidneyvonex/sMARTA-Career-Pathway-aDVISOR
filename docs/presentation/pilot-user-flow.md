@@ -1,5 +1,9 @@
 # Pilot user flow — one-page presentation view
 
+> **Audit status (2026-07-31):** This is the intended user flow. The audit will
+> compare every step with the behavior currently implemented on `main` and with
+> the verified official Senior School guidance process.
+
 ```mermaid
 flowchart TD
     Start["Public visitor learns the pilot scope"] --> Login["Learner signs in"]

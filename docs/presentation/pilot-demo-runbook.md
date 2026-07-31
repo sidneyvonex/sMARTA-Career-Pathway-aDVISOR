@@ -1,5 +1,9 @@
 # Smart Ashauri pilot demonstration runbook
 
+> **Audit status (2026-07-31):** This runbook was created during prior pilot
+> work. Every command, account, route and product claim must be revalidated
+> against the audit branch based on `main` before it is used for a demonstration.
+
 **Target duration:** 12–15 minutes
 
 **Pilot boundary:** Kiambu, Murang'a, Nyeri, Kirinyaga and Nyandarua
