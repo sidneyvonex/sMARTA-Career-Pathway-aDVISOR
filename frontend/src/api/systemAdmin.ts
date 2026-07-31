@@ -28,7 +28,7 @@ export interface SchoolItem {
   id: number
   name: string
   county: string
-  school_code: string
+  school_code: string | null
   phone: string
   email: string
   logo_url: string | null

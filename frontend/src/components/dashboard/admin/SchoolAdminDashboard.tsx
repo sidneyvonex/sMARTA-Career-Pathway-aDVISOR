@@ -68,7 +68,7 @@ export default function SchoolAdminDashboard() {
         ) : undefined}
         meta={[
           school ? `${school.county} County` : '',
-          school?.school_code ?? '',
+          school?.school_code ?? 'KNEC code not yet recorded',
           'Five-county pilot',
         ]}
         actions={[

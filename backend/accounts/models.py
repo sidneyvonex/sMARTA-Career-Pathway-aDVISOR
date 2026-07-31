@@ -56,7 +56,24 @@ class School(models.Model):
 
     name = models.CharField(max_length=200)
     county = models.CharField(max_length=20, choices=COUNTY_CHOICES)
-    school_code = models.CharField(max_length=20, unique=True)
+    school_code = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    source_record_id = models.CharField(
+        max_length=64,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+    sub_county = models.CharField(max_length=100, blank=True, default='')
+    gender = models.CharField(max_length=20, blank=True, default='')
+    cluster = models.CharField(max_length=10, blank=True, default='')
+    accommodation_type = models.CharField(max_length=30, blank=True, default='')
+    institution_type = models.CharField(max_length=30, blank=True, default='')
+    school_category = models.CharField(max_length=30, blank=True, default='')
     logo_url = models.URLField(max_length=500, null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True, default='')
     email = models.EmailField(blank=True, default='')
@@ -71,7 +88,8 @@ class School(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.school_code})"
+        identifier = self.school_code or self.source_record_id or 'unidentified'
+        return f"{self.name} ({identifier})"
 
 
 class StudentProfile(models.Model):

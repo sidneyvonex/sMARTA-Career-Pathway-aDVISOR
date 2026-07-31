@@ -27,8 +27,15 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('name', 'county', 'school_code', 'created_at')
-    search_fields = ('name', 'school_code')
+    list_display = (
+        'name',
+        'county',
+        'sub_county',
+        'school_code',
+        'verification_status',
+        'created_at',
+    )
+    search_fields = ('name', 'school_code', 'source_record_id')
     list_filter = ('county',)
 
 

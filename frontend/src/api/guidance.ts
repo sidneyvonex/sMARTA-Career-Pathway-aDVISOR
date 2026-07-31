@@ -46,9 +46,14 @@ export interface GuidanceSubject {
 
 export interface GuidanceSchool {
   id: number
-  school_code: string
+  school_code: string | null
   name: string
   county: string
+  sub_county: string
+  gender: string
+  cluster: string
+  accommodation_type: string
+  institution_type: string
   verification_status: 'unverified' | 'verified' | 'demonstration'
   source_url: string
   source_checked_at: string | null
