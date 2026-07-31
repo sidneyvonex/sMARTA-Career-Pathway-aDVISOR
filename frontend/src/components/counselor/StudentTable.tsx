@@ -62,7 +62,7 @@ export default function StudentTable({ students }: Props) {
               </td>
               <td>{s.top_pathway ?? '--'}</td>
               <td>
-                {s.fit_pct != null ? (
+                {s.top_pathway != null ? (
                   <span className="fit-pct">Strongest</span>
                 ) : (
                   <span className="fit-pct fit-pct--na">--</span>

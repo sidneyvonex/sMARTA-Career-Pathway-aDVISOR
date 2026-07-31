@@ -20,7 +20,7 @@ export default function PublicFooter() {
             Smarta Shauri
           </p>
           <p className="mk-footer__brand-desc">
-            Built for learners in this five-county pilot who want clearer evidence and a
+            Built for learners in this five-county project rollout who want clearer evidence and a
             better-supported pathway conversation.
           </p>
         </div>
@@ -43,24 +43,31 @@ export default function PublicFooter() {
 
       <div className="mk-footer__pilot-note">
         <p>
-          Smarta Shauri is an advisory five-county pilot for Kiambu, Murang&apos;a, Nyeri,
+          Smarta Shauri is an advisory project currently available in Kiambu, Murang&apos;a, Nyeri,
           Kirinyaga and Nyandarua. It does not predict success, determine placement or submit
           official Senior School choices.
         </p>
         <nav aria-label="Official guidance sources">
           <a
-            href="https://selection-placement.kemis.go.ke/uploads/catalogue.pdf"
+            href="https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf"
             target="_blank"
             rel="noreferrer"
           >
-            Current pilot catalogue
+            Official subject catalogue
           </a>
           <a
-            href="https://placements.education.go.ke"
+            href="https://selection.education.go.ke"
             target="_blank"
             rel="noreferrer"
           >
-            Official placement service
+            Official selection service
+          </a>
+          <a
+            href="https://placement.education.go.ke/my-placements"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Placement outcomes
           </a>
           <a
             href="https://kicd.ac.ke/curriculum-reform/"

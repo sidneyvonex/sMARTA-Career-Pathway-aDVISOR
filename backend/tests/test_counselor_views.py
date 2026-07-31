@@ -196,6 +196,7 @@ class TestCounselorStudentsView:
         r = client.get(reverse('counselor-students'))
         data = r.json()['data']
         assert data[0]['quiz_status'] == 'done'
+        assert 'fit_pct' not in data[0]
         assert 'assessment_missing' not in [
             reason['code'] for reason in data[0]['attention_reasons']
         ]

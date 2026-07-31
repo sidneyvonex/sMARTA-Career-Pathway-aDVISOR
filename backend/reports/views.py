@@ -225,7 +225,6 @@ class StudentReportView(APIView):
             recommendations.append({
                 'rank': rec.rank,
                 'pathway_name': rec.pathway.name,
-                'fit_pct': rec.fit_pct,
                 'algorithm_version': rec.algorithm_version,
                 'explanation': rec.explanation,
             })

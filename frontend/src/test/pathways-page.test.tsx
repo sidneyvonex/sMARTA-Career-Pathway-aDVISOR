@@ -36,9 +36,9 @@ test('Pathways page shows current tracks and source provenance', async () => {
   expect(screen.getAllByText('Applied Sciences').length).toBeGreaterThan(0)
   expect(screen.getByRole('link', { name: 'Open current official catalogue' })).toHaveAttribute(
     'href',
-    'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+    'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
   )
-  expect(screen.getAllByText(/five-county pilot/i).length).toBeGreaterThan(0)
+  expect(screen.getAllByText(/five-county rollout/i).length).toBeGreaterThan(0)
   expect(screen.getByText(/what to explore next/i)).toBeInTheDocument()
   expect(screen.queryByText(/which one is yours/i)).not.toBeInTheDocument()
 })

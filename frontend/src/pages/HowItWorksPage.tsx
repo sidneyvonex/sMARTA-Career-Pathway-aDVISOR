@@ -116,7 +116,7 @@ export default function HowItWorksPage() {
             </h1>
           </div>
           <div className="mk-hero__side">
-            <p>Five practical stages from evidence to a reviewed plan in the five-county pilot.</p>
+            <p>Five practical stages from evidence to a reviewed plan in the project&apos;s five-county rollout.</p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Get Started</Link>
               <Link className="mk-btn mk-btn-outline" to="/pathways">See the pathways</Link>

@@ -28,11 +28,14 @@ export interface SchoolItem {
   id: number
   name: string
   county: string
-  school_code: string
+  school_code: string | null
   phone: string
   email: string
   logo_url: string | null
   is_active: boolean
+  verification_status: 'unverified' | 'verified' | 'demonstration'
+  source_url: string
+  source_checked_at: string | null
   student_count: number
   counselor_count: number
 }

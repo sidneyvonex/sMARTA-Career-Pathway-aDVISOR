@@ -4,15 +4,7 @@ import toast from 'react-hot-toast'
 import { systemAdminApi, UserItem } from '../../api/systemAdmin'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/system-admin.css'
-
-const COUNTIES = [
-  { value: '', label: 'All Counties' },
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ALL_ROLLOUT_COUNTIES } from '../../lib/rollout'
 
 const ROLE_OPTIONS = [
   { value: '', label: 'All Roles' },
@@ -186,7 +178,7 @@ export default function SystemAdminUsersPage() {
           value={county}
           onChange={e => { setCounty(e.target.value); setPage(1) }}
         >
-          {COUNTIES.map(c => (
+          {ALL_ROLLOUT_COUNTIES.map(c => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>

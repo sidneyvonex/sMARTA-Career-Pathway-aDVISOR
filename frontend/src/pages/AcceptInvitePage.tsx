@@ -4,14 +4,7 @@ import toast from 'react-hot-toast'
 import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
-
-const COUNTIES = [
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ROLLOUT_COUNTIES } from '../lib/rollout'
 
 export default function AcceptInvitePage() {
   const [searchParams] = useSearchParams()
@@ -81,7 +74,7 @@ export default function AcceptInvitePage() {
           <label htmlFor="county">County</label>
           <select id="county" required value={form.county} onChange={set('county')}>
             <option value="">Select your county</option>
-            {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            {ROLLOUT_COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
 

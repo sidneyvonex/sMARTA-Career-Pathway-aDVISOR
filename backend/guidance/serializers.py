@@ -69,7 +69,20 @@ class SubjectSummarySerializer(serializers.ModelSerializer):
 class SchoolSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = School
-        fields = ('id', 'school_code', 'name', 'county')
+        fields = (
+            'id',
+            'school_code',
+            'name',
+            'county',
+            'sub_county',
+            'gender',
+            'cluster',
+            'accommodation_type',
+            'institution_type',
+            'verification_status',
+            'source_url',
+            'source_checked_at',
+        )
 
 
 class SchoolOfferingReplaceSerializer(serializers.Serializer):
@@ -107,6 +120,9 @@ class SubjectCombinationSerializer(serializers.ModelSerializer):
             'track',
             'subjects',
             'offered_schools',
+            'verification_status',
+            'source_url',
+            'source_checked_at',
         )
 
     def get_subjects(self, obj):

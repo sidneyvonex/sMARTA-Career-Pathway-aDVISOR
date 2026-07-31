@@ -193,9 +193,9 @@ export const handlers = [
           holland_code: 'IRE',
           scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
           recommendations: [
-            { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
-            { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-            { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+            { rank: 1, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+            { rank: 2, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+            { rank: 3, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
           ],
         },
         counselor: null,
@@ -297,9 +297,9 @@ export const handlers = [
         holland_code: 'IRE',
         scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
         recommendations: [
-          { rank: 1, fit_score: 18.25, fit_pct: 73, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
-          { rank: 2, fit_score: 14.75, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-          { rank: 3, fit_score: 14.65, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          { rank: 1, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
         ],
       },
       error: null,
@@ -320,9 +320,9 @@ export const handlers = [
         holland_code: 'IRE',
         scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
         recommendations: [
-          { rank: 1, fit_score: 18.25, fit_pct: 73, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
-          { rank: 2, fit_score: 14.75, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-          { rank: 3, fit_score: 14.65, fit_pct: 59, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+          { rank: 1, algorithm_version: 'interest-alignment-1.0', pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+          { rank: 2, algorithm_version: 'interest-alignment-1.0', pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+          { rank: 3, algorithm_version: 'interest-alignment-1.0', pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
         ],
       },
       error: null,
@@ -411,7 +411,7 @@ export const handlers = [
         {
           id: 5, first_name: 'Jane', last_name: 'Doe', grade: 9,
           county: 'kiambu', photo_url: null, top_pathway: 'STEM',
-          fit_pct: 73, quiz_status: 'done', last_active: '2026-06-17T08:00:00Z',
+          quiz_status: 'done', last_active: '2026-06-17T08:00:00Z',
           needs_attention: true,
           attention_reasons: [
             {
@@ -424,7 +424,7 @@ export const handlers = [
         {
           id: 6, first_name: 'Brian', last_name: 'Kamau', grade: 10,
           county: 'nyeri', photo_url: null, top_pathway: null,
-          fit_pct: null, quiz_status: 'pending', last_active: null,
+          quiz_status: 'pending', last_active: null,
           needs_attention: true,
           attention_reasons: [
             {
@@ -456,9 +456,9 @@ export const handlers = [
           id: 1, submitted_at: '2026-06-15T10:30:00Z', holland_code: 'IRE',
           scores: { R: 18, I: 22, A: 14, S: 11, E: 16, C: 13 },
           recommendations: [
-            { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and technology.' } },
-            { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-            { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+            { rank: 1, pathway: { id: 1, name: 'STEM', description: 'Science and technology.' } },
+            { rank: 2, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+            { rank: 3, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
           ],
         },
         grades: [
@@ -778,20 +778,14 @@ export const handlers = [
           recommendations: [
             {
               rank: 1,
-              fit_score: 85,
-              fit_pct: 90,
               pathway: { id: 1, name: 'Engineering', description: 'Build and design systems' },
             },
             {
               rank: 2,
-              fit_score: 72,
-              fit_pct: 78,
               pathway: { id: 2, name: 'Medicine', description: 'Healthcare and life sciences' },
             },
             {
               rank: 3,
-              fit_score: 65,
-              fit_pct: 70,
               pathway: { id: 3, name: 'Architecture', description: 'Design physical spaces' },
             },
           ],
@@ -1029,7 +1023,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         recent_signups: 7,
@@ -1051,7 +1045,7 @@ export const handlers = [
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
           description: 'Curated five-county pilot catalogue.',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
           is_active: true,
         },
@@ -1252,7 +1246,7 @@ export const handlers = [
         code: 'CBC-SS-PILOT-2026',
         title: 'CBC Senior School Pilot Catalogue 2026',
         description: 'Curated five-county pilot catalogue.',
-        source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+        source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
         effective_date: '2026-01-01',
         is_active: true,
       },
@@ -1304,7 +1298,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         track: {
@@ -1338,7 +1332,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         track: {
@@ -1383,7 +1377,7 @@ export const handlers = [
           framework: {
             code: 'CBC-SS-PILOT-2026',
             title: 'CBC Senior School Pilot Catalogue 2026',
-            source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+            source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
             effective_date: '2026-01-01',
           },
           track: {

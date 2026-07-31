@@ -4,7 +4,7 @@ export interface SchoolProfile {
   id: number
   name: string
   county: string
-  school_code: string
+  school_code: string | null
   logo_url: string | null
   phone: string
   email: string

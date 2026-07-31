@@ -34,6 +34,7 @@ class Subject(models.Model):
     )
     category = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
+    is_selectable_in_combination = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['grade', 'category', 'name']

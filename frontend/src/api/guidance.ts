@@ -40,14 +40,23 @@ export interface GuidanceSubject {
   code: string
   name: string
   grade: 10
-  category: 'Elective'
+  category: 'Core' | 'Elective'
+  is_selectable_in_combination?: boolean
 }
 
 export interface GuidanceSchool {
   id: number
-  school_code: string
+  school_code: string | null
   name: string
   county: string
+  sub_county: string
+  gender: string
+  cluster: string
+  accommodation_type: string
+  institution_type: string
+  verification_status: 'unverified' | 'verified' | 'demonstration'
+  source_url: string
+  source_checked_at: string | null
 }
 
 export interface GuidanceCombination {
@@ -60,6 +69,9 @@ export interface GuidanceCombination {
   track: GuidanceTrack
   subjects: [GuidanceSubject, GuidanceSubject, GuidanceSubject]
   offered_schools: GuidanceSchool[]
+  verification_status: 'unverified' | 'verified'
+  source_url: string
+  source_checked_at: string | null
 }
 
 export interface SchoolOfferings {

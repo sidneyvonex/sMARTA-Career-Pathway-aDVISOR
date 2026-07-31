@@ -73,6 +73,13 @@ class PathwayTrack(models.Model):
 
 
 class SubjectCombination(models.Model):
+    VERIFICATION_UNVERIFIED = 'unverified'
+    VERIFICATION_VERIFIED = 'verified'
+    VERIFICATION_STATUS_CHOICES = [
+        (VERIFICATION_UNVERIFIED, 'Unverified'),
+        (VERIFICATION_VERIFIED, 'Verified'),
+    ]
+
     framework_version = models.ForeignKey(
         FrameworkVersion,
         on_delete=models.CASCADE,
@@ -103,6 +110,13 @@ class SubjectCombination(models.Model):
         related_name='combinations_as_subject_three',
     )
     is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default=VERIFICATION_UNVERIFIED,
+    )
+    source_url = models.URLField(max_length=500, blank=True, default='')
+    source_checked_at = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['track__pathway__name', 'track__name', 'title']
@@ -156,8 +170,8 @@ class SubjectCombination(models.Model):
             messages = []
             if subject.grade != 10:
                 messages.append('Subject must be a Grade 10 subject.')
-            if subject.category.casefold() != 'elective':
-                messages.append('Subject must be an elective.')
+            if not subject.is_selectable_in_combination:
+                messages.append('Subject must be selectable in an official combination.')
             if not subject.is_active:
                 messages.append('Subject must be active.')
             if messages:
@@ -171,6 +185,15 @@ class SubjectCombination(models.Model):
 
 
 class SchoolOffering(models.Model):
+    VERIFICATION_UNVERIFIED = 'unverified'
+    VERIFICATION_VERIFIED = 'verified'
+    VERIFICATION_DEMONSTRATION = 'demonstration'
+    VERIFICATION_STATUS_CHOICES = [
+        (VERIFICATION_UNVERIFIED, 'Unverified'),
+        (VERIFICATION_VERIFIED, 'Verified'),
+        (VERIFICATION_DEMONSTRATION, 'Demonstration'),
+    ]
+
     school = models.ForeignKey(
         'accounts.School',
         on_delete=models.CASCADE,
@@ -182,6 +205,13 @@ class SchoolOffering(models.Model):
         related_name='school_offerings',
     )
     is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default=VERIFICATION_UNVERIFIED,
+    )
+    source_url = models.URLField(max_length=500, blank=True, default='')
+    source_checked_at = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -252,7 +282,7 @@ class LearnerCombinationChoice(models.Model):
             or not combination.track.is_active
         ):
             raise ValidationError({
-                'combination': 'Choose an active combination from the current pilot framework.'
+                'combination': 'Choose an active combination from the current guidance framework.'
             })
 
     def __str__(self):

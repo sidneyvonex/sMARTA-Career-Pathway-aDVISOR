@@ -46,7 +46,7 @@ class TestPilotFrameworkSeed:
         assert framework.code == PILOT_FRAMEWORK_CODE
         assert framework.effective_date == date(2026, 1, 1)
         assert framework.source_url.startswith(
-            'https://selection-placement.kemis.go.ke/'
+            'https://selection.education.go.ke/'
         )
         assert 'not the complete national catalogue' in framework.description.casefold()
 
@@ -96,7 +96,7 @@ class TestPilotFrameworkSeed:
             'Arts & Sports Science': 3,
         }
 
-    def test_every_seeded_combination_resolves_three_active_electives(self):
+    def test_every_seeded_combination_is_verified_and_resolves_three_subjects(self):
         framework = FrameworkVersion.objects.get(code=PILOT_FRAMEWORK_CODE)
 
         for combination in SubjectCombination.objects.filter(
@@ -104,6 +104,11 @@ class TestPilotFrameworkSeed:
         ).select_related('subject_one', 'subject_two', 'subject_three', 'track'):
             combination.full_clean()
             assert len({subject.pk for subject in combination.subjects}) == 3
+            assert combination.verification_status == 'verified'
+            assert combination.source_checked_at == date(2026, 7, 31)
+            assert combination.source_url.startswith(
+                'https://selection.education.go.ke/'
+            )
 
 
 class TestPilotSchoolOfferingsSeed:
@@ -114,6 +119,9 @@ class TestPilotSchoolOfferingsSeed:
         assert schools.count() == 5
         assert set(schools.values_list('county', flat=True)) == pilot_counties
         assert all('Pilot' in school.name for school in schools)
+        assert set(schools.values_list('verification_status', flat=True)) == {
+            'demonstration'
+        }
 
     def test_every_demonstration_school_has_representative_offerings(self):
         schools = list(
@@ -125,6 +133,9 @@ class TestPilotSchoolOfferingsSeed:
             school.guidance_offerings.filter(is_active=True).count() >= 4
             for school in schools
         )
+        assert not SchoolOffering.objects.filter(
+            school__in=schools,
+        ).exclude(verification_status='demonstration').exists()
 
     def test_offerings_cover_every_curated_combination(self):
         framework = FrameworkVersion.objects.get(code=PILOT_FRAMEWORK_CODE)

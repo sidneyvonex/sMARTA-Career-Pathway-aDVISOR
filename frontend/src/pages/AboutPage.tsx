@@ -7,7 +7,7 @@ const TIMELINE = [
   {
     label: 'Foundations',
     title: 'Accounts you can trust',
-    body: 'Started with the basics that had to be right first: secure accounts, county-verified registration, and role-based access for students, parents, counselors, and school admins.',
+    body: 'Started with the basics that had to be right first: secure accounts, county-limited registration, and role-based access for students, parents, counselors, and school admins.',
   },
   {
     label: 'The core',

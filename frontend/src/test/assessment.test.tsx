@@ -31,8 +31,6 @@ const mockQuestions: RIASECQuestion[] = Array.from({ length: 6 }, (_, i) => ({
 const mockRecs: AssessmentRecommendation[] = [
   {
     rank: 1,
-    fit_score: 18.25,
-    fit_pct: 73,
     pathway: { id: 1, name: 'STEM', description: 'Science and tech.' },
     explanation: {
       summary: 'STEM is suggested because Investigative and Realistic interests lead.',
@@ -44,8 +42,8 @@ const mockRecs: AssessmentRecommendation[] = [
       next_step: 'Review your subjects and available combinations.',
     },
   },
-  { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
-  { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
+  { rank: 2, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
+  { rank: 3, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
 ]
 
 // ── LikertQuestion ────────────────────────────────────────────────────────

@@ -129,7 +129,12 @@ export default function SchoolProfilePage() {
         <div className="form-row">
           <div className="form-field">
             <label htmlFor="school-code">School Code</label>
-            <input id="school-code" type="text" value={school.school_code} disabled />
+            <input
+              id="school-code"
+              type="text"
+              value={school.school_code ?? 'Not yet recorded'}
+              disabled
+            />
             <p className="form-hint">Set by the system administrator.</p>
           </div>
           <div className="form-field">

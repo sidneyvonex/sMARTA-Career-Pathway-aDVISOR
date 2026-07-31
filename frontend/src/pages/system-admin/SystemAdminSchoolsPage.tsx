@@ -3,15 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { systemAdminApi, SchoolItem } from '../../api/systemAdmin'
 import '../../styles/system-admin.css'
-
-const COUNTIES = [
-  { value: '', label: 'All Counties' },
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ALL_ROLLOUT_COUNTIES, ROLLOUT_COUNTIES } from '../../lib/rollout'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
@@ -229,7 +221,7 @@ export default function SystemAdminSchoolsPage() {
                 style={{ minHeight: 'var(--min-touch-target)' }}
               >
                 <option value="">Select county</option>
-                {COUNTIES.filter(c => c.value).map(c => (
+                {ROLLOUT_COUNTIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
@@ -295,7 +287,7 @@ export default function SystemAdminSchoolsPage() {
           value={county}
           onChange={e => { setCounty(e.target.value); setPage(1) }}
         >
-          {COUNTIES.map(c => (
+          {ALL_ROLLOUT_COUNTIES.map(c => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
@@ -335,6 +327,7 @@ export default function SystemAdminSchoolsPage() {
               <th>Code</th>
               <th>Students</th>
               <th>Counselors</th>
+              <th>Evidence</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -358,6 +351,7 @@ export default function SystemAdminSchoolsPage() {
                     <td>{school.school_code}</td>
                     <td>{school.student_count}</td>
                     <td>{school.counselor_count}</td>
+                    <td>{school.verification_status}</td>
                     <td>
                       <span className={`sysadmin-badge sysadmin-badge--${school.is_active ? 'active' : 'inactive'}`}>
                         {school.is_active ? 'Active' : 'Inactive'}
@@ -384,9 +378,17 @@ export default function SystemAdminSchoolsPage() {
                   <>
                     <td>{school.name}</td>
                     <td>{formatCounty(school.county)}</td>
-                    <td>{school.school_code}</td>
+                    <td>{school.school_code ?? 'Not recorded'}</td>
                     <td>{school.student_count}</td>
                     <td>{school.counselor_count}</td>
+                    <td>
+                      <span className={`sysadmin-badge sysadmin-badge--${school.verification_status === 'verified' ? 'active' : 'inactive'}`}>
+                        {school.verification_status}
+                      </span>
+                      <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                        {school.source_checked_at ? `Checked ${school.source_checked_at}` : 'No source check recorded'}
+                      </div>
+                    </td>
                     <td>
                       <span className={`sysadmin-badge sysadmin-badge--${school.is_active ? 'active' : 'inactive'}`}>
                         {school.is_active ? 'Active' : 'Inactive'}

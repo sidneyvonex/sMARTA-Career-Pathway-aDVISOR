@@ -25,7 +25,8 @@ export interface Subject {
   name: string
   code: string
   grade: 9 | 10
-  category: 'Core' | 'Elective' | 'Optional'
+  category: 'Core' | 'Elective' | 'Optional' | 'Required'
+  is_selectable_in_combination?: boolean
   is_active: boolean
 }
 

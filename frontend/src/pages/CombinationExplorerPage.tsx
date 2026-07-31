@@ -8,15 +8,7 @@ import {
   type GuidanceCombinationFilters,
 } from '../api/guidance'
 import '../styles/explorer.css'
-
-const COUNTIES = [
-  { value: '', label: 'All five counties' },
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ALL_ROLLOUT_COUNTIES } from '../lib/rollout'
 
 export default function CombinationExplorerPage() {
   const queryClient = useQueryClient()
@@ -113,7 +105,7 @@ export default function CombinationExplorerPage() {
     return (
       <ErrorState
         title="The combination catalogue could not load"
-        description="Check your connection, then try loading the source-dated pilot catalogue again."
+        description="Check your connection, then try loading the source-dated catalogue again."
         onRetry={() => {
           frameworkQuery.refetch()
           pathwaysQuery.refetch()
@@ -131,7 +123,7 @@ export default function CombinationExplorerPage() {
     <div className="explorer-page">
       <header className="explorer-header">
         <div>
-          <span className="explorer-kicker">Grade 10 pilot catalogue</span>
+          <span className="explorer-kicker">Grade 10 curated catalogue</span>
           <h1>Explore subject combinations</h1>
           <p>Filter current three-subject options, check where they are offered and save up to three for comparison.</p>
         </div>
@@ -192,15 +184,15 @@ export default function CombinationExplorerPage() {
         <label>
           <span>County</span>
           <select value={county} onChange={(event) => setCounty(event.target.value)}>
-            {COUNTIES.map((item) => (
+            {ALL_ROLLOUT_COUNTIES.map((item) => (
               <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </select>
         </label>
         <label>
-          <span>School offering</span>
+          <span>Verified school offering</span>
           <select value={school} onChange={(event) => setSchool(event.target.value)}>
-            <option value="">All pilot schools</option>
+            <option value="">All verified schools</option>
             {allSchools.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
@@ -243,8 +235,8 @@ export default function CombinationExplorerPage() {
                   <strong>{combination.track.name}</strong>
                   <span>
                     {combination.offered_schools.length > 0
-                      ? `Offered by ${combination.offered_schools.length} pilot school${combination.offered_schools.length === 1 ? '' : 's'}`
-                      : 'No pilot school offering recorded yet'}
+                      ? `Verified at ${combination.offered_schools.length} school${combination.offered_schools.length === 1 ? '' : 's'}`
+                      : 'No verified school offering recorded yet'}
                   </span>
                 </div>
                 <button

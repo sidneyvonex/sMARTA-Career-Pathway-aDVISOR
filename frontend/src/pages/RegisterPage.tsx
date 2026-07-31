@@ -3,14 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import AuthLayout from '../components/AuthLayout'
 import { authApi } from '../api/auth'
-
-const COUNTIES = [
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ROLLOUT_COUNTIES } from '../lib/rollout'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -88,7 +81,7 @@ export default function RegisterPage() {
             <label htmlFor="county">County</label>
             <select id="county" required value={form.county} onChange={set('county')}>
               <option value="">Select county</option>
-              {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {ROLLOUT_COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
           <div className="form-field">

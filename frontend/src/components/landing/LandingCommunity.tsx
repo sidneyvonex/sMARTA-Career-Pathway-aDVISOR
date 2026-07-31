@@ -57,8 +57,14 @@ export default function LandingCommunity() {
         Real classrooms. Real learners.
       </h2>
       <p className="landing-community__lede">
-        Every school below is real — Kiambu and Nyeri counties, part of the same five-county
-        region Smarta Shauri currently supports. Hover a photo for details.
+        Documentary photographs from Kenyan school settings help illustrate the
+        environments learners know. Hover a photo for its caption.
+      </p>
+      <p className="landing-community__lede">
+        A school appearing here does not mean it participates in Smarta Shauri,
+        endorses this project, or offers any particular subject combination. Check
+        current offerings on the official selection portal.{' '}
+        <a href="/img/CREDITS.md">View photography sources and licences.</a>
       </p>
 
       <div className="landing-school-grid">

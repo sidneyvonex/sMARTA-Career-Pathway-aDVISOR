@@ -72,14 +72,14 @@ export default function LandingNotice() {
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
                 You submit your official Senior School pathway choices at{' '}
-                <strong>placements.education.go.ke</strong>
+                <strong>selection.education.go.ke</strong>
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
-                Final placement weighs your choices, KJSEA performance, equity, and school
-                capacity — an interest-alignment ranking is only an exploration aid
+                The Ministry handles final placement. Confirm the current cohort&apos;s criteria,
+                deadlines, and results on its official services
               </li>
             </ul>
           </div>
@@ -88,7 +88,7 @@ export default function LandingNotice() {
         <div className="landing-notice__cta">
           <a
             className="mk-btn mk-btn-dark"
-            href="https://placements.education.go.ke"
+            href="https://selection.education.go.ke"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -109,7 +109,8 @@ export default function LandingNotice() {
         <p className="landing-notice__fine">
           Smarta Shauri is an independent student project and is not affiliated with,
           endorsed by, or operated by KNEC or the Ministry of Education. Always confirm
-          deadlines and requirements on their official channels.
+          deadlines and requirements on their official channels. Official service links
+          checked 31 July 2026.
         </p>
       </div>
     </section>

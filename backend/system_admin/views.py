@@ -329,6 +329,12 @@ class SchoolListView(APIView):
                 'email': s.email,
                 'logo_url': s.logo_url,
                 'is_active': s.is_active,
+                'verification_status': s.verification_status,
+                'source_url': s.source_url,
+                'source_checked_at': (
+                    s.source_checked_at.isoformat()
+                    if s.source_checked_at else None
+                ),
                 'student_count': s.student_count,
                 'counselor_count': s.counselor_count,
             }
@@ -447,6 +453,12 @@ class SchoolDetailView(APIView):
             'email': school.email,
             'logo_url': school.logo_url,
             'is_active': school.is_active,
+            'verification_status': school.verification_status,
+            'source_url': school.source_url,
+            'source_checked_at': (
+                school.source_checked_at.isoformat()
+                if school.source_checked_at else None
+            ),
             'student_count': student_count,
             'counselor_count': counselors.count(),
             'counselors': [

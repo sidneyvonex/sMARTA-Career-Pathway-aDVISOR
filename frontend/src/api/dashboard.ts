@@ -19,7 +19,6 @@ export interface AssignedStudent {
   county: string | null
   photo_url: string | null
   top_pathway: string | null
-  fit_pct: number | null
   quiz_status: 'done' | 'pending'
   needs_attention: boolean
   attention_reasons: {

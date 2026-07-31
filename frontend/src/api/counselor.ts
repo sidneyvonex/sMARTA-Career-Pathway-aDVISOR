@@ -22,8 +22,6 @@ export interface StudentDetail {
     scores: Record<string, number>
     recommendations: {
       rank: number
-      fit_score: number
-      fit_pct: number
       pathway: { id: number; name: string; description: string }
     }[]
   } | null

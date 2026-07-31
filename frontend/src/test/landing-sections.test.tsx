@@ -91,9 +91,10 @@ describe('LandingNotice', () => {
     withRouter(<LandingNotice />)
     expect(screen.getByText(/decision-support tool/i)).toBeInTheDocument()
     const applyLink = screen.getByRole('link', { name: /apply officially/i })
-    expect(applyLink).toHaveAttribute('href', 'https://placements.education.go.ke')
+    expect(applyLink).toHaveAttribute('href', 'https://selection.education.go.ke')
     const resultsLink = screen.getByRole('link', { name: /check kjsea results/i })
     expect(resultsLink).toHaveAttribute('href', 'https://kjsea.knec.ac.ke')
+    expect(screen.getByText(/official service links checked 31 july 2026/i)).toBeInTheDocument()
   })
 })
 
@@ -103,6 +104,11 @@ describe('LandingCommunity', () => {
     expect(container.querySelector('#community')).toBeInTheDocument()
     expect(screen.getByText('Chinga Boys High School')).toBeInTheDocument()
     expect(screen.getByText('Mahiga Girls Secondary School')).toBeInTheDocument()
+    expect(screen.getByText(/does not mean it participates in Smarta Shauri/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /photography sources and licences/i })).toHaveAttribute(
+      'href',
+      '/img/CREDITS.md',
+    )
     const images = screen.getAllByRole('img')
     expect(images).toHaveLength(8)
     images.forEach((img) => {

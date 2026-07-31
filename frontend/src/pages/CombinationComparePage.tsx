@@ -6,14 +6,7 @@ import { guidanceApi, guidanceKeys } from '../api/guidance'
 import { studentsApi } from '../api/students'
 import ErrorState from '../components/common/dashboard/ErrorState'
 import '../styles/compare.css'
-
-const COUNTIES = [
-  { value: 'kiambu', label: 'Kiambu' },
-  { value: 'muranga', label: "Murang'a" },
-  { value: 'nyeri', label: 'Nyeri' },
-  { value: 'kirinyaga', label: 'Kirinyaga' },
-  { value: 'nyandarua', label: 'Nyandarua' },
-]
+import { ROLLOUT_COUNTIES } from '../lib/rollout'
 
 export default function CombinationComparePage() {
   const queryClient = useQueryClient()
@@ -68,7 +61,7 @@ export default function CombinationComparePage() {
       <section className="compare-empty">
         <span>Comparison needs two choices</span>
         <h1>Save at least two combinations</h1>
-        <p>Explore the pilot catalogue and save two or three combinations before comparing them side by side.</p>
+        <p>Explore the curated catalogue and save two or three combinations before comparing them side by side.</p>
         <Link to="/explore">Explore combinations</Link>
       </section>
     )
@@ -171,11 +164,11 @@ export default function CombinationComparePage() {
         ))}
       </ComparisonSection>
 
-      <ComparisonSection title="Pilot school offerings">
+      <ComparisonSection title="Verified school offerings">
         {choices.map((choice) => (
           <ComparisonItem key={choice.id} title={`${choice.combination.offered_schools.length} schools recorded`}>
             <div className="compare-counties">
-              {COUNTIES.map((county) => {
+              {ROLLOUT_COUNTIES.map((county) => {
                 const schools = choice.combination.offered_schools.filter(
                   (item) => item.county === county.value,
                 )
@@ -210,7 +203,7 @@ export default function CombinationComparePage() {
           const gaps = [
             ...(assessment ? [] : ['Complete the interest assessment']),
             ...(evidence?.academic_evidence.status === 'ready' ? [] : ['Complete academic evidence']),
-            ...(choice.combination.offered_schools.length ? [] : ['Confirm a pilot school offering']),
+            ...(choice.combination.offered_schools.length ? [] : ['Confirm an offering on the official selection portal']),
           ]
           return (
             <ComparisonItem key={choice.id} title={gaps.length ? `${gaps.length} gaps to review` : 'No current evidence gaps'}>

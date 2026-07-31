@@ -1,5 +1,9 @@
 # Pilot architecture — one-page presentation view
 
+> **Audit status (2026-07-31):** This document describes the intended pilot
+> architecture. It is an audit input, not proof that `main` implements every
+> component shown. Implementation claims must be traced to code and tests.
+
 Smart Ashauri is a five-county decision-support pilot. It helps a learner combine
 academic evidence, stated interests, available subject combinations and human review.
 It does not make placement or eligibility decisions.

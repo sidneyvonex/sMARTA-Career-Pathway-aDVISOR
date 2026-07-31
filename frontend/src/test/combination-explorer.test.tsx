@@ -27,13 +27,15 @@ describe('CombinationExplorerPage', () => {
     expect(await screen.findByText('CBC Senior School Pilot Catalogue 2026')).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: 'View official source' })).toHaveAttribute(
       'href',
-      'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+      'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
     )
     expect(screen.getByRole('option', { name: 'Kirinyaga' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Nyandarua' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'All verified schools' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Agriculture, Biology & Chemistry' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Pure Sciences' })).toBeInTheDocument()
     expect(screen.getByText('Agriculture')).toBeInTheDocument()
+    expect(screen.getByText('No verified school offering recorded yet')).toBeInTheDocument()
   })
 
   it('saves a combination and updates the comparison count', async () => {

@@ -296,6 +296,8 @@ class TestParentChildDetailView:
         assert data['assessment']['scores']['R'] == 25
         assert len(data['assessment']['recommendations']) == 1
         assert data['assessment']['recommendations'][0]['pathway']['name'] == 'Engineering'
+        assert 'fit_pct' not in data['assessment']['recommendations'][0]
+        assert 'fit_score' not in data['assessment']['recommendations'][0]
 
     def test_linked_child_no_assessment_returns_null(self):
         parent = ParentFactory()

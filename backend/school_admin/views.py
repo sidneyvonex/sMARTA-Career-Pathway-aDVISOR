@@ -54,7 +54,10 @@ class SchoolOfferingsView(APIView):
             combinations = SubjectCombination.objects.none()
         else:
             combinations = (
-                active_combination_queryset(framework)
+                  active_combination_queryset(
+                      framework,
+                      include_unverified_offerings=True,
+                  )
                 .filter(
                     school_offerings__school=school,
                     school_offerings__is_active=True,
@@ -106,7 +109,7 @@ class SchoolOfferingsView(APIView):
         )
         if eligible_ids != set(combination_ids):
             return _error(
-                'Only active combinations from the current pilot framework '
+                'Only active combinations from the current guidance framework '
                 'can be selected.'
             )
 

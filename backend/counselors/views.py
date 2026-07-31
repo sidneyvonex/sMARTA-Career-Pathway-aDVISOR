@@ -121,7 +121,6 @@ class CounselorStudentsView(APIView):
         data = []
         for profile in profiles:
             top_pathway = None
-            fit_pct = None
             quiz_status = 'pending'
             assessments = profile.attention_assessments
             if assessments:
@@ -129,7 +128,6 @@ class CounselorStudentsView(APIView):
                 recs = list(assessments[0].recommendations.all())
                 if recs:
                     top_pathway = recs[0].pathway.name
-                    fit_pct = recs[0].fit_pct
             attention_reasons = attention_reasons_for(profile)
 
             data.append({
@@ -140,7 +138,6 @@ class CounselorStudentsView(APIView):
                 'county': profile.user.county,
                 'photo_url': profile.photo_url,
                 'top_pathway': top_pathway,
-                'fit_pct': fit_pct,
                 'quiz_status': quiz_status,
                 'needs_attention': bool(attention_reasons),
                 'attention_reasons': attention_reasons,
