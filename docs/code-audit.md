@@ -44,6 +44,7 @@
 | 2026-07-31 | AUD-CODE-005 / AUD-CONTENT-008 | Added an explicit combination-selectability field, classified Core and Essential Mathematics as core, classified Physical Education as separately required, and preserved Mathematics in valid official combinations. | Migration consistency check passed; 72 focused backend tests and the production frontend build passed. |
 | 2026-07-31 | AUD-CONTENT-007 | Replaced “county-verified registration” with “county-limited registration.” | TypeScript production build passed. |
 | 2026-07-31 | AUD-CODE-001 / AUD-CODE-002 / AUD-CONTENT-004 | Added per-record verification status, source URL and checked date for schools, combinations and offerings; classified seeded pilot institutions and offerings as demonstration data; excluded non-verified availability from public responses and filters; changed learner-facing wording to “verified school offering.” | Migration consistency check passed; 89 focused backend tests, 42 focused frontend tests and the production frontend build passed. |
+| 2026-07-31 | AUD-CONTENT-002 | Reframed the school-photo gallery as documentary illustration, linked its Wikimedia source/licence record and added explicit non-participation, non-endorsement and availability language. | Landing-section regression test and production frontend build passed. |
 
 ## Review areas
 

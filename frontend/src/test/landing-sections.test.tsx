@@ -104,6 +104,11 @@ describe('LandingCommunity', () => {
     expect(container.querySelector('#community')).toBeInTheDocument()
     expect(screen.getByText('Chinga Boys High School')).toBeInTheDocument()
     expect(screen.getByText('Mahiga Girls Secondary School')).toBeInTheDocument()
+    expect(screen.getByText(/does not mean it participates in Smarta Shauri/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /photography sources and licences/i })).toHaveAttribute(
+      'href',
+      '/img/CREDITS.md',
+    )
     const images = screen.getAllByRole('img')
     expect(images).toHaveLength(8)
     images.forEach((img) => {
