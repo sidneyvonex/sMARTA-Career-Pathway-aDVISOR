@@ -90,7 +90,9 @@ class CombinationListView(PublicGuidanceView):
         if county:
             combinations = combinations.filter(
                 school_offerings__is_active=True,
+                school_offerings__verification_status='verified',
                 school_offerings__school__is_active=True,
+                school_offerings__school__verification_status='verified',
                 school_offerings__school__county__iexact=county,
             )
         if school:
@@ -100,7 +102,9 @@ class CombinationListView(PublicGuidanceView):
             combinations = combinations.filter(
                 school_filter,
                 school_offerings__is_active=True,
+                school_offerings__verification_status='verified',
                 school_offerings__school__is_active=True,
+                school_offerings__school__verification_status='verified',
             )
         if search:
             combinations = combinations.filter(

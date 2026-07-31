@@ -9,7 +9,7 @@ import { server } from './msw/server'
 const framework = {
   code: 'CBC-SS-PILOT-2026',
   title: 'CBC Senior School Pilot Catalogue 2026',
-  source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+  source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
   effective_date: '2026-01-01',
 }
 
@@ -105,7 +105,7 @@ describe('CombinationComparePage', () => {
       'Three elective subjects',
       'Interest evidence',
       'Academic evidence',
-      'Pilot school offerings',
+      'Verified school offerings',
       'Related routes and careers',
       'Evidence gaps',
     ]) {

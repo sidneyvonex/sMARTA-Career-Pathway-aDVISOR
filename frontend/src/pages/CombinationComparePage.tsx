@@ -171,7 +171,7 @@ export default function CombinationComparePage() {
         ))}
       </ComparisonSection>
 
-      <ComparisonSection title="Pilot school offerings">
+      <ComparisonSection title="Verified school offerings">
         {choices.map((choice) => (
           <ComparisonItem key={choice.id} title={`${choice.combination.offered_schools.length} schools recorded`}>
             <div className="compare-counties">
@@ -210,7 +210,7 @@ export default function CombinationComparePage() {
           const gaps = [
             ...(assessment ? [] : ['Complete the interest assessment']),
             ...(evidence?.academic_evidence.status === 'ready' ? [] : ['Complete academic evidence']),
-            ...(choice.combination.offered_schools.length ? [] : ['Confirm a pilot school offering']),
+            ...(choice.combination.offered_schools.length ? [] : ['Confirm an offering on the official selection portal']),
           ]
           return (
             <ComparisonItem key={choice.id} title={gaps.length ? `${gaps.length} gaps to review` : 'No current evidence gaps'}>

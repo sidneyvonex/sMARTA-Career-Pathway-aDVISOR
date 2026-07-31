@@ -103,6 +103,9 @@ class TestSchoolOfferingsRead:
             'school_code': self.school.school_code,
             'name': self.school.name,
             'county': self.school.county,
+            'verification_status': 'verified',
+            'source_url': 'https://selection.education.go.ke/schools',
+            'source_checked_at': '2026-07-31',
         }
         assert data['offerings'][0]['framework']['source_url'].startswith('https://')
 

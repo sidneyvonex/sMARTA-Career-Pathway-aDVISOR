@@ -147,7 +147,7 @@ export default function LearnerPlanPage() {
   const gaps = [
     ...(evidence?.academic_evidence.status === 'ready' ? [] : ['Complete your academic evidence']),
     ...(evidence?.assessment.status === 'complete' ? [] : ['Complete the career interest assessment']),
-    ...(plan.provisional_choice.combination.offered_schools.length ? [] : ['Confirm a pilot school offering']),
+    ...(plan.provisional_choice.combination.offered_schools.length ? [] : ['Confirm an offering on the official selection portal']),
     ...(reason.trim() ? [] : ['Record why you are considering this choice']),
   ]
   const completedCount = plan.milestones.filter((item) => item.is_complete).length

@@ -73,6 +73,13 @@ class PathwayTrack(models.Model):
 
 
 class SubjectCombination(models.Model):
+    VERIFICATION_UNVERIFIED = 'unverified'
+    VERIFICATION_VERIFIED = 'verified'
+    VERIFICATION_STATUS_CHOICES = [
+        (VERIFICATION_UNVERIFIED, 'Unverified'),
+        (VERIFICATION_VERIFIED, 'Verified'),
+    ]
+
     framework_version = models.ForeignKey(
         FrameworkVersion,
         on_delete=models.CASCADE,
@@ -103,6 +110,13 @@ class SubjectCombination(models.Model):
         related_name='combinations_as_subject_three',
     )
     is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default=VERIFICATION_UNVERIFIED,
+    )
+    source_url = models.URLField(max_length=500, blank=True, default='')
+    source_checked_at = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['track__pathway__name', 'track__name', 'title']
@@ -171,6 +185,15 @@ class SubjectCombination(models.Model):
 
 
 class SchoolOffering(models.Model):
+    VERIFICATION_UNVERIFIED = 'unverified'
+    VERIFICATION_VERIFIED = 'verified'
+    VERIFICATION_DEMONSTRATION = 'demonstration'
+    VERIFICATION_STATUS_CHOICES = [
+        (VERIFICATION_UNVERIFIED, 'Unverified'),
+        (VERIFICATION_VERIFIED, 'Verified'),
+        (VERIFICATION_DEMONSTRATION, 'Demonstration'),
+    ]
+
     school = models.ForeignKey(
         'accounts.School',
         on_delete=models.CASCADE,
@@ -182,6 +205,13 @@ class SchoolOffering(models.Model):
         related_name='school_offerings',
     )
     is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default=VERIFICATION_UNVERIFIED,
+    )
+    source_url = models.URLField(max_length=500, blank=True, default='')
+    source_checked_at = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

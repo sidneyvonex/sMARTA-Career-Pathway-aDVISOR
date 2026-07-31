@@ -55,6 +55,9 @@ class SchoolFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f'Test School {n}')
     county = 'kiambu'
     school_code = factory.Sequence(lambda n: f'SCH{n:04d}')
+    verification_status = School.VERIFICATION_VERIFIED
+    source_url = 'https://selection.education.go.ke/schools'
+    source_checked_at = date(2026, 7, 31)
 
 
 class SystemAdminFactory(UserFactory):
@@ -177,6 +180,12 @@ class SubjectCombinationFactory(factory.django.DjangoModelFactory):
     code = factory.Sequence(lambda n: f'COMBO-{n:04d}')
     title = factory.Sequence(lambda n: f'Pilot Combination {n}')
     description = 'Three-subject pilot combination.'
+    verification_status = SubjectCombination.VERIFICATION_VERIFIED
+    source_url = (
+        'https://selection.education.go.ke/uploads/'
+        '1750333580754-subject-combinations-1750333524964.pdf'
+    )
+    source_checked_at = date(2026, 7, 31)
     subject_one = factory.SubFactory(
         SubjectFactory,
         grade=10,
@@ -205,6 +214,9 @@ class SchoolOfferingFactory(factory.django.DjangoModelFactory):
     school = factory.SubFactory(SchoolFactory)
     combination = factory.SubFactory(SubjectCombinationFactory)
     is_active = True
+    verification_status = SchoolOffering.VERIFICATION_VERIFIED
+    source_url = 'https://selection.education.go.ke/schools'
+    source_checked_at = date(2026, 7, 31)
 
 
 class RecommendationFactory(factory.django.DjangoModelFactory):

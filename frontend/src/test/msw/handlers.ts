@@ -1029,7 +1029,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         recent_signups: 7,
@@ -1051,7 +1051,7 @@ export const handlers = [
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
           description: 'Curated five-county pilot catalogue.',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
           is_active: true,
         },
@@ -1252,7 +1252,7 @@ export const handlers = [
         code: 'CBC-SS-PILOT-2026',
         title: 'CBC Senior School Pilot Catalogue 2026',
         description: 'Curated five-county pilot catalogue.',
-        source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+        source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
         effective_date: '2026-01-01',
         is_active: true,
       },
@@ -1304,7 +1304,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         track: {
@@ -1338,7 +1338,7 @@ export const handlers = [
         framework: {
           code: 'CBC-SS-PILOT-2026',
           title: 'CBC Senior School Pilot Catalogue 2026',
-          source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+          source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
           effective_date: '2026-01-01',
         },
         track: {
@@ -1383,7 +1383,7 @@ export const handlers = [
           framework: {
             code: 'CBC-SS-PILOT-2026',
             title: 'CBC Senior School Pilot Catalogue 2026',
-            source_url: 'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+            source_url: 'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
             effective_date: '2026-01-01',
           },
           track: {

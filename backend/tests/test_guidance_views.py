@@ -5,6 +5,7 @@ from guidance.models import FrameworkVersion, SubjectCombination
 from tests.factories import (
     FrameworkVersionFactory,
     PathwayTrackFactory,
+    SchoolOfferingFactory,
     SubjectCombinationFactory,
 )
 
@@ -124,6 +125,9 @@ class TestCombinationListView:
             'track',
             'subjects',
             'offered_schools',
+            'verification_status',
+            'source_url',
+            'source_checked_at',
         }
         assert len(combination['subjects']) == 3
         assert combination['track']['pathway']['name']
@@ -135,11 +139,8 @@ class TestCombinationListView:
         [
             ({'pathway': 'STEM'}, {'ST1042', 'ST2007', 'ST2067', 'ST3074'}),
             ({'track': 'SPORTS-RECREATION'}, {'AS2009'}),
-            ({'county': 'nyeri'}, {'ST1042', 'ST2067', 'SS2033', 'AS1049'}),
-            (
-                {'school': 'PILOT-MUR-001'},
-                {'ST2067', 'ST3074', 'SS1006', 'AS1021'},
-            ),
+            ({'county': 'nyeri'}, set()),
+            ({'school': 'PILOT-MUR-001'}, set()),
             ({'search': 'media'}, {'ST3074'}),
         ],
     )
@@ -148,6 +149,26 @@ class TestCombinationListView:
 
         assert response.status_code == 200
         assert {item['code'] for item in response.data['data']} == expected_codes
+
+    def test_exposes_only_verified_school_offerings(self):
+        combination = SubjectCombination.objects.get(code='ST1042')
+        verified = SchoolOfferingFactory(combination=combination)
+        demonstration = SchoolOfferingFactory(
+            combination=combination,
+            school__verification_status='demonstration',
+            verification_status='demonstration',
+        )
+
+        response = APIClient().get(COMBINATIONS_URL)
+        item = next(
+            item for item in response.data['data'] if item['code'] == combination.code
+        )
+
+        returned_ids = {school['id'] for school in item['offered_schools']}
+        assert verified.school_id in returned_ids
+        assert demonstration.school_id not in returned_ids
+        assert item['offered_schools'][0]['verification_status'] == 'verified'
+        assert item['offered_schools'][0]['source_checked_at'] == '2026-07-31'
 
     def test_query_count_is_bounded(self, django_assert_num_queries):
         with django_assert_num_queries(3):

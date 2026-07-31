@@ -49,6 +49,9 @@ export interface GuidanceSchool {
   school_code: string
   name: string
   county: string
+  verification_status: 'unverified' | 'verified' | 'demonstration'
+  source_url: string
+  source_checked_at: string | null
 }
 
 export interface GuidanceCombination {
@@ -61,6 +64,9 @@ export interface GuidanceCombination {
   track: GuidanceTrack
   subjects: [GuidanceSubject, GuidanceSubject, GuidanceSubject]
   offered_schools: GuidanceSchool[]
+  verification_status: 'unverified' | 'verified'
+  source_url: string
+  source_checked_at: string | null
 }
 
 export interface SchoolOfferings {

@@ -123,7 +123,7 @@ describe('SystemAdminDashboard', () => {
     expect(screen.getByText('CBC-SS-PILOT-2026')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open official source' })).toHaveAttribute(
       'href',
-      'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+      'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
     )
   })
 })
@@ -156,7 +156,7 @@ describe('SystemAdminCataloguePage', () => {
     expect(await screen.findByText('CBC Senior School Pilot Catalogue 2026')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open official source' })).toHaveAttribute(
       'href',
-      'https://selection-placement.kemis.go.ke/uploads/catalogue.pdf',
+      'https://selection.education.go.ke/uploads/1750333580754-subject-combinations-1750333524964.pdf',
     )
     expect(screen.getByText('Advanced Mathematics, Physics, Chemistry')).toBeInTheDocument()
     expect(screen.getByText('Biology, Chemistry, Agriculture')).toBeInTheDocument()

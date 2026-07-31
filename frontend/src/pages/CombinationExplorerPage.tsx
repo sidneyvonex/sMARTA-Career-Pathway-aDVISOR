@@ -198,9 +198,9 @@ export default function CombinationExplorerPage() {
           </select>
         </label>
         <label>
-          <span>School offering</span>
+          <span>Verified school offering</span>
           <select value={school} onChange={(event) => setSchool(event.target.value)}>
-            <option value="">All pilot schools</option>
+            <option value="">All verified schools</option>
             {allSchools.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
@@ -243,8 +243,8 @@ export default function CombinationExplorerPage() {
                   <strong>{combination.track.name}</strong>
                   <span>
                     {combination.offered_schools.length > 0
-                      ? `Offered by ${combination.offered_schools.length} pilot school${combination.offered_schools.length === 1 ? '' : 's'}`
-                      : 'No pilot school offering recorded yet'}
+                      ? `Verified at ${combination.offered_schools.length} school${combination.offered_schools.length === 1 ? '' : 's'}`
+                      : 'No verified school offering recorded yet'}
                   </span>
                 </div>
                 <button
