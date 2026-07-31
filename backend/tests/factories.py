@@ -1,3 +1,5 @@
+from datetime import date
+
 import factory
 from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
@@ -7,6 +9,12 @@ from notifications.models import Notification
 from parents.models import ParentStudentLink
 from counselors.models import CounselorAssignment, CounselorNote
 from system_admin.models import AuditLog
+from guidance.models import (
+    FrameworkVersion,
+    PathwayTrack,
+    SchoolOffering,
+    SubjectCombination,
+)
 
 User = get_user_model()
 
@@ -68,6 +76,9 @@ class StudentProfileFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory, role='student')
     mode = 'self_guided'
     school = None
+    school_membership_status = factory.LazyAttribute(
+        lambda profile: 'active' if profile.mode == 'school_linked' else 'not_applicable'
+    )
     grade = factory.Iterator([9, 10])
 
 
@@ -130,6 +141,56 @@ class PathwayFactory(factory.django.DjangoModelFactory):
     weight_c = 0.0
 
 
+class FrameworkVersionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FrameworkVersion
+
+    code = factory.Sequence(lambda n: f'CBC-SS-{2026 + n}')
+    title = factory.Sequence(lambda n: f'CBC Senior School Framework {2026 + n}')
+    description = 'Curated framework for pilot guidance.'
+    source_url = 'https://kicd.ac.ke/curriculum-reform/'
+    effective_date = factory.LazyFunction(lambda: date(2026, 1, 1))
+    is_active = False
+
+
+class PathwayTrackFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PathwayTrack
+
+    framework_version = factory.SubFactory(FrameworkVersionFactory)
+    pathway = factory.SubFactory(PathwayFactory)
+    code = factory.Sequence(lambda n: f'TRACK-{n:04d}')
+    name = factory.Sequence(lambda n: f'Pilot Track {n}')
+    description = 'Pilot pathway track.'
+    is_active = True
+
+
+class SubjectCombinationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = SubjectCombination
+
+    track = factory.SubFactory(PathwayTrackFactory)
+    framework_version = factory.LazyAttribute(
+        lambda combination: combination.track.framework_version
+    )
+    code = factory.Sequence(lambda n: f'COMBO-{n:04d}')
+    title = factory.Sequence(lambda n: f'Pilot Combination {n}')
+    description = 'Three-subject pilot combination.'
+    subject_one = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
+    subject_two = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
+    subject_three = factory.SubFactory(SubjectFactory, grade=10, category='Elective')
+    is_active = True
+
+
+class SchoolOfferingFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = SchoolOffering
+
+    school = factory.SubFactory(SchoolFactory)
+    combination = factory.SubFactory(SubjectCombinationFactory)
+    is_active = True
+
+
 class RecommendationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Recommendation
@@ -149,7 +210,6 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     type = 'assessment_submitted'
     message = 'Your RIASEC assessment results are ready.'
     read = False
-
 
 
 class CounselorAssignmentFactory(factory.django.DjangoModelFactory):
@@ -178,6 +238,7 @@ class ParentStudentLinkFactory(factory.django.DjangoModelFactory):
 
     parent = factory.SubFactory(ParentFactory)
     student = factory.SubFactory(VerifiedUserFactory, role='student')
+    status = ParentStudentLink.STATUS_ACTIVE
 
 
 class AuditLogFactory(factory.django.DjangoModelFactory):

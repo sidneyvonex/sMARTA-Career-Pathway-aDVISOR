@@ -19,6 +19,17 @@ const ACTION_LABELS: Record<string, string> = {
   counselor_added: 'Counselor added',
   counselor_removed: 'Counselor removed',
   counselor_assigned: 'Counselor assigned',
+  school_membership_approved: 'School link approved',
+  school_membership_rejected: 'School link rejected',
+  grade_verified: 'Grade verified',
+  grade_verification_removed: 'Grade verification removed',
+  parent_link_approved: 'Parent link approved',
+  parent_link_revoked: 'Parent link revoked',
+  provisional_combination_changed: 'Provisional combination changed',
+  plan_review_status_changed: 'Plan review status changed',
+  report_downloaded: 'Report downloaded',
+  framework_combination_status_changed: 'Framework combination status changed',
+  school_offerings_changed: 'School offerings changed',
 }
 
 const ACTION_OPTIONS = [

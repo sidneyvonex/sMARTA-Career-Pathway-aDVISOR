@@ -1,8 +1,9 @@
 import { useAuthStore } from '../../store/authStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useLayoutStore } from '../../store/layoutStore'
-import { greeting, todayLabel } from '../../lib/greeting'
-import { initials } from '../../lib/format'
+import { Link, useLocation } from 'react-router-dom'
+import { todayLabel } from '../../lib/greeting'
+import Avatar from '../common/Avatar'
 
 const BELL_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -16,12 +17,62 @@ const HAMBURGER_ICON = (
   </svg>
 )
 
+interface PageContext {
+  title: string
+  parent?: { label: string; to: string }
+}
+
+function getPageContext(pathname: string): PageContext {
+  if (pathname === '/') return { title: 'Dashboard' }
+  if (pathname === '/grades') return { title: 'My grades' }
+  if (pathname === '/explore') return { title: 'Explore combinations' }
+  if (pathname === '/compare') return {
+    title: 'Compare combinations',
+    parent: { label: 'Explore combinations', to: '/explore' },
+  }
+  if (pathname === '/plan') return {
+    title: 'My learner plan',
+    parent: { label: 'Compare combinations', to: '/compare' },
+  }
+  if (pathname === '/access') return { title: 'Parent access' }
+  if (pathname === '/assessment/results') return {
+    title: 'Career profile',
+    parent: { label: 'Career quiz', to: '/assessment' },
+  }
+  if (pathname === '/assessment') return { title: 'Career quiz' }
+  if (pathname === '/profile') return { title: 'My profile' }
+  if (/^\/counselor\/students\/[^/]+$/.test(pathname)) return {
+    title: 'Learner details',
+    parent: { label: 'My students', to: '/counselor/students' },
+  }
+  if (pathname === '/counselor/students') return { title: 'My students' }
+  if (pathname === '/counselor/notes') return { title: 'Counsellor notes' }
+  if (pathname === '/admin/school') return { title: 'School profile' }
+  if (pathname === '/admin/counselors') return { title: 'Counsellors' }
+  if (pathname === '/admin/students') return { title: 'Students' }
+  if (pathname === '/admin/offerings') return { title: 'School offerings' }
+  if (/^\/parent\/child\/[^/]+$/.test(pathname)) return {
+    title: 'Learner profile',
+    parent: { label: 'Dashboard', to: '/' },
+  }
+  if (pathname === '/system-admin/schools') return { title: 'Pilot schools' }
+  if (pathname === '/system-admin/catalogue') return { title: 'Framework catalogue' }
+  if (pathname === '/system-admin/users') return { title: 'Users' }
+  if (pathname === '/system-admin/audit-log') return { title: 'Audit log' }
+  return { title: 'Page not found', parent: { label: 'Dashboard', to: '/' } }
+}
+
 export default function Topbar() {
   const { user } = useAuthStore()
   const { unreadCount, drawerOpen, setDrawerOpen } = useNotificationStore()
-  const { setMobileSidebarOpen } = useLayoutStore()
+  const { mobileSidebarOpen, setMobileSidebarOpen } = useLayoutStore()
+  const location = useLocation()
 
   if (!user) return <header className="topbar" role="banner" />
+
+  const page = getPageContext(location.pathname)
+  const accountPath = user.role === 'student' ? '/profile' : '/'
+  const accountLabel = user.role === 'student' ? 'Open profile' : 'Open account home'
 
   return (
     <header className="topbar" role="banner">
@@ -29,13 +80,24 @@ export default function Topbar() {
         className="topbar__hamburger"
         onClick={() => setMobileSidebarOpen(true)}
         aria-label="Open navigation"
+        aria-controls="app-navigation"
+        aria-expanded={mobileSidebarOpen}
       >
         {HAMBURGER_ICON}
       </button>
 
       <div className="topbar__greeting">
-        <div className="topbar__greeting-main">{greeting(user.first_name)}</div>
-        <div className="topbar__greeting-sub">{todayLabel()}</div>
+        <nav className="topbar__breadcrumbs" aria-label="Breadcrumb">
+          <ol>
+            <li><Link to="/">Workspace</Link></li>
+            {page.parent && <li><Link to={page.parent.to}>{page.parent.label}</Link></li>}
+            <li aria-current="page">{page.title}</li>
+          </ol>
+        </nav>
+        <div className="topbar__title-row">
+          <div className="topbar__greeting-main">{page.title}</div>
+          <span className="topbar__date">{todayLabel()}</span>
+        </div>
       </div>
 
       <div className="topbar__actions">
@@ -54,13 +116,14 @@ export default function Topbar() {
           )}
         </button>
 
-        <div
-          className="topbar__avatar"
-          role="img"
-          aria-label={`${user.first_name} ${user.last_name}`}
-        >
-          {initials(user.first_name, user.last_name)}
-        </div>
+        <Link className="topbar__account-link" to={accountPath} aria-label={accountLabel}>
+          <Avatar
+            seed={`${user.first_name} ${user.last_name}`}
+            size={36}
+            shape="squircle"
+            className="topbar__avatar"
+          />
+        </Link>
       </div>
     </header>
   )

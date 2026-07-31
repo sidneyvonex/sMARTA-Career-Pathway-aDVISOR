@@ -2,20 +2,22 @@ import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { studentsApi } from '../../api/students'
+import Avatar from '../common/Avatar'
 
 interface Props {
   photoUrl: string | null
+  fallbackName?: string
   onUploaded: (url: string) => void
 }
 
-export default function PhotoUpload({ photoUrl, onUploaded }: Props) {
+export default function PhotoUpload({ photoUrl, fallbackName = 'Student', onUploaded }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(photoUrl)
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => studentsApi.uploadPhoto(file),
-    onSuccess: (res) => {
-      const url = res.data.data.photo_url
+    onSuccess: (response) => {
+      const url = response.data.data.photo_url
       setPreview(url)
       onUploaded(url)
       toast.success('Photo updated.')
@@ -32,49 +34,48 @@ export default function PhotoUpload({ photoUrl, onUploaded }: Props) {
     },
   })
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    uploadMutation.mutate(file)
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) uploadMutation.mutate(file)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-      {preview ? (
-        <img
-          src={preview}
-          alt="Profile"
-          style={{ width: '96px', height: '96px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-border)' }}
+    <div className="photo-upload">
+      <div className="photo-upload__preview">
+        {preview ? (
+          <img src={preview} alt={`${fallbackName} profile`} />
+        ) : (
+          <Avatar seed={fallbackName} size={120} shape="squircle" />
+        )}
+        <span className="photo-upload__status" aria-hidden="true">✓</span>
+      </div>
+
+      <div className="photo-upload__actions">
+        <label htmlFor="photo-input" className="student-action student-action--secondary">
+          {uploadMutation.isPending ? 'Uploading…' : 'Choose photo'}
+        </label>
+        <input
+          id="photo-input"
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          onChange={handleFileChange}
+          className="sr-only"
+          aria-label="Choose photo"
         />
-      ) : (
-        <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: 'var(--color-background)', border: '2px dashed var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>
-          No photo
-        </div>
-      )}
 
-      <label htmlFor="photo-input" style={{ cursor: 'pointer', color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.875rem' }}>
-        Choose Photo
-      </label>
-      <input
-        id="photo-input"
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png"
-        onChange={handleFileChange}
-        style={{ display: 'none' }}
-        aria-label="Choose photo"
-      />
-
-      {preview && (
-        <button
-          type="button"
-          onClick={() => removeMutation.mutate()}
-          disabled={removeMutation.isPending}
-          style={{ fontSize: '0.8rem', color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          Remove photo
-        </button>
-      )}
+        {preview && (
+          <button
+            type="button"
+            onClick={() => removeMutation.mutate()}
+            disabled={removeMutation.isPending}
+            className="photo-upload__remove"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      <small>JPEG or PNG, up to 5MB</small>
     </div>
   )
 }

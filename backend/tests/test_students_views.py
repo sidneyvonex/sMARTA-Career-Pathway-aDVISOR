@@ -2,9 +2,17 @@ import io
 import pytest
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
-from tests.factories import VerifiedUserFactory, UserFactory, StudentProfileFactory, CounselorFactory
+from tests.factories import (
+    CBCGradeFactory,
+    CounselorFactory,
+    StudentProfileFactory,
+    StudentSubjectFactory,
+    UserFactory,
+    VerifiedUserFactory,
+)
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from students.models import StudentSubject, Subject
 
 
 @pytest.fixture
@@ -33,6 +41,7 @@ class TestStudentProfileView:
         assert response.status_code == 200
         assert response.data['data']['email'] == verified_profile.user.email
         assert response.data['data']['grade'] == 9
+        assert response.data['data']['school_membership_status'] == 'not_applicable'
 
     def test_patch_updates_bio(self, verified_profile):
         c = make_auth_client(verified_profile.user)
@@ -72,7 +81,8 @@ class TestStudentProfileView:
         verified_profile.photo_url = None
         verified_profile.save()
         c = make_auth_client(verified_profile.user)
-        c.patch('/api/v1/students/profile/', {'photo_url': 'https://evil.com/photo.jpg'}, format='json')
+        c.patch('/api/v1/students/profile/',
+                {'photo_url': 'https://evil.com/photo.jpg'}, format='json')
         verified_profile.refresh_from_db()
         assert verified_profile.photo_url is None
 
@@ -136,9 +146,6 @@ class TestPhotoUploadView:
         assert verified_profile.photo_url is None
 
 
-from students.models import Subject, StudentSubject
-
-
 @pytest.mark.django_db
 class TestSubjectListView:
     def test_returns_subjects_for_grade(self, verified_profile):
@@ -154,6 +161,15 @@ class TestSubjectListView:
         response = c.get('/api/v1/students/subjects/?grade=abc')
         assert response.status_code == 400
 
+    def test_grade10_catalogue_excludes_inactive_junior_style_subjects(self, db):
+        user = VerifiedUserFactory(role='student')
+        StudentProfileFactory(user=user, grade=10)
+        c = make_auth_client(user)
+        response = c.get('/api/v1/students/subjects/?grade=10')
+        codes = {subject['code'] for subject in response.data['data']}
+        assert {'CMT10', 'BIO10', 'HCT10', 'SRE10'} <= codes
+        assert {'MTH10', 'INT10', 'HSS10', 'ART10'}.isdisjoint(codes)
+
     def test_unverified_returns_403(self, db):
         user = UserFactory(role='student', is_email_verified=False)
         StudentProfileFactory(user=user, grade=9)
@@ -167,7 +183,8 @@ class TestMySubjectListView:
     def test_enroll_in_subject_returns_201(self, verified_profile):
         c = make_auth_client(verified_profile.user)
         subject = Subject.objects.get(code='MTH9')
-        response = c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
+        response = c.post('/api/v1/students/my-subjects/',
+                          {'subject_id': subject.id}, format='json')
         assert response.status_code == 201
         assert StudentSubject.objects.filter(
             student_profile=verified_profile, subject=subject
@@ -176,19 +193,36 @@ class TestMySubjectListView:
     def test_enroll_wrong_grade_subject_returns_400(self, verified_profile):
         c = make_auth_client(verified_profile.user)
         subject = Subject.objects.get(code='MTH10')
-        response = c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
+        response = c.post('/api/v1/students/my-subjects/',
+                          {'subject_id': subject.id}, format='json')
         assert response.status_code == 400
+
+    def test_cannot_enroll_inactive_catalogue_subject(self, db):
+        user = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=user, grade=10)
+        subject = Subject.objects.get(code='INT10')
+        assert subject.grade == profile.grade
+        c = make_auth_client(user)
+        response = c.post('/api/v1/students/my-subjects/',
+                          {'subject_id': subject.id}, format='json')
+        assert response.status_code == 400
+        assert not StudentSubject.objects.filter(
+            student_profile=profile,
+            subject=subject,
+        ).exists()
 
     def test_duplicate_enrollment_returns_400(self, verified_profile):
         c = make_auth_client(verified_profile.user)
         subject = Subject.objects.get(code='ENG9')
         c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
-        response = c.post('/api/v1/students/my-subjects/', {'subject_id': subject.id}, format='json')
+        response = c.post('/api/v1/students/my-subjects/',
+                          {'subject_id': subject.id}, format='json')
         assert response.status_code == 400
 
     def test_list_enrolled_subjects(self, verified_profile):
         from tests.factories import StudentSubjectFactory
-        StudentSubjectFactory(student_profile=verified_profile, subject=Subject.objects.get(code='ENG9'))
+        StudentSubjectFactory(student_profile=verified_profile,
+                              subject=Subject.objects.get(code='ENG9'))
         c = make_auth_client(verified_profile.user)
         response = c.get('/api/v1/students/my-subjects/')
         assert response.status_code == 200
@@ -196,7 +230,8 @@ class TestMySubjectListView:
 
     def test_remove_subject_without_confirm_returns_400(self, verified_profile):
         from tests.factories import StudentSubjectFactory
-        ss = StudentSubjectFactory(student_profile=verified_profile, subject=Subject.objects.get(code='KIS9'))
+        ss = StudentSubjectFactory(student_profile=verified_profile,
+                                   subject=Subject.objects.get(code='KIS9'))
         c = make_auth_client(verified_profile.user)
         response = c.post(f'/api/v1/students/my-subjects/{ss.pk}/remove/', {}, format='json')
         assert response.status_code == 400
@@ -204,14 +239,13 @@ class TestMySubjectListView:
 
     def test_remove_subject_with_confirm_deletes_enrollment(self, verified_profile):
         from tests.factories import StudentSubjectFactory
-        ss = StudentSubjectFactory(student_profile=verified_profile, subject=Subject.objects.get(code='AGR9'))
+        ss = StudentSubjectFactory(student_profile=verified_profile,
+                                   subject=Subject.objects.get(code='AGR9'))
         c = make_auth_client(verified_profile.user)
-        response = c.post(f'/api/v1/students/my-subjects/{ss.pk}/remove/', {'confirm': True}, format='json')
+        response = c.post(
+            f'/api/v1/students/my-subjects/{ss.pk}/remove/', {'confirm': True}, format='json')
         assert response.status_code == 200
         assert not StudentSubject.objects.filter(pk=ss.pk).exists()
-
-
-from tests.factories import StudentSubjectFactory, CBCGradeFactory
 
 
 @pytest.fixture

@@ -42,8 +42,8 @@ const VALUES = [
     ),
   },
   {
-    title: 'No pay-to-recommend',
-    body: 'Pathway matches come from your RIASEC score, not from anyone paying for placement.',
+    title: 'No pay-to-promote',
+    body: 'Pathway suggestions come from your RIASEC interest pattern, not from anyone paying for promotion or placement.',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
         <path d="M12 3v18M5 8l7-5 7 5M5 8v8a2 2 0 002 2h10a2 2 0 002-2V8" />
@@ -66,6 +66,7 @@ export default function AboutPage() {
     <div className="mk-about-page">
       <PublicNav />
 
+      <main id="main-content">
       {/* HERO */}
       <section className="mk-hero">
         <div className="mk-hero__grid">
@@ -73,14 +74,14 @@ export default function AboutPage() {
             <span className="mk-eyebrow">Our story</span>
             <h1 className="mk-hero__heading" style={{ marginTop: '1rem' }}>
               Every learner deserves
-              <span className="mk-script">a real answer.</span>
+              <span className="mk-script"> a real answer.</span>
             </h1>
           </div>
           <div className="mk-hero__side">
             <p>
               Smarta Shauri started with one frustrating form: the CBC subject selection sheet.
               Too many students filled it in based on what a friend picked, or what a parent
-              insisted on — not what actually fit them. We built something better.
+              insisted on — not what they had a chance to explore. We built something better.
             </p>
             <div className="mk-hero__ctas">
               <Link className="mk-btn mk-btn-dark" to="/register">Get Started</Link>
@@ -114,7 +115,7 @@ export default function AboutPage() {
         <div className="mk-statement">
           <h2 className="mk-statement__heading">
             Guesswork
-            <span className="mk-script">isn&apos;t a plan.</span>
+            <span className="mk-script"> isn&apos;t a plan.</span>
           </h2>
           <div className="mk-statement__side">
             <p className="mk-section__lede">
@@ -167,7 +168,7 @@ export default function AboutPage() {
             <span className="mk-eyebrow">Try it now</span>
             <p className="mk-cta-band__heading">
               Curious what this
-              <span className="mk-script">actually feels like?</span>
+              <span className="mk-script"> actually feels like?</span>
             </p>
             <p className="mk-cta-band__sub">Free forever. Takes about 15 minutes.</p>
             <Link className="mk-btn mk-btn-cream" to="/register">
@@ -180,6 +181,7 @@ export default function AboutPage() {
         </section>
       </div>
 
+      </main>
       <PublicFooter />
     </div>
   )

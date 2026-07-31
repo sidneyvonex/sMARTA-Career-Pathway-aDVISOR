@@ -17,7 +17,7 @@ const STEPS = [
     tone: 'forest' as const,
     tag: 'Automatic',
     title: 'Plan',
-    body: 'Get matched to a CBC pathway, ranked by how you actually scored.',
+    body: 'See CBC pathways ranked by alignment with the interests you shared.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z" />
@@ -42,8 +42,8 @@ const STEPS = [
     number: '04',
     tone: 'flame' as const,
     tag: 'Every term',
-    title: 'Succeed',
-    body: 'Track your grades every term and watch your pathway fit update in real time.',
+    title: 'Reflect',
+    body: 'Track your grades every term and use the evidence to support pathway conversations.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 17l6-6 4 4 8-8" />

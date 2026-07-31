@@ -55,8 +55,10 @@ describe('ChildDetailPage', () => {
   it('renders career pathways', async () => {
     renderPage()
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
-    expect(screen.getByText('90%')).toBeInTheDocument()
+    expect(screen.getByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(screen.queryByText('90%')).not.toBeInTheDocument()
     expect(screen.getByText('Medicine')).toBeInTheDocument()
+    expect(screen.getByText(/starting points for discussion/i)).toBeInTheDocument()
   })
 
   it('renders subjects with grade badges', async () => {
@@ -75,6 +77,72 @@ describe('ChildDetailPage', () => {
   it('renders counselor note', async () => {
     renderPage()
     expect(await screen.findByText(/great progress in mathematics/i)).toBeInTheDocument()
+  })
+
+  it('renders academic readiness, provisional choice, plan milestones and report', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Academic readiness' })).toBeInTheDocument()
+    expect(screen.getByText(/2 of 2 enrolled subjects have grade evidence/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Provisional combination' })).toBeInTheDocument()
+    expect(screen.getByText('Agriculture, Biology & Chemistry')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Plan milestones' })).toBeInTheDocument()
+    expect(screen.getByText('Review two pilot schools')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Parent-visible notes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Agreed next steps' })).toBeInTheDocument()
+    expect(screen.getByText('Discuss the reviewed learner plan.')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Download report' })).toHaveLength(2)
+  })
+
+  it('shows deliberate empty states when approved evidence is absent', async () => {
+    const { server } = await import('./msw/server')
+    const { http, HttpResponse } = await import('msw')
+    server.use(
+      http.get('/api/v1/parents/children/:id/', () => HttpResponse.json({
+        data: {
+          profile: {
+            id: 12,
+            first_name: 'Amina',
+            last_name: 'Kamau',
+            email: 'amina@example.com',
+            county: 'kiambu',
+            grade: 9,
+            mode: 'self_guided',
+            bio: '',
+            date_of_birth: null,
+            career_interests: '',
+            photo_url: null,
+          },
+          subjects: [],
+          assessment: null,
+          academic_readiness: {
+            status: 'not_started',
+            total_subjects: 0,
+            subjects_with_evidence: 0,
+            total_grade_records: 0,
+          },
+          provisional_combination: null,
+          plan: null,
+          counselor: null,
+          latest_note: null,
+          parent_visible_notes: [],
+        },
+        error: null,
+        message: '',
+      })),
+    )
+    renderPage('12')
+
+    expect(await screen.findByText(/has not completed the career interest assessment/i)).toBeInTheDocument()
+    expect(screen.getByText('No subjects have been enrolled yet.')).toBeInTheDocument()
+    expect(screen.getByText('No provisional combination has been selected.')).toBeInTheDocument()
+    expect(screen.getByText('No learner plan has been started yet.')).toBeInTheDocument()
+    expect(screen.getByText('No notes have been shared with parents yet.')).toBeInTheDocument()
+  })
+
+  it('announces the loading state', () => {
+    renderPage()
+    expect(screen.getByRole('status', { name: 'Loading learner summary' })).toBeInTheDocument()
   })
 
   it('has back link to dashboard', async () => {

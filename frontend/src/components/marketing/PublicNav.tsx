@@ -9,6 +9,8 @@ export default function PublicNav() {
 
   return (
     <>
+      <a className="mk-skip-link" href="#main-content">Skip to main content</a>
+
       <div className="mk-notice-bar">
         <div className="mk-notice-bar__wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -16,7 +18,7 @@ export default function PublicNav() {
             <path d="M12 8v5M12 16h.01" />
           </svg>
           <span>
-            Smarta Shauri helps you decide — it doesn&apos;t submit your official Senior School
+            Smarta Shauri helps you decide. It doesn&apos;t submit your official Senior School
             choices. That&apos;s done at{' '}
             <a href="https://placements.education.go.ke" target="_blank" rel="noopener noreferrer">
               placements.education.go.ke

@@ -3,10 +3,71 @@ from .views import (
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView,
-    StudentCounselorView,
+    StudentCounselorView, StudentDashboardView, EvidenceSummaryView, GradeSummaryView,
+    StudentInterventionsView,
+    LearnerCombinationChoiceDetailView,
+    LearnerCombinationChoiceListCreateView,
+    LearnerCombinationChoiceProvisionalView,
+    LearnerPlanView,
+    PlanMilestoneDetailView,
+    PlanMilestoneListCreateView,
+)
+from parents.views import (
+    StudentParentAccessApproveView,
+    StudentParentAccessListView,
+    StudentParentAccessRevokeView,
 )
 
 urlpatterns = [
+    path('dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
+    path(
+        'parent-access/',
+        StudentParentAccessListView.as_view(),
+        name='student-parent-access-list',
+    ),
+    path(
+        'parent-access/<int:link_id>/approve/',
+        StudentParentAccessApproveView.as_view(),
+        name='student-parent-access-approve',
+    ),
+    path(
+        'parent-access/<int:link_id>/revoke/',
+        StudentParentAccessRevokeView.as_view(),
+        name='student-parent-access-revoke',
+    ),
+    path('evidence-summary/', EvidenceSummaryView.as_view(), name='student-evidence-summary'),
+    path(
+        'interventions/',
+        StudentInterventionsView.as_view(),
+        name='student-interventions',
+    ),
+    path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
+    path(
+        'combination-choices/',
+        LearnerCombinationChoiceListCreateView.as_view(),
+        name='learner-combination-choice-list',
+    ),
+    path(
+        'combination-choices/<int:choice_id>/',
+        LearnerCombinationChoiceDetailView.as_view(),
+        name='learner-combination-choice-detail',
+    ),
+    path(
+        'combination-choices/<int:choice_id>/provisional/',
+        LearnerCombinationChoiceProvisionalView.as_view(),
+        name='learner-combination-choice-provisional',
+    ),
+    path('plan/', LearnerPlanView.as_view(), name='learner-plan'),
+    path(
+        'plan/milestones/',
+        PlanMilestoneListCreateView.as_view(),
+        name='plan-milestone-list',
+    ),
+    path(
+        'plan/milestones/<int:milestone_id>/',
+        PlanMilestoneDetailView.as_view(),
+        name='plan-milestone-detail',
+    ),
     path('profile/', StudentProfileView.as_view(), name='student-profile'),
     path('profile/photo/', PhotoUploadView.as_view(), name='student-photo'),
     path('subjects/', SubjectListView.as_view(), name='subject-list'),

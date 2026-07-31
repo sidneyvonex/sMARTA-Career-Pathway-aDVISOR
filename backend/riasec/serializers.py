@@ -20,7 +20,9 @@ class RecommendationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recommendation
-        fields = ('rank', 'fit_score', 'fit_pct', 'pathway')
+        fields = (
+            'rank', 'fit_score', 'fit_pct', 'algorithm_version', 'explanation', 'pathway',
+        )
 
 
 class AssessmentResultSerializer(serializers.ModelSerializer):
@@ -30,7 +32,10 @@ class AssessmentResultSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RIASECAssessment
-        fields = ('id', 'submitted_at', 'holland_code', 'scores', 'recommendations')
+        fields = (
+            'id', 'submitted_at', 'instrument_version', 'holland_code', 'scores',
+            'recommendations',
+        )
 
     def get_scores(self, obj):
         return {s.dimension: s.raw_score for s in obj.scores.all()}

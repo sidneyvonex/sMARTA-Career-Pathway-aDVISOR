@@ -12,33 +12,32 @@ export default function AssessmentRing({ done, total }: Props) {
   return (
     <div className="assessment-ring-card">
       <svg width="130" height="130" viewBox="0 0 130 130" role="img" aria-label={`${pct}% assessments complete`}>
-        <circle cx="65" cy="65" r={r} fill="none" stroke="var(--color-border)" strokeWidth="14" />
+        <circle className="assessment-ring__track" cx="65" cy="65" r={r} fill="none" strokeWidth="14" />
         <circle
           cx="65" cy="65" r={r}
           fill="none"
-          stroke="var(--color-primary)"
+          className="assessment-ring__value"
           strokeWidth="14"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
           transform="rotate(-90 65 65)"
-          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
         />
-        <text x="65" y="60" textAnchor="middle" style={{ fontSize: '1.4rem', fontWeight: 700, fill: 'var(--color-primary)' }}>
+        <text className="assessment-ring__percent" x="65" y="60" textAnchor="middle">
           {pct}%
         </text>
-        <text x="65" y="78" textAnchor="middle" style={{ fontSize: '0.7rem', fill: 'var(--color-text-secondary)' }}>
+        <text className="assessment-ring__label" x="65" y="78" textAnchor="middle">
           complete
         </text>
       </svg>
 
       <div className="ring-legend">
         <div className="ring-legend__item">
-          <span className="ring-legend__dot" style={{ background: 'var(--color-primary)' }} />
+          <span className="ring-legend__dot ring-legend__dot--done" />
           Assessed ({done})
         </div>
         <div className="ring-legend__item">
-          <span className="ring-legend__dot" style={{ background: 'var(--color-border)' }} />
+          <span className="ring-legend__dot ring-legend__dot--pending" />
           Pending ({total - done})
         </div>
       </div>

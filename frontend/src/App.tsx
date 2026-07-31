@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
@@ -10,20 +11,6 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import DashboardPage from './pages/DashboardPage'
-import StudentProfilePage from './pages/StudentProfilePage'
-import GradesPage from './pages/GradesPage'
-import AssessmentPage from './pages/AssessmentPage'
-import AssessmentResultsPage from './pages/AssessmentResultsPage'
-import StudentListPage from './pages/counselor/StudentListPage'
-import StudentDetailPage from './pages/counselor/StudentDetailPage'
-import NotesListPage from './pages/counselor/NotesListPage'
-import SchoolProfilePage from './pages/admin/SchoolProfilePage'
-import CounselorManagementPage from './pages/admin/CounselorManagementPage'
-import SchoolStudentsPage from './pages/admin/SchoolStudentsPage'
-import ChildDetailPage from './pages/parent/ChildDetailPage'
-import SystemAdminSchoolsPage from './pages/system-admin/SystemAdminSchoolsPage'
-import SystemAdminUsersPage from './pages/system-admin/SystemAdminUsersPage'
-import SystemAdminAuditLogPage from './pages/system-admin/SystemAdminAuditLogPage'
 import LandingPage from './pages/LandingPage'
 import AboutPage from './pages/AboutPage'
 import PathwaysPage from './pages/PathwaysPage'
@@ -34,6 +21,30 @@ import { useAuthStore } from './store/authStore'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
 import { usePWAUpdate } from './hooks/usePWAUpdate'
 import InstallBanner from './components/InstallBanner'
+import ErrorBoundary from './components/common/ErrorBoundary'
+import ErrorState from './components/common/dashboard/ErrorState'
+import LoadingSkeleton from './components/common/dashboard/LoadingSkeleton'
+
+const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'))
+const GradesPage = lazy(() => import('./pages/GradesPage'))
+const AssessmentPage = lazy(() => import('./pages/AssessmentPage'))
+const AssessmentResultsPage = lazy(() => import('./pages/AssessmentResultsPage'))
+const CombinationExplorerPage = lazy(() => import('./pages/CombinationExplorerPage'))
+const CombinationComparePage = lazy(() => import('./pages/CombinationComparePage'))
+const LearnerPlanPage = lazy(() => import('./pages/LearnerPlanPage'))
+const ParentAccessPage = lazy(() => import('./pages/ParentAccessPage'))
+const StudentListPage = lazy(() => import('./pages/counselor/StudentListPage'))
+const StudentDetailPage = lazy(() => import('./pages/counselor/StudentDetailPage'))
+const NotesListPage = lazy(() => import('./pages/counselor/NotesListPage'))
+const SchoolProfilePage = lazy(() => import('./pages/admin/SchoolProfilePage'))
+const CounselorManagementPage = lazy(() => import('./pages/admin/CounselorManagementPage'))
+const SchoolStudentsPage = lazy(() => import('./pages/admin/SchoolStudentsPage'))
+const SchoolOfferingsPage = lazy(() => import('./pages/admin/SchoolOfferingsPage'))
+const ChildDetailPage = lazy(() => import('./pages/parent/ChildDetailPage'))
+const SystemAdminSchoolsPage = lazy(() => import('./pages/system-admin/SystemAdminSchoolsPage'))
+const SystemAdminUsersPage = lazy(() => import('./pages/system-admin/SystemAdminUsersPage'))
+const SystemAdminAuditLogPage = lazy(() => import('./pages/system-admin/SystemAdminAuditLogPage'))
+const SystemAdminCataloguePage = lazy(() => import('./pages/system-admin/SystemAdminCataloguePage'))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -79,12 +90,20 @@ function AppRoutes() {
 
       {/* Authenticated pages — wrapped in Shell */}
       <Route element={<ProtectedRoute />}>
-        <Route element={<Shell />}>
+        <Route element={(
+          <Suspense fallback={<LoadingSkeleton label="Loading page" rows={4} />}>
+            <Shell />
+          </Suspense>
+        )}>
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/profile" element={<StudentProfilePage />} />
             <Route path="/grades" element={<GradesPage />} />
             <Route path="/assessment" element={<AssessmentPage />} />
             <Route path="/assessment/results" element={<AssessmentResultsPage />} />
+            <Route path="/explore" element={<CombinationExplorerPage />} />
+            <Route path="/compare" element={<CombinationComparePage />} />
+            <Route path="/plan" element={<LearnerPlanPage />} />
+            <Route path="/access" element={<ParentAccessPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['counselor']} />}>
@@ -97,6 +116,7 @@ function AppRoutes() {
             <Route path="/admin/school" element={<SchoolProfilePage />} />
             <Route path="/admin/counselors" element={<CounselorManagementPage />} />
             <Route path="/admin/students" element={<SchoolStudentsPage />} />
+            <Route path="/admin/offerings" element={<SchoolOfferingsPage />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['parent']} />}>
@@ -104,17 +124,19 @@ function AppRoutes() {
           </Route>
 
           <Route element={<ProtectedRoute roles={['system_admin']} />}>
+            <Route path="/system-admin/catalogue" element={<SystemAdminCataloguePage />} />
             <Route path="/system-admin/schools" element={<SystemAdminSchoolsPage />} />
             <Route path="/system-admin/users" element={<SystemAdminUsersPage />} />
             <Route path="/system-admin/audit-log" element={<SystemAdminAuditLogPage />} />
           </Route>
 
-          <Route path="*" element={
-            <div style={{ padding: 'var(--space-8)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-              <h2 style={{ color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Page not found</h2>
-              <p>This page doesn't exist or is coming soon.</p>
-            </div>
-          } />
+          <Route path="*" element={(
+            <ErrorState
+              title="Page not found"
+              description="This page does not exist or is not available for your account."
+              secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+            />
+          )} />
         </Route>
       </Route>
     </Routes>
@@ -125,16 +147,18 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRoutes />
-        <InstallBanner />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
-            success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
-            error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
-          }}
-        />
+        <ErrorBoundary scope="application">
+          <AppRoutes />
+          <InstallBanner />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
+              success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
+            }}
+          />
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   )

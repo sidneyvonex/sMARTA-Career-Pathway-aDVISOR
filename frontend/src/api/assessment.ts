@@ -36,12 +36,24 @@ export interface AssessmentRecommendation {
   rank: number
   fit_score: number
   fit_pct: number
+  algorithm_version?: string
+  explanation?: {
+    summary: string
+    leading_dimensions: Array<{
+      code: RIASECDimension
+      label: string
+      score: number
+    }>
+    limitations: string
+    next_step: string
+  }
   pathway: Pathway
 }
 
 export interface AssessmentResult {
   id: number
   submitted_at: string
+  instrument_version?: string
   holland_code: string
   scores: Record<RIASECDimension, number>
   recommendations: AssessmentRecommendation[]

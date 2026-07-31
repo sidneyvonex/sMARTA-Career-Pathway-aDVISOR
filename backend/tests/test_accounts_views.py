@@ -1,7 +1,14 @@
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from accounts.models import School, StudentProfile
+from accounts.models import School
+from accounts.tokens import (
+    make_email_verify_token,
+    make_invite_token,
+    make_parent_invite_token,
+    make_password_reset_token,
+)
+from parents.models import ParentStudentLink
 
 User = get_user_model()
 
@@ -44,6 +51,7 @@ class TestStudentRegistration:
         assert user.is_email_verified is False
         assert user.student_profile.mode == 'self_guided'
         assert user.student_profile.school is None
+        assert user.student_profile.school_membership_status == 'not_applicable'
 
     def test_sends_verification_email(self, client, mailoutbox):
         client.post('/api/v1/auth/register/', {
@@ -73,6 +81,28 @@ class TestStudentRegistration:
         user = User.objects.get(email='linked@test.com')
         assert user.student_profile.mode == 'school_linked'
         assert user.student_profile.school == school
+        assert user.student_profile.school_membership_status == 'pending'
+
+    def test_inactive_school_code_returns_friendly_400(self, client):
+        School.objects.create(
+            name='Inactive Pilot School',
+            county='kiambu',
+            school_code='KIA-OFF',
+            is_active=False,
+        )
+        response = client.post('/api/v1/auth/register/', {
+            'email': 'inactive-school@test.com',
+            'password': 'TestPass123!',
+            'first_name': 'A',
+            'last_name': 'B',
+            'role': 'student',
+            'county': 'kiambu',
+            'grade': 9,
+            'school_code': 'KIA-OFF',
+        }, format='json')
+        assert response.status_code == 400
+        assert 'not active' in str(response.data['message']).lower()
+        assert not User.objects.filter(email='inactive-school@test.com').exists()
 
     def test_invalid_county_returns_400(self, client):
         response = client.post('/api/v1/auth/register/', {
@@ -144,7 +174,7 @@ class TestStudentRegistration:
 class TestLogin:
     def test_login_returns_200_and_sets_cookies(self, client):
         from tests.factories import UserFactory
-        user = UserFactory(email='login@test.com', is_email_verified=True)
+        UserFactory(email='login@test.com', is_email_verified=True)
         response = client.post('/api/v1/auth/login/', {
             'email': 'login@test.com',
             'password': 'TestPass123!',
@@ -227,9 +257,6 @@ class TestMeView:
         assert response.status_code == 401
 
 
-from accounts.tokens import make_email_verify_token, make_password_reset_token
-
-
 @pytest.mark.django_db
 class TestEmailVerification:
     def test_valid_token_verifies_email(self, client):
@@ -261,11 +288,13 @@ class TestPasswordReset:
     def test_password_reset_request_returns_200(self, client):
         from tests.factories import UserFactory
         UserFactory(email='reset@test.com')
-        response = client.post('/api/v1/auth/password-reset/', {'email': 'reset@test.com'}, format='json')
+        response = client.post('/api/v1/auth/password-reset/',
+                               {'email': 'reset@test.com'}, format='json')
         assert response.status_code == 200
 
     def test_password_reset_nonexistent_email_still_returns_200(self, client):
-        response = client.post('/api/v1/auth/password-reset/', {'email': 'nobody@test.com'}, format='json')
+        response = client.post('/api/v1/auth/password-reset/',
+                               {'email': 'nobody@test.com'}, format='json')
         assert response.status_code == 200
 
     def test_password_reset_sends_email(self, client, mailoutbox):
@@ -292,9 +321,6 @@ class TestPasswordReset:
             'password': 'NewSecurePass456!',
         }, format='json')
         assert response.status_code == 400
-
-
-from accounts.tokens import make_invite_token, make_parent_invite_token
 
 
 @pytest.mark.django_db
@@ -395,9 +421,13 @@ class TestParentInvite:
             'first_name': 'Mary',
             'last_name': 'W',
             'county': 'kiambu',
+            'claimed_relationship': 'mother',
         }, format='json')
         assert response.status_code == 201
         from django.contrib.auth import get_user_model
         User = get_user_model()
         parent = User.objects.get(email='parent@test.com')
         assert parent.role == 'parent'
+        link = ParentStudentLink.objects.get(parent=parent, student=profile.user)
+        assert link.status == ParentStudentLink.STATUS_PENDING
+        assert link.claimed_relationship == ParentStudentLink.RELATIONSHIP_MOTHER

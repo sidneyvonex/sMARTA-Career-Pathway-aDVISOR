@@ -4,6 +4,22 @@ export interface DashboardData {
   users_by_role: Record<string, number>
   schools_by_county: Record<string, number>
   total_schools: number
+  registered_learners: number
+  learners_by_county: Record<string, number>
+  verified_learners: number
+  pending_school_links: number
+  assignment_coverage: {
+    assigned: number
+    eligible: number
+    percent: number
+  }
+  plans_completed: number
+  framework: {
+    code: string
+    title: string
+    source_url: string
+    effective_date: string
+  } | null
   recent_signups: number
   recent_audit: AuditEntry[]
 }
@@ -79,9 +95,57 @@ export interface AuditEntry {
   created_at: string
 }
 
+export interface CatalogueCombination {
+  id: number
+  code: string
+  title: string
+  description: string
+  related_routes: string[]
+  is_active: boolean
+  track: {
+    id: number
+    code: string
+    name: string
+    is_active: boolean
+    pathway: {
+      id: number
+      name: string
+    }
+  }
+  subjects: {
+    id: number
+    code: string
+    name: string
+  }[]
+  active_school_count: number
+  learner_choice_count: number
+}
+
+export interface CatalogueData {
+  framework: {
+    id: number
+    code: string
+    title: string
+    description: string
+    source_url: string
+    effective_date: string
+    is_active: boolean
+  } | null
+  combinations: CatalogueCombination[]
+}
+
 export const systemAdminApi = {
   getDashboard: () =>
     api.get<{ data: DashboardData }>('/system-admin/dashboard/'),
+
+  getCatalogue: () =>
+    api.get<{ data: CatalogueData }>('/system-admin/catalogue/'),
+
+  updateCombinationStatus: (id: number, isActive: boolean) =>
+    api.patch<{ data: CatalogueCombination }>(
+      `/system-admin/catalogue/combinations/${id}/`,
+      { is_active: isActive },
+    ),
 
   getSchools: (params?: { county?: string; search?: string; active?: string; page?: number }) =>
     api.get<{ data: PaginatedResponse<SchoolItem> }>('/system-admin/schools/', { params }),

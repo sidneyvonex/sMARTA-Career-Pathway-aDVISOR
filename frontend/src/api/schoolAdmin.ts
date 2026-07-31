@@ -29,8 +29,18 @@ export interface SchoolStudent {
   grade: number
   photo_url: string | null
   quiz_status: 'done' | 'pending'
+  school_membership_status: 'pending' | 'active' | 'rejected'
   counselor_id: number | null
   counselor_name: string | null
+}
+
+export interface SchoolMembershipRequest {
+  student_id: number
+  first_name: string
+  last_name: string
+  email: string
+  grade: number
+  requested_at: string
 }
 
 export interface SchoolStats {
@@ -38,6 +48,18 @@ export interface SchoolStats {
   total_counselors: number
   assessed: number
   unassigned: number
+  pending_memberships: number
+  evidence_complete: number
+  choices_saved: number
+  plans_created: number
+  reviews_completed: number
+  offerings_count: number
+  offerings_configured: boolean
+  counselor_workload: {
+    counselor_id: number
+    counselor_name: string
+    student_count: number
+  }[]
 }
 
 export const schoolAdminApi = {
@@ -68,12 +90,37 @@ export const schoolAdminApi = {
   getStudents: () =>
     api.get<{ data: SchoolStudent[] }>('/school-admin/students/'),
 
+  getMembershipRequests: () =>
+    api.get<{ data: SchoolMembershipRequest[] }>('/school-admin/membership-requests/'),
+
+  decideMembershipRequest: (studentId: number, decision: 'approve' | 'reject') =>
+    api.put<{
+      data: {
+        student_id: number
+        school_membership_status: 'active' | 'rejected'
+      }
+      message: string
+    }>(`/school-admin/membership-requests/${studentId}/decision/`, { decision }),
+
   getStats: () =>
     api.get<{ data: SchoolStats }>('/school-admin/stats/'),
 
   assignStudent: (studentId: number, counselorId: number) =>
     api.post('/school-admin/assignments/', {
       student_id: studentId,
+      counselor_id: counselorId,
+    }),
+
+  bulkAssignStudents: (studentIds: number[], counselorId: number) =>
+    api.post<{
+      data: {
+        assigned_count: number
+        counselor_id: number
+        student_ids: number[]
+      }
+      message: string
+    }>('/school-admin/assignments/bulk/', {
+      student_ids: studentIds,
       counselor_id: counselorId,
     }),
 

@@ -191,12 +191,13 @@
   flex: 1;
   min-width: 120px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  box-shadow: var(--shadow-sm);
 }
 
 .quick-stat__value {
@@ -226,12 +227,13 @@
 /* ── Locked/teaser section ────────────────────────── */
 .locked-section {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .locked-section__icon {
@@ -278,9 +280,10 @@
 /* ── Dashboard card (reusable) ────────────────────── */
 .dash-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .dash-card__header {
@@ -340,10 +343,11 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .trait-bar__track {
-  height: 6px;
+  height: 8px;
   background: var(--color-divider);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -384,7 +388,7 @@
 .pathway-item__rank {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   background: var(--color-primary-surface);
   color: var(--color-primary);
   font-size: var(--font-size-xs);
@@ -397,7 +401,7 @@
 
 .pathway-item--first .pathway-item__rank {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .pathway-item__info {
@@ -419,7 +423,7 @@
 }
 
 .pathway-item--first .pathway-item__pct {
-  color: var(--color-accent);
+  color: var(--color-accent-hover);
 }
 
 /* ── Counselor card ───────────────────────────────── */
@@ -779,27 +783,171 @@
   gap: var(--space-4);
 }
 
+.assessment-ring__track {
+  stroke: var(--color-border);
+}
+
+.assessment-ring__value {
+  stroke: var(--color-primary);
+  transition: stroke-dashoffset var(--transition-slow);
+}
+
+.assessment-ring__percent {
+  fill: var(--color-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.assessment-ring__label {
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
 .ring-legend { display: flex; gap: var(--space-5); }
 .ring-legend__item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-xs); color: var(--color-text-secondary); }
-.ring-legend__dot { width: 10px; height: 10px; border-radius: var(--radius-full); }
+.ring-legend__dot { width: 0.625rem; height: 0.625rem; border-radius: var(--radius-full); }
+.ring-legend__dot--done { background: var(--color-primary); }
+.ring-legend__dot--pending { background: var(--color-border); }
+
+.counselor-priority-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.75fr);
+  gap: var(--space-5);
+}
+
+.counselor-priority-list,
+.counselor-intervention-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.counselor-priority-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.75fr) minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--min-touch-target);
+  padding: var(--space-4);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.counselor-priority-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.counselor-priority-card strong,
+.counselor-priority-card small {
+  display: block;
+}
+
+.counselor-priority-card small,
+.counselor-intervention small {
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.counselor-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.counselor-reason-chip {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-warning-surface);
+  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.counselor-intervention {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.counselor-intervention:last-child {
+  border-bottom: 0;
+}
+
+.counselor-intervention p {
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+}
 
 .child-header-card {
   background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
-  border-radius: 13px;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   padding: var(--space-6);
-  color: #fff;
+  color: var(--color-text-on-primary);
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  margin-bottom: var(--space-5);
+}
+
+.child-header-card__avatar {
+  width: 4.5rem;
+  height: 4.5rem;
+  font-size: var(--font-size-xl);
+}
+
+.child-header-card__county {
+  text-transform: capitalize;
+}
+
+.child-header-card__active {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .counselor-priority-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
+  .counselor-priority-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .counselor-reason-list {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .counselor-intervention {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .child-header-card {
     flex-direction: column;
     align-items: flex-start;
     padding: var(--space-4);
     gap: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assessment-ring__value {
+    transition: none;
+  }
+
+  .counselor-priority-card {
+    transition: none;
   }
 }
 

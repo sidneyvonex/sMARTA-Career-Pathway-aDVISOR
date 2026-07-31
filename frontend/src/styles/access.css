@@ -1,0 +1,265 @@
+.access-page,
+.access-loading {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+.access-header {
+  max-width: 760px;
+  margin-bottom: var(--space-6);
+}
+
+.access-header > span,
+.access-invite > div > span {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.access-header h1 {
+  margin-bottom: var(--space-3);
+  font-family: var(--font-family-display);
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  line-height: var(--line-height-tight);
+}
+
+.access-header p,
+.access-invite p,
+.access-section header p {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.access-notice {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-surface);
+}
+
+.access-notice p {
+  color: var(--color-text-secondary);
+}
+
+.access-invite {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.8fr) minmax(320px, 1.2fr);
+  gap: var(--space-8);
+  align-items: end;
+  margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--color-primary-dark);
+  color: var(--color-text-on-primary);
+}
+
+.access-invite > div > span {
+  color: var(--color-accent);
+}
+
+.access-invite h2,
+.access-section h2 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+}
+
+.access-invite p {
+  margin-top: var(--space-2);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.access-invite form,
+.access-invite label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.access-invite label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.access-invite form > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.access-invite input {
+  min-height: var(--min-touch-target);
+  padding: 0 var(--space-3);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-on-primary);
+  font: inherit;
+}
+
+.access-invite input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.access-invite button,
+.access-card button {
+  min-height: var(--min-touch-target);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-on-primary);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.access-invite button {
+  background: var(--color-accent);
+  color: var(--color-text);
+}
+
+.access-invite button:disabled,
+.access-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.access-section {
+  margin-bottom: var(--space-8);
+}
+
+.access-section > header {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--space-5);
+  align-items: end;
+  margin-bottom: var(--space-4);
+}
+
+.access-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.access-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: center;
+  min-height: 92px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.access-avatar {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-surface);
+  color: var(--color-primary);
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-bold);
+}
+
+.access-card h3 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-base);
+}
+
+.access-card p,
+.access-card span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.access-card span {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.access-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.access-card .access-button--danger {
+  border: 1px solid var(--color-error);
+  background: transparent;
+  color: var(--color-error);
+}
+
+.access-empty {
+  padding: var(--space-6);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.access-loading {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.access-loading div {
+  min-height: 180px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(90deg, var(--color-divider), var(--color-surface), var(--color-divider));
+  background-size: 200% 100%;
+  animation: access-loading 1.4s ease-in-out infinite;
+}
+
+@keyframes access-loading {
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 720px) {
+  .access-notice,
+  .access-invite,
+  .access-section > header {
+    grid-template-columns: 1fr;
+  }
+
+  .access-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .access-card > .access-actions,
+  .access-card > button {
+    grid-column: 1 / -1;
+  }
+
+  .access-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .access-invite form > div,
+  .access-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .access-invite,
+  .access-notice {
+    padding: var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-loading div {
+    animation: none;
+  }
+}

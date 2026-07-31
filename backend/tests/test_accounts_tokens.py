@@ -19,7 +19,10 @@ class TestEmailVerifyToken:
 
     def test_expired_token_raises(self):
         from django.core import signing as django_signing
-        with patch('accounts.tokens.signing.loads', side_effect=django_signing.SignatureExpired('expired')):
+        with patch(
+            'accounts.tokens.signing.loads',
+            side_effect=django_signing.SignatureExpired('expired'),
+        ):
             with pytest.raises(TokenExpiredError):
                 load_email_verify_token('any-token')
 

@@ -5,6 +5,12 @@ import ProfileForm from '../components/students/ProfileForm'
 import PhotoUpload from '../components/students/PhotoUpload'
 import SubjectList from '../components/students/SubjectList'
 import GradeHistory from '../components/students/GradeHistory'
+import StudentProfilePage from '../pages/StudentProfilePage'
+import {
+  GRADE_LEVEL_LABELS,
+  GRADE_LEVEL_ORDER,
+  GRADE_LEVEL_POINTS,
+} from '../api/students'
 
 const makeClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -17,8 +23,41 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 const mockProfile = {
   id: 1, email: 'jane@test.com', first_name: 'Jane', last_name: 'Doe',
   county: 'kiambu', grade: 9 as const, mode: 'self_guided' as const,
+  school_membership_status: 'not_applicable' as const,
   bio: 'Hello', date_of_birth: null, career_interests: '', photo_url: null,
 }
+
+describe('StudentProfilePage school membership', () => {
+  it('shows that a school-code request is awaiting approval', async () => {
+    render(<StudentProfilePage />, { wrapper: Wrapper })
+    expect(await screen.findAllByText(/school approval pending/i)).toHaveLength(2)
+  })
+})
+
+describe('CBE grade scale', () => {
+  it('orders Level 1 above Level 2 within every performance band', () => {
+    expect(GRADE_LEVEL_ORDER).toEqual([
+      'EE1', 'EE2', 'ME1', 'ME2', 'AE1', 'AE2', 'BE1', 'BE2',
+    ])
+    expect(GRADE_LEVEL_POINTS).toEqual({
+      EE1: 8,
+      EE2: 7,
+      ME1: 6,
+      ME2: 5,
+      AE1: 4,
+      AE2: 3,
+      BE1: 2,
+      BE2: 1,
+    })
+  })
+
+  it('uses unambiguous level labels', () => {
+    expect(GRADE_LEVEL_LABELS.EE1).toBe('Exceeding Expectation - Level 1')
+    expect(GRADE_LEVEL_LABELS.EE2).toBe('Exceeding Expectation - Level 2')
+    expect(GRADE_LEVEL_LABELS.BE1).toBe('Below Expectation - Level 1')
+    expect(GRADE_LEVEL_LABELS.BE2).toBe('Below Expectation - Level 2')
+  })
+})
 
 describe('ProfileForm', () => {
   it('renders bio, date_of_birth, and career_interests fields', () => {
@@ -55,7 +94,7 @@ describe('PhotoUpload', () => {
 describe('SubjectList', () => {
   it('renders a list of enrolled subjects', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
@@ -63,22 +102,72 @@ describe('SubjectList', () => {
 
   it('renders a remove button per subject', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
+  })
+
+  it('identifies an enrolled subject retired from the current catalogue', () => {
+    const subjects = [
+      {
+        id: 11,
+        subject: {
+          id: 4,
+          name: 'Integrated Science',
+          code: 'INT10',
+          grade: 10 as const,
+          category: 'Core' as const,
+          is_active: false,
+        },
+        created_at: '',
+      },
+    ]
+    render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
+    expect(screen.getByText(/retired from the current catalogue/i)).toBeInTheDocument()
   })
 })
 
 describe('GradeHistory', () => {
   it('renders grade rows', () => {
     const grades = [
-      { id: 20, term: 1 as const, year: 2026, level: 'ME1' as const, created_at: '', updated_at: '' },
+      {
+        id: 20,
+        term: 1 as const,
+        year: 2026,
+        level: 'ME1' as const,
+        source: 'school' as const,
+        verified_by: 4,
+        verified_at: '2026-07-30T10:00:00Z',
+        created_at: '',
+        updated_at: '',
+      },
     ]
     render(<GradeHistory grades={grades} />, { wrapper: Wrapper })
     expect(screen.getByText('Term 1')).toBeInTheDocument()
     expect(screen.getByText('2026')).toBeInTheDocument()
     expect(screen.getByText(/meeting expectation/i)).toBeInTheDocument()
+    expect(screen.getByText('School record')).toBeInTheDocument()
+    expect(screen.getByText('Verified')).toBeInTheDocument()
+  })
+
+  it('distinguishes learner-entered evidence that has not been verified', () => {
+    const grades = [
+      {
+        id: 21,
+        term: 2 as const,
+        year: 2026,
+        level: 'AE1' as const,
+        source: 'learner' as const,
+        verified_by: null,
+        verified_at: null,
+        created_at: '',
+        updated_at: '',
+      },
+    ]
+    render(<GradeHistory grades={grades} />, { wrapper: Wrapper })
+    expect(screen.getByText('Learner entered')).toBeInTheDocument()
+    expect(screen.getByText('Not verified')).toBeInTheDocument()
   })
 
   it('shows empty state when no grades', () => {

@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { authApi, type User } from '../../api/auth'
-import { initials } from '../../lib/format'
+import { clearUserScopedStorage } from '../../lib/sessionCleanup'
+import Avatar from '../common/Avatar'
 
 interface NavItem {
   to: string
@@ -43,9 +45,13 @@ const ICONS = {
 function getNavItems(role: User['role']): NavItem[] {
   if (role === 'student') {
     return [
-      { to: '/', label: 'Home', icon: ICONS.grid },
+      { to: '/', label: 'Dashboard', icon: ICONS.grid },
       { to: '/grades', label: 'My Grades', icon: ICONS.bar },
-      { to: '/assessment/results', label: 'My Results', icon: ICONS.clock },
+      { to: '/explore', label: 'Explore Choices', icon: ICONS.grid },
+      { to: '/compare', label: 'Compare Choices', icon: ICONS.clipboard },
+      { to: '/plan', label: 'My Plan', icon: ICONS.note },
+      { to: '/access', label: 'Parent Access', icon: ICONS.users },
+      { to: '/assessment/results', label: 'Career Profile', icon: ICONS.clock },
       { to: '/assessment', label: 'Career Quiz', icon: ICONS.clipboard },
       { to: '/profile', label: 'My Profile', icon: ICONS.person },
     ]
@@ -63,11 +69,13 @@ function getNavItems(role: User['role']): NavItem[] {
       { to: '/admin/school', label: 'School Profile', icon: ICONS.school },
       { to: '/admin/counselors', label: 'Counselors', icon: ICONS.users },
       { to: '/admin/students', label: 'Students', icon: ICONS.users },
+      { to: '/admin/offerings', label: 'Offerings', icon: ICONS.clipboard },
     ]
   }
   if (role === 'system_admin') {
     return [
       { to: '/', label: 'Dashboard', icon: ICONS.grid },
+      { to: '/system-admin/catalogue', label: 'Catalogue', icon: ICONS.clipboard },
       { to: '/system-admin/schools', label: 'Schools', icon: ICONS.school },
       { to: '/system-admin/users', label: 'Users', icon: ICONS.users },
       { to: '/system-admin/audit-log', label: 'Audit Log', icon: ICONS.log },
@@ -87,10 +95,17 @@ const LOGOUT_ICON = (
   </svg>
 )
 
+const CLOSE_ICON = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+  </svg>
+)
+
 export default function Sidebar() {
   const { user, clearUser } = useAuthStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   if (!user) return <aside className="sidebar" aria-label="Main navigation" />
 
@@ -102,6 +117,8 @@ export default function Sidebar() {
     try {
       await authApi.logout()
     } catch { /* cookie cleared regardless */ }
+    queryClient.clear()
+    clearUserScopedStorage()
     clearUser()
     navigate('/login')
     toast.success('Logged out.')
@@ -109,6 +126,7 @@ export default function Sidebar() {
 
   return (
     <aside
+      id="app-navigation"
       className={[
         'sidebar',
         collapsed ? 'sidebar--collapsed' : '',
@@ -121,16 +139,26 @@ export default function Sidebar() {
         <img src="/logo.png" alt="" className="sidebar__logo" aria-hidden="true" />
         <span className="sidebar__app-name">Smarta Shauri</span>
         <button
+          type="button"
+          className="sidebar__mobile-close"
+          tabIndex={mobileSidebarOpen ? 0 : -1}
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close navigation"
+        >
+          {CLOSE_ICON}
+        </button>
+        <button
           className="sidebar__toggle"
           onClick={() => { toggleSidebar(); setMobileSidebarOpen(false) }}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? CHEVRON_RIGHT : CHEVRON_LEFT}
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="sidebar__nav">
+      <nav className="sidebar__nav" aria-label="Primary">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -150,9 +178,12 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="sidebar__footer">
-        <div className="sidebar__avatar" aria-hidden="true">
-          {initials(user.first_name, user.last_name)}
-        </div>
+        <Avatar
+          seed={`${user.first_name} ${user.last_name}`}
+          size={40}
+          shape="squircle"
+          className="sidebar__avatar"
+        />
         <div className="sidebar__user-info">
           <div className="sidebar__user-name">{user.first_name} {user.last_name}</div>
           <div className="sidebar__user-role">{roleLabel}</div>

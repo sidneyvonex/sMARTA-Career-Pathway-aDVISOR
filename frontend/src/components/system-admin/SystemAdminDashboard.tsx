@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { Link } from 'react-router-dom'
 import { systemAdminApi } from '../../api/systemAdmin'
+import ActivityList from '../common/dashboard/ActivityList'
+import DashboardHero from '../common/dashboard/DashboardHero'
+import EmptyState from '../common/dashboard/EmptyState'
+import ErrorState from '../common/dashboard/ErrorState'
+import MetricCard from '../common/dashboard/MetricCard'
+import SectionHeader from '../common/dashboard/SectionHeader'
+import '../../styles/dashboard.css'
 import '../../styles/system-admin.css'
 
 const ACTION_LABELS: Record<string, string> = {
@@ -19,120 +25,168 @@ const ACTION_LABELS: Record<string, string> = {
   counselor_added: 'Counselor added',
   counselor_removed: 'Counselor removed',
   counselor_assigned: 'Counselor assigned',
+  school_membership_approved: 'School link approved',
+  school_membership_rejected: 'School link rejected',
+  grade_verified: 'Grade verified',
+  grade_verification_removed: 'Grade verification removed',
+  parent_link_approved: 'Parent link approved',
+  parent_link_revoked: 'Parent link revoked',
+  provisional_combination_changed: 'Provisional combination changed',
+  plan_review_status_changed: 'Plan review status changed',
+  report_downloaded: 'Report downloaded',
+  framework_combination_status_changed: 'Framework combination status changed',
+  school_offerings_changed: 'School offerings changed',
+}
+
+const COUNTY_LABELS: Record<string, string> = {
+  kiambu: 'Kiambu',
+  muranga: "Murang'a",
+  nyeri: 'Nyeri',
+  kirinyaga: 'Kirinyaga',
+  nyandarua: 'Nyandarua',
 }
 
 function formatTime(iso: string): string {
-  const d = new Date(iso)
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return d.toLocaleDateString()
+  const date = new Date(iso)
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000)
+  if (minutes < 60) return `${Math.max(minutes, 0)}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return date.toLocaleDateString()
 }
 
 export default function SystemAdminDashboard() {
-  const navigate = useNavigate()
-
-  const { data, isLoading, isError } = useQuery({
+  const dashboardQ = useQuery({
     queryKey: ['system-admin', 'dashboard'],
-    queryFn: () => systemAdminApi.getDashboard().then(r => r.data.data),
+    queryFn: () => systemAdminApi.getDashboard().then(response => response.data.data),
   })
 
-  if (isLoading) {
+  if (dashboardQ.isLoading) {
     return (
       <div className="sysadmin-dashboard">
-        <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)' }} />
+        <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-xl)', marginBottom: 'var(--space-5)' }} />
         <div className="dashboard-stats-grid">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton" style={{ height: 16, width: '40%' }} />
-              <div className="skeleton" style={{ height: 40 }} />
-            </div>
-          ))}
+          {[1, 2, 3, 4].map(item => <div key={item} className="skeleton-card" />)}
         </div>
       </div>
     )
   }
 
-  if (isError) {
-    toast.error('Failed to load dashboard data.')
+  if (dashboardQ.isError || !dashboardQ.data) {
     return (
-      <div className="sysadmin-dashboard">
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          Something went wrong loading the dashboard. Please try again.
-        </p>
-      </div>
+      <ErrorState
+        title="The pilot dashboard could not load"
+        description="No administration data was changed. Check your connection and try again."
+        onRetry={() => dashboardQ.refetch()}
+        actionLabel="Retry dashboard"
+      />
     )
   }
 
-  const stats = data!
+  const stats = dashboardQ.data
   const roles = stats.users_by_role
-  const counties = stats.schools_by_county
 
   return (
-    <div className="sysadmin-dashboard">
-      <h1 className="sysadmin-dashboard__title">System Admin Dashboard</h1>
-      <p className="sysadmin-dashboard__subtitle">Smarta Shauri platform overview</p>
+    <div className="db-page sysadmin-dashboard pilot-admin">
+      <DashboardHero
+        tone="system"
+        eyebrow="System administration"
+        title="System Admin Dashboard"
+        description="Monitor the five-county pilot, current guidance framework and important operational events."
+        meta={[
+          `${stats.total_schools} active schools`,
+          `${stats.registered_learners} registered learners`,
+          'Five pilot counties',
+        ]}
+        actions={[
+          { label: 'Create School', to: '/system-admin/schools?create=1' },
+          { label: 'Manage Catalogue', to: '/system-admin/catalogue', variant: 'secondary' },
+          { label: 'View Audit Log', to: '/system-admin/audit-log', variant: 'secondary' },
+        ]}
+      />
 
-      <div className="dashboard-stats-grid">
-        <div className="dashboard-stat-card" onClick={() => navigate('/system-admin/users?role=student')}>
-          <span className="dashboard-stat-card__value">{roles.student ?? 0}</span>
-          <span className="dashboard-stat-card__label">Students</span>
+      <section aria-labelledby="pilot-health-title">
+        <SectionHeader
+          eyebrow="Pilot health"
+          title="Access and completion"
+          titleId="pilot-health-title"
+          description="Counts use live learner verification, school-link, assignment and reviewed-plan records."
+        />
+        <div className="db-metrics-grid pilot-admin__health">
+          <MetricCard label="Students" value={roles.student ?? 0} detail="User accounts" to="/system-admin/users?role=student" tone="neutral" />
+          <MetricCard label="Verified learners" value={stats.verified_learners} detail={`${stats.registered_learners} registered`} to="/system-admin/users?role=student" tone="positive" />
+          <MetricCard label="Pending school links" value={stats.pending_school_links} detail="Awaiting school decision" tone="warning" />
+          <MetricCard label="Assignment coverage" value={`${stats.assignment_coverage.percent}%`} detail={`${stats.assignment_coverage.assigned} of ${stats.assignment_coverage.eligible}`} tone="info" />
+          <MetricCard label="Plans completed" value={stats.plans_completed} detail="Counsellor reviewed" tone="positive" />
+          <MetricCard label="Schools" value={stats.total_schools} detail="Active pilot schools" to="/system-admin/schools" tone="info" />
+          <MetricCard label="Counselors" value={roles.counselor ?? 0} detail="Across pilot schools" to="/system-admin/users?role=counselor" tone="neutral" />
+          <MetricCard label="Parents" value={roles.parent ?? 0} detail="Supporter accounts" to="/system-admin/users?role=parent" tone="neutral" />
         </div>
-        <div className="dashboard-stat-card" onClick={() => navigate('/system-admin/users?role=counselor')}>
-          <span className="dashboard-stat-card__value">{roles.counselor ?? 0}</span>
-          <span className="dashboard-stat-card__label">Counselors</span>
-        </div>
-        <div className="dashboard-stat-card" onClick={() => navigate('/system-admin/schools')}>
-          <span className="dashboard-stat-card__value">{stats.total_schools}</span>
-          <span className="dashboard-stat-card__label">Schools</span>
-        </div>
-        <div className="dashboard-stat-card" onClick={() => navigate('/system-admin/users?role=parent')}>
-          <span className="dashboard-stat-card__value">{roles.parent ?? 0}</span>
-          <span className="dashboard-stat-card__label">Parents</span>
-        </div>
-      </div>
+      </section>
 
-      <h2 className="sysadmin-section-title">Schools by County</h2>
-      <div className="sysadmin-county-grid">
-        {['kiambu', 'muranga', 'nyeri', 'kirinyaga', 'nyandarua'].map(c => (
-          <div key={c} className="sysadmin-county-card">
-            <div className="sysadmin-county-card__count">{counties[c] ?? 0}</div>
-            <div className="sysadmin-county-card__name">{c === 'muranga' ? "Murang'a" : c}</div>
-          </div>
-        ))}
-      </div>
-
-      <h2 className="sysadmin-section-title">Recent Activity</h2>
-      {stats.recent_audit.length === 0 ? (
-        <p className="admin-empty-state">No recent activity.</p>
-      ) : (
-        <ul className="sysadmin-activity-list">
-          {stats.recent_audit.map(entry => (
-            <li key={entry.id} className="sysadmin-activity-item">
-              <div>
-                <span className="sysadmin-activity-item__action">
-                  {ACTION_LABELS[entry.action] ?? entry.action}
-                </span>
-                {entry.actor_name && (
-                  <span className="sysadmin-activity-item__actor"> — {entry.actor_name}</span>
-                )}
-              </div>
-              <span className="sysadmin-activity-item__time">{formatTime(entry.created_at)}</span>
-            </li>
+      <section aria-labelledby="county-title">
+        <SectionHeader
+          eyebrow="Pilot footprint"
+          title="Schools by County"
+          titleId="county-title"
+          description="Learners and active schools remain limited to the five pilot counties."
+        />
+        <div className="pilot-admin__counties">
+          {Object.entries(COUNTY_LABELS).map(([county, label]) => (
+            <article className="pilot-county-card" key={county}>
+              <strong>{label}</strong>
+              <span>{stats.learners_by_county[county] ?? 0} learners</span>
+              <span>{stats.schools_by_county[county] ?? 0} schools</span>
+            </article>
           ))}
-        </ul>
-      )}
+        </div>
+      </section>
 
-      <div className="sysadmin-dashboard__actions">
-        <button className="btn-primary" onClick={() => navigate('/system-admin/schools?create=1')}>
-          Create School
-        </button>
-        <button className="btn-ghost" onClick={() => navigate('/system-admin/audit-log')}>
-          View Audit Log
-        </button>
+      <div className="pilot-admin__workspace">
+        <section className="db-panel" aria-labelledby="framework-title">
+          <SectionHeader
+            eyebrow="Catalogue freshness"
+            title="Current guidance framework"
+            titleId="framework-title"
+          />
+          {stats.framework ? (
+            <div className="pilot-framework">
+              <strong>{stats.framework.code}</strong>
+              <h3>{stats.framework.title}</h3>
+              <p>Effective {new Date(stats.framework.effective_date).toLocaleDateString()}</p>
+              <a href={stats.framework.source_url} target="_blank" rel="noreferrer">
+                Open official source
+              </a>
+              <Link to="/system-admin/catalogue">
+                Manage catalogue status
+              </Link>
+            </div>
+          ) : (
+            <EmptyState
+              title="No active framework"
+              description="Activate a source-dated guidance framework before the presentation."
+            />
+          )}
+        </section>
+
+        <section className="db-panel" aria-labelledby="recent-activity-title">
+          <SectionHeader
+            eyebrow="Important events"
+            title="Recent Activity"
+            titleId="recent-activity-title"
+            action={{ label: 'View all', to: '/system-admin/audit-log' }}
+          />
+          <ActivityList
+            items={stats.recent_audit.map(entry => ({
+              id: entry.id,
+              title: ACTION_LABELS[entry.action] ?? entry.action.replace(/_/g, ' '),
+              detail: entry.actor_name || entry.actor_email || 'System',
+              time: formatTime(entry.created_at),
+            }))}
+            ariaLabel="Recent important audit events"
+            empty={<EmptyState title="No recent activity" description="Important pilot actions will appear here." />}
+          />
+        </section>
       </div>
     </div>
   )

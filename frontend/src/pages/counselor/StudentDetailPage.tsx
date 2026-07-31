@@ -10,6 +10,7 @@ import NoteCard from '../../components/counselor/NoteCard'
 import NoteForm from '../../components/counselor/NoteForm'
 import ScoreBars from '../../components/assessment/ScoreBars'
 import RecommendationCards from '../../components/assessment/RecommendationCards'
+import StatusBadge from '../../components/common/dashboard/StatusBadge'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/counselor.css'
 
@@ -20,6 +21,11 @@ export default function StudentDetailPage() {
 
   const { downloadReport, downloadingId } = useDownloadReport()
   const [editingNote, setEditingNote] = useState<CounselorNote | null>(null)
+  const [category, setCategory] = useState<'assessment' | 'academic_evidence' | 'combination' | 'plan' | 'follow_up' | 'other'>('plan')
+  const [actionAgreed, setActionAgreed] = useState('')
+  const [followUpDate, setFollowUpDate] = useState('')
+  const [learnerVisible, setLearnerVisible] = useState(true)
+  const [parentVisible, setParentVisible] = useState(false)
 
   const studentQuery = useQuery({
     queryKey: ['counselor', 'student', studentId],
@@ -77,6 +83,62 @@ export default function StudentDetailPage() {
     },
   })
 
+  const createIntervention = useMutation({
+    mutationFn: () => counselorApi.createIntervention(studentId, {
+      category,
+      action_agreed: actionAgreed.trim(),
+      follow_up_date: followUpDate || null,
+      learner_visible: learnerVisible,
+      parent_visible: parentVisible,
+    }),
+    onSuccess: () => {
+      toast.success('Agreed next step saved.')
+      setActionAgreed('')
+      setFollowUpDate('')
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'student', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'interventions'] })
+    },
+    onError: () => toast.error('Could not save the agreed next step.'),
+  })
+
+  const updateIntervention = useMutation({
+    mutationFn: ({ interventionId, status }: { interventionId: number; status: 'open' | 'completed' }) =>
+      counselorApi.updateIntervention(interventionId, { status }),
+    onSuccess: () => {
+      toast.success('Intervention updated.')
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'student', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'interventions'] })
+    },
+    onError: () => toast.error('Could not update the intervention.'),
+  })
+
+  const reviewPlan = useMutation({
+    mutationFn: (reviewed: boolean) => counselorApi.reviewPlan(studentId, reviewed)
+      .then((response) => response.data.data),
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        ['counselor', 'student', studentId],
+        (current: typeof studentQuery.data) => current?.plan
+          ? {
+              ...current,
+              plan: {
+                ...current.plan,
+                status: result.status,
+              },
+            }
+          : current,
+      )
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'students'] })
+      queryClient.invalidateQueries({ queryKey: ['counselor', 'stats'] })
+      toast.success(
+        result.status === 'reviewed'
+          ? 'Learner plan marked reviewed.'
+          : 'Learner plan reopened for review.',
+      )
+    },
+    onError: () => toast.error('Could not update the learner plan review.'),
+  })
+
   if (studentQuery.isLoading) {
     return (
       <div className="counselor-page">
@@ -102,7 +164,16 @@ export default function StudentDetailPage() {
     )
   }
 
-  const { student, riasec_result, grades } = studentQuery.data
+  const {
+    student,
+    riasec_result,
+    grades,
+    attention_reasons: attentionReasons,
+    evidence_summary: evidence,
+    combination_choices: choices,
+    plan,
+    interventions,
+  } = studentQuery.data
 
   return (
     <div className="counselor-page">
@@ -126,6 +197,113 @@ export default function StudentDetailPage() {
         <div className="student-detail__main">
           <StudentDetailHeader student={student} />
 
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Attention reasons</h2>
+            <p className="detail-workspace-card__advisory">
+              These are evidence gaps and due actions, not a predictive risk score.
+            </p>
+            <div className="detail-reason-list">
+              {attentionReasons.length > 0 ? attentionReasons.map((reason) => (
+                <div key={reason.code}>
+                  <strong>{reason.label}</strong>
+                  <span>{reason.guidance}</span>
+                </div>
+              )) : (
+                <p>No current attention reasons.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Evidence summary</h2>
+            <div className="detail-evidence-grid">
+              <article>
+                <span>Academic evidence</span>
+                <strong>{evidence.academic.status.replace('_', ' ')}</strong>
+                <p>
+                  {evidence.academic.subjects_with_evidence} of {evidence.academic.total_subjects} subjects have evidence
+                </p>
+              </article>
+              <article>
+                <span>Interest assessment</span>
+                <strong>{evidence.assessment.status.replace('_', ' ')}</strong>
+                <p>Use this as exploration evidence, not a placement decision.</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Saved and provisional choices</h2>
+            {choices.length > 0 ? (
+              <div className="detail-choice-list">
+                {choices.map((choice) => (
+                  <article key={choice.id}>
+                    <div>
+                      <StatusBadge tone={choice.status === 'provisional' ? 'attention' : 'neutral'}>
+                        {choice.status === 'provisional' ? 'Provisional' : 'Saved'}
+                      </StatusBadge>
+                      <span>{choice.code}</span>
+                    </div>
+                    <h3>{choice.title}</h3>
+                    <p>{choice.pathway} · {choice.track}</p>
+                    <small>{choice.subjects.join(' · ')}</small>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>No combinations have been saved.</p>
+            )}
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Learner plan</h2>
+            {plan ? (
+              <>
+                <div className="detail-plan-head">
+                  <div>
+                    <StatusBadge tone={plan.status === 'reviewed' ? 'positive' : 'attention'}>
+                      {plan.status.replace(/_/g, ' ')}
+                    </StatusBadge>
+                    <span>{plan.milestones.filter((item) => item.is_complete).length} of {plan.milestones.length} milestones complete</span>
+                  </div>
+                  {plan.status !== 'draft' && (
+                    <button
+                      type="button"
+                      className={plan.status === 'reviewed' ? 'btn-ghost' : 'btn-primary'}
+                      onClick={() => reviewPlan.mutate(plan.status !== 'reviewed')}
+                      disabled={reviewPlan.isPending}
+                      aria-label={
+                        plan.status === 'reviewed'
+                          ? 'Reopen learner plan review'
+                          : 'Mark learner plan reviewed'
+                      }
+                    >
+                      {reviewPlan.isPending
+                        ? 'Updating...'
+                        : plan.status === 'reviewed'
+                          ? 'Reopen review'
+                          : 'Mark reviewed'}
+                    </button>
+                  )}
+                </div>
+                {plan.learner_reason && <blockquote>{plan.learner_reason}</blockquote>}
+                <ul className="detail-milestones">
+                  {plan.milestones.map((milestone) => (
+                    <li key={milestone.id}>
+                      <span aria-hidden="true">{milestone.is_complete ? '✓' : '○'}</span>
+                      <div>
+                        <strong>{milestone.title}</strong>
+                        {milestone.due_date && <small>Due {milestone.due_date}</small>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p>No learner plan has been started.</p>
+            )}
+          </section>
+
           {riasec_result && (
             <section className="student-detail__section">
               <h2 className="student-detail__section-title">RIASEC Assessment</h2>
@@ -142,6 +320,88 @@ export default function StudentDetailPage() {
           <section className="student-detail__section">
             <h2 className="student-detail__section-title">Grades</h2>
             <CounselorGradesTable grades={grades} studentName={student.first_name} />
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Intervention timeline</h2>
+            <form
+              className="intervention-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (actionAgreed.trim()) createIntervention.mutate()
+              }}
+            >
+              <div className="intervention-form__row">
+                <label>
+                  Category
+                  <select value={category} onChange={(event) => setCategory(event.target.value as typeof category)}>
+                    <option value="assessment">Interest assessment</option>
+                    <option value="academic_evidence">Academic evidence</option>
+                    <option value="combination">Subject combination</option>
+                    <option value="plan">Learner plan</option>
+                    <option value="follow_up">Follow-up</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <label>
+                  Follow-up date
+                  <input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} />
+                </label>
+              </div>
+              <label>
+                Agreed next step
+                <textarea
+                  value={actionAgreed}
+                  onChange={(event) => setActionAgreed(event.target.value)}
+                  maxLength={2000}
+                  rows={3}
+                  placeholder="Record the action agreed with the learner"
+                />
+              </label>
+              <div className="intervention-form__visibility">
+                <label>
+                  <input type="checkbox" checked={learnerVisible} onChange={(event) => setLearnerVisible(event.target.checked)} />
+                  Share with learner
+                </label>
+                <label>
+                  <input type="checkbox" checked={parentVisible} onChange={(event) => setParentVisible(event.target.checked)} />
+                  Share with approved parent
+                </label>
+              </div>
+              <button type="submit" className="btn-primary" disabled={!actionAgreed.trim() || createIntervention.isPending}>
+                {createIntervention.isPending ? 'Saving...' : 'Save agreed next step'}
+              </button>
+            </form>
+
+            <div className="intervention-timeline">
+              {interventions.length > 0 ? interventions.map((intervention) => (
+                <article key={intervention.id}>
+                  <div>
+                    <StatusBadge tone={intervention.status === 'completed' ? 'positive' : 'warning'}>
+                      {intervention.status === 'completed' ? 'Completed' : 'Open'}
+                    </StatusBadge>
+                    <span>{intervention.category.replace('_', ' ')}</span>
+                  </div>
+                  <strong>{intervention.action_agreed}</strong>
+                  <small>{intervention.follow_up_date ? `Follow up ${intervention.follow_up_date}` : 'No follow-up date'}</small>
+                  <p>
+                    {intervention.learner_visible ? 'Learner visible' : 'Counsellor only'}
+                    {intervention.parent_visible ? ' · Parent visible' : ''}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => updateIntervention.mutate({
+                      interventionId: intervention.id,
+                      status: intervention.status === 'open' ? 'completed' : 'open',
+                    })}
+                    disabled={updateIntervention.isPending}
+                  >
+                    Mark {intervention.status === 'open' ? 'completed' : 'open'}
+                  </button>
+                </article>
+              )) : <p>No interventions recorded yet.</p>}
+            </div>
           </section>
         </div>
 

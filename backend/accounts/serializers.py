@@ -29,26 +29,39 @@ class StudentRegistrationSerializer(serializers.Serializer):
                 school = School.objects.get(school_code=school_code)
             except School.DoesNotExist:
                 raise serializers.ValidationError({'school_code': 'School code not found.'})
+            if not school.is_active:
+                raise serializers.ValidationError(
+                    {'school_code': 'This school is not active for pilot registration.'}
+                )
             if school.county != attrs['county']:
                 raise serializers.ValidationError(
                     {'school_code': 'School county does not match your selected county.'}
                 )
             attrs['school'] = school
             attrs['mode'] = 'school_linked'
+            attrs['school_membership_status'] = 'pending'
         else:
             attrs['school'] = None
             attrs['mode'] = 'self_guided'
+            attrs['school_membership_status'] = 'not_applicable'
         return attrs
 
     def create(self, validated_data):
         school = validated_data.pop('school')
         mode = validated_data.pop('mode')
+        school_membership_status = validated_data.pop('school_membership_status')
         validated_data.pop('school_code', None)
         password = validated_data.pop('password')
         grade = validated_data.pop('grade')
 
         user = User.objects.create_user(password=password, **validated_data)
-        StudentProfile.objects.create(user=user, mode=mode, school=school, grade=grade)
+        StudentProfile.objects.create(
+            user=user,
+            mode=mode,
+            school=school,
+            school_membership_status=school_membership_status,
+            grade=grade,
+        )
         return user
 
 

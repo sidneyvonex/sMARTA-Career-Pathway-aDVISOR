@@ -18,7 +18,19 @@ export default function AcceptInvitePage() {
   const navigate = useNavigate()
   const setUser = useAuthStore((s) => s.setUser)
   const token = searchParams.get('token') ?? ''
-  const [form, setForm] = useState({ first_name: '', last_name: '', county: '', password: '' })
+  const [form, setForm] = useState<{
+    first_name: string
+    last_name: string
+    county: string
+    password: string
+    claimed_relationship: 'mother' | 'father' | 'guardian' | 'relative' | 'other'
+  }>({
+    first_name: '',
+    last_name: '',
+    county: '',
+    password: '',
+    claimed_relationship: 'guardian',
+  })
   const [loading, setLoading] = useState(false)
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -71,6 +83,22 @@ export default function AcceptInvitePage() {
             <option value="">Select your county</option>
             {COUNTIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="claimed_relationship">Relationship to learner</label>
+          <select
+            id="claimed_relationship"
+            value={form.claimed_relationship}
+            onChange={set('claimed_relationship')}
+          >
+            <option value="mother">Mother</option>
+            <option value="father">Father</option>
+            <option value="guardian">Guardian</option>
+            <option value="relative">Other relative</option>
+            <option value="other">Other</option>
+          </select>
+          <small>Used for parent invitations. The learner must approve access.</small>
         </div>
 
         <div className="form-field">

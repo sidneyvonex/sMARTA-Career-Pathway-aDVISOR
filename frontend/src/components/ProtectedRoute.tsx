@@ -10,7 +10,7 @@ export default function ProtectedRoute({ roles }: Props) {
   const { user, isAuthenticated, isLoading } = useAuthStore()
 
   if (isLoading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+    return <div role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
   if (!isAuthenticated) {

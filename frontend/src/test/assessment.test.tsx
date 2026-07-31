@@ -5,6 +5,7 @@ import LikertQuestion from '../components/assessment/LikertQuestion'
 import AssessmentStep from '../components/assessment/AssessmentStep'
 import ScoreBars from '../components/assessment/ScoreBars'
 import RecommendationCards from '../components/assessment/RecommendationCards'
+import AssessmentResultsPage from '../pages/AssessmentResultsPage'
 import type { RIASECQuestion, AssessmentRecommendation } from '../api/assessment'
 
 const makeClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -28,7 +29,21 @@ const mockQuestions: RIASECQuestion[] = Array.from({ length: 6 }, (_, i) => ({
 }))
 
 const mockRecs: AssessmentRecommendation[] = [
-  { rank: 1, fit_score: 18.25, fit_pct: 73, pathway: { id: 1, name: 'STEM', description: 'Science and tech.' } },
+  {
+    rank: 1,
+    fit_score: 18.25,
+    fit_pct: 73,
+    pathway: { id: 1, name: 'STEM', description: 'Science and tech.' },
+    explanation: {
+      summary: 'STEM is suggested because Investigative and Realistic interests lead.',
+      leading_dimensions: [
+        { code: 'I', label: 'Investigative', score: 22 },
+        { code: 'R', label: 'Realistic', score: 18 },
+      ],
+      limitations: 'This reflects stated interests only. It does not predict success.',
+      next_step: 'Review your subjects and available combinations.',
+    },
+  },
   { rank: 2, fit_score: 14.75, fit_pct: 59, pathway: { id: 2, name: 'Social Sciences', description: 'Humanities.' } },
   { rank: 3, fit_score: 14.65, fit_pct: 59, pathway: { id: 3, name: 'Arts & Sports Science', description: 'Creative arts.' } },
 ]
@@ -120,9 +135,40 @@ describe('RecommendationCards', () => {
     expect(screen.getByText('Arts & Sports Science')).toBeInTheDocument()
   })
 
-  it('shows fit percentages', () => {
+  it('presents ranked interest alignment without exposing fit percentages', () => {
     render(<RecommendationCards recommendations={mockRecs} hollandCode="IRE" />, { wrapper: Wrapper })
-    expect(screen.getByText('73% match')).toBeInTheDocument()
-    expect(screen.getAllByText('59% match')).toHaveLength(2)
+    expect(screen.getByText('Strongest interest alignment')).toBeInTheDocument()
+    expect(screen.getAllByText('Suggested for exploration')).toHaveLength(2)
+    expect(screen.queryByText(/73%|59%|match/i)).not.toBeInTheDocument()
+  })
+
+  it('explains that pathway suggestions are advisory', () => {
+    render(<RecommendationCards recommendations={mockRecs} hollandCode="IRE" />, { wrapper: Wrapper })
+    expect(screen.getByText(/starting points for exploration/i)).toBeInTheDocument()
+    expect(screen.getByText(/do not predict success or decide placement/i)).toBeInTheDocument()
+  })
+
+  it('shows the saved explanation for a pathway', () => {
+    render(<RecommendationCards recommendations={mockRecs} hollandCode="IRE" />, { wrapper: Wrapper })
+    expect(screen.getByText(/suggested because investigative and realistic interests/i)).toBeInTheDocument()
+  })
+})
+
+describe('AssessmentResultsPage', () => {
+  it('separates interests, missing evidence and the next action', async () => {
+    render(<AssessmentResultsPage />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole('heading', { name: 'Your stated interests' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Pathways to explore' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Missing evidence' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Your next step' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Review my evidence' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Assessment method record' })).toHaveTextContent(
+      'riasec-pilot-1.0',
+    )
+    expect(screen.getByRole('complementary', { name: 'Assessment method record' })).toHaveTextContent(
+      'interest-alignment-1.0',
+    )
+    expect(screen.queryByText(/chance of success|success probability/i)).not.toBeInTheDocument()
   })
 })

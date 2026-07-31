@@ -28,6 +28,8 @@ export const authApi = {
   me: () => api.get<{ data: { user: User } }>('/auth/me/'),
   verifyEmail: (token: string) => api.get(`/auth/verify-email/?token=${token}`),
   resendVerification: () => api.post('/auth/resend-verification/'),
+  inviteParent: (parentEmail: string) =>
+    api.post('/auth/invite-parent/', { parent_email: parentEmail }),
   requestPasswordReset: (email: string) => api.post('/auth/password-reset/', { email }),
   confirmPasswordReset: (token: string, password: string) =>
     api.post('/auth/password-reset/confirm/', { token, password }),
@@ -37,5 +39,6 @@ export const authApi = {
     first_name: string
     last_name: string
     county: string
+    claimed_relationship?: 'mother' | 'father' | 'guardian' | 'relative' | 'other'
   }) => api.post('/auth/accept-invite/', payload),
 }

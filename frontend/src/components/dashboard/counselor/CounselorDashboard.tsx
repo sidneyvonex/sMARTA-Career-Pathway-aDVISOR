@@ -1,107 +1,246 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../../store/authStore'
+import { Link } from 'react-router-dom'
+import { counselorApi } from '../../../api/counselor'
 import { dashboardApi } from '../../../api/dashboard'
 import { greeting } from '../../../lib/greeting'
-import { initials } from '../../../lib/format'
+import { useAuthStore } from '../../../store/authStore'
+import Avatar from '../../common/Avatar'
+import ActionCard from '../../common/dashboard/ActionCard'
+import DashboardHero from '../../common/dashboard/DashboardHero'
+import EmptyState from '../../common/dashboard/EmptyState'
+import ErrorState from '../../common/dashboard/ErrorState'
+import LoadingSkeleton from '../../common/dashboard/LoadingSkeleton'
+import MetricCard from '../../common/dashboard/MetricCard'
+import SectionHeader from '../../common/dashboard/SectionHeader'
+import StatusBadge from '../../common/dashboard/StatusBadge'
 import AssessmentRing from './AssessmentRing'
-import StudentList from './StudentList'
 import '../../../styles/dashboard.css'
 
-export default function CounselorDashboard() {
-  const navigate = useNavigate()
-  const { user } = useAuthStore()
+const REASON_PRIORITY = {
+  learner_requested_review: 0,
+  follow_up_overdue: 1,
+  combination_unavailable_at_school: 2,
+  academic_evidence_missing: 3,
+  assessment_missing: 4,
+  no_saved_combination: 5,
+  no_plan: 6,
+}
 
+export function attentionSummary(count: number) {
+  if (count === 1) return '1 learner has a clear reason for attention.'
+  return `${count} learners have a clear reason for attention.`
+}
+
+export default function CounselorDashboard() {
+  const { user } = useAuthStore()
   const studentsQ = useQuery({
     queryKey: ['counselor', 'students'],
-    queryFn: () => dashboardApi.getCounselorStudents().then((r) => r.data.data),
+    queryFn: () => dashboardApi.getCounselorStudents().then((response) => response.data.data),
   })
-
   const statsQ = useQuery({
     queryKey: ['counselor', 'stats'],
-    queryFn: () => dashboardApi.getCounselorStats().then((r) => r.data.data),
+    queryFn: () => dashboardApi.getCounselorStats().then((response) => response.data.data),
+  })
+  const interventionsQ = useQuery({
+    queryKey: ['counselor', 'interventions'],
+    queryFn: () => counselorApi.getInterventions().then((response) => response.data.data),
   })
 
-  const students = studentsQ.data ?? []
-  const stats = statsQ.data ?? { total_students: 0, assessments_done: 0, students_needing_attention: 0, notes_written: 0 }
+  if (studentsQ.isLoading || statsQ.isLoading || interventionsQ.isLoading) {
+    return <LoadingSkeleton label="Loading counsellor dashboard" rows={5} variant="metrics" />
+  }
 
-  if (studentsQ.isLoading || statsQ.isLoading) {
+  if (studentsQ.isError || statsQ.isError || interventionsQ.isError) {
     return (
-      <div>
-        <div className="skeleton" style={{ height: 140, borderRadius: 13, marginBottom: 'var(--space-5)' }} />
-        <div className="stat-cards">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton" style={{ height: 16, width: '40%' }} />
-              <div className="skeleton" style={{ height: 40 }} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <ErrorState
+        title="The counsellor dashboard could not load"
+        description="Check your connection and try loading the priority queue again."
+        onRetry={() => {
+          studentsQ.refetch()
+          statsQ.refetch()
+          interventionsQ.refetch()
+        }}
+      />
     )
   }
 
+  const students = studentsQ.data ?? []
+  const stats = statsQ.data ?? {
+    total_students: 0,
+    assessments_done: 0,
+    students_needing_attention: 0,
+    follow_ups_due: 0,
+    journeys_reviewed: 0,
+    notes_written: 0,
+  }
+  const priorityStudents = students
+    .filter((student) => student.needs_attention)
+    .sort((left, right) => {
+      const leftPriority = Math.min(
+        ...left.attention_reasons.map((reason) => REASON_PRIORITY[reason.code]),
+      )
+      const rightPriority = Math.min(
+        ...right.attention_reasons.map((reason) => REASON_PRIORITY[reason.code]),
+      )
+      return leftPriority - rightPriority
+    })
+  const recentInterventions = [...(interventionsQ.data ?? [])]
+    .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
+    .slice(0, 4)
+  const fullName = user ? `${user.first_name} ${user.last_name}`.trim() : 'Counsellor'
+
   return (
-    <div>
-      <div className="greeting-strip" role="region" aria-label="Welcome banner">
-        <div className="greeting-strip__avatar" aria-hidden="true">
-          {user ? initials(user.first_name, user.last_name) : '?'}
-        </div>
-        <div className="greeting-strip__body">
-          <div className="greeting-strip__hello">{user ? greeting(user.first_name) : ''}</div>
-          <div className="greeting-strip__name">{user?.first_name} {user?.last_name}</div>
-          <div className="greeting-strip__chips">
-            <span className="greeting-chip">Career Counselor</span>
-            {user?.county && <span className="greeting-chip" style={{ textTransform: 'capitalize' }}>{user.county}</span>}
-            {stats.students_needing_attention > 0 && (
-              <span className="greeting-chip greeting-chip--gold">
-                {stats.students_needing_attention} students need attention
-              </span>
-            )}
-          </div>
-        </div>
+    <div className="db-page">
+      <DashboardHero
+        tone="counsellor"
+        eyebrow="Counsellor workspace"
+        title={user ? greeting(user.first_name) : 'Welcome'}
+        description={stats.students_needing_attention > 0
+          ? attentionSummary(stats.students_needing_attention)
+          : 'Your assigned learners are up to date.'}
+        avatar={<Avatar seed={fullName} size={46} shape="squircle" />}
+        meta={[
+          user?.county ? `${user.county} County` : '',
+          `${stats.total_students} learner${stats.total_students === 1 ? '' : 's'} assigned`,
+        ]}
+        actions={[
+          { label: 'Open full caseload', to: '/counselor/students' },
+          { label: 'Manage interventions', to: '/counselor/students', variant: 'secondary' },
+        ]}
+      />
+
+      <div className="db-metric-grid">
+        <MetricCard
+          label="Total students"
+          value={stats.total_students}
+          detail="Assigned to you"
+          to="/counselor/students"
+        />
+        <MetricCard
+          label="Need attention"
+          value={stats.students_needing_attention}
+          detail="With explicit reasons"
+          tone={stats.students_needing_attention > 0 ? 'warning' : 'neutral'}
+          to="/counselor/students"
+        />
+        <MetricCard
+          label="Follow-ups due"
+          value={stats.follow_ups_due}
+          detail="Open actions due now"
+          tone={stats.follow_ups_due > 0 ? 'warning' : 'positive'}
+          to="/counselor/students"
+        />
+        <MetricCard
+          label="Journeys reviewed"
+          value={stats.journeys_reviewed}
+          detail={`of ${stats.total_students} learner plans`}
+          tone="positive"
+        />
       </div>
 
-      <div className="stat-cards">
-        <div className="stat-card">
-          <div className="stat-card__label">Total students</div>
-          <div className="stat-card__value">{stats.total_students}</div>
-          <div className="stat-card__sub">Assigned to you</div>
+      <section className="counselor-priority-grid" aria-label="Counsellor priority workflow">
+        <div className="db-panel db-panel--compact">
+          <SectionHeader
+            eyebrow="Act next"
+            title="Priority queue"
+            description="Reasons are evidence gaps or agreed follow-ups, not a predictive risk score."
+            action={{ label: 'View all learners', to: '/counselor/students' }}
+          />
+          {priorityStudents.length === 0 ? (
+            <EmptyState
+              title="No learners need attention"
+              description="New evidence gaps and due follow-ups will appear here."
+            />
+          ) : (
+            <div className="counselor-priority-list">
+              {priorityStudents.slice(0, 5).map((student) => (
+                <Link
+                  key={student.id}
+                  to={`/counselor/students/${student.id}`}
+                  className="counselor-priority-card"
+                >
+                  <span>
+                    <strong>{student.first_name} {student.last_name}</strong>
+                    <small>Grade {student.grade}</small>
+                  </span>
+                  <span className="counselor-reason-list">
+                    {student.attention_reasons.slice(0, 3).map((reason) => (
+                      <span className="counselor-reason-chip" key={reason.code}>
+                        {reason.label}
+                      </span>
+                    ))}
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Assessments done</div>
-          <div className="stat-card__value">{stats.assessments_done}</div>
-          <div className="stat-card__sub">
-            {stats.total_students > 0
-              ? `${Math.round((stats.assessments_done / stats.total_students) * 100)}% completion`
-              : 'No students yet'}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Need attention</div>
-          <div className="stat-card__value" style={{ color: stats.students_needing_attention > 0 ? 'var(--color-warning)' : 'var(--color-text)' }}>
-            {stats.students_needing_attention}
-          </div>
-          <div className="stat-card__sub">No quiz yet</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Notes written</div>
-          <div className="stat-card__value">{stats.notes_written}</div>
-          <div className="stat-card__sub">Across all students</div>
-        </div>
-      </div>
 
-      <div className="dashboard-grid">
-        <StudentList students={students} />
+        <aside className="db-panel db-panel--compact db-stack">
+          <SectionHeader eyebrow="Shortcuts" title="Direct actions" titleAs="h3" />
+          <ActionCard
+            title="Open full caseload"
+            description="Filter learners and review all attention reasons."
+            to="/counselor/students"
+          />
+          <ActionCard
+            title="Manage interventions"
+            description="Choose a learner and record an agreed next step."
+            to="/counselor/students"
+            tone="attention"
+          />
+          <ActionCard
+            title="Review private notes"
+            description="Keep confidential case notes separate from shared actions."
+            to="/counselor/notes"
+          />
+        </aside>
+      </section>
 
-        <div className="dashboard-card">
-          <p className="dashboard-card__title">Assessment progress</p>
+      <section className="db-content-grid" aria-label="Interventions and assessment coverage">
+        <div className="db-panel db-panel--compact">
+          <SectionHeader
+            eyebrow="Activity"
+            title="Recent interventions"
+            action={{ label: 'Open caseload', to: '/counselor/students' }}
+          />
+          {recentInterventions.length === 0 ? (
+            <EmptyState
+              title="No interventions yet"
+              description="Record an agreed action from a learner detail page."
+              action={{ label: 'Choose a learner', to: '/counselor/students' }}
+            />
+          ) : (
+            <div className="counselor-intervention-list">
+              {recentInterventions.map((intervention) => (
+                <article key={intervention.id} className="counselor-intervention">
+                  <div>
+                    <strong>{intervention.student_name}</strong>
+                    <p>{intervention.action_agreed}</p>
+                    <small>
+                      {intervention.follow_up_date
+                        ? `Follow up ${new Date(`${intervention.follow_up_date}T00:00:00`).toLocaleDateString('en-KE', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}`
+                        : 'No follow-up date'}
+                    </small>
+                  </div>
+                  <StatusBadge tone={intervention.status === 'completed' ? 'positive' : 'warning'}>
+                    {intervention.status === 'completed' ? 'Completed' : 'Open'}
+                  </StatusBadge>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <aside className="db-panel db-panel--compact">
+          <SectionHeader eyebrow="Coverage" title="Assessment progress" titleAs="h3" />
           <AssessmentRing done={stats.assessments_done} total={stats.total_students} />
-          <button className="btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} onClick={() => navigate('/counselor/notes')}>
-            Add a student note
-          </button>
-        </div>
-      </div>
+        </aside>
+      </section>
     </div>
   )
 }

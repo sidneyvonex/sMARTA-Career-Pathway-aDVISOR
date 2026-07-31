@@ -3,19 +3,24 @@ import type { AssessmentRecommendation } from '../../api/assessment'
 interface Props {
   recommendations: AssessmentRecommendation[]
   hollandCode: string
+  hideCode?: boolean
 }
 
-export default function RecommendationCards({ recommendations, hollandCode }: Props) {
+export default function RecommendationCards({ recommendations, hollandCode, hideCode = false }: Props) {
   return (
     <div>
-      <div className="results-holland-code">
+      {!hideCode && <div className="results-holland-code">
         <div className="results-holland-badge" aria-label={`Holland Code: ${hollandCode}`}>
           {hollandCode}
         </div>
-        <p style={{ marginTop: '0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-          Your Holland Code
-        </p>
-      </div>
+        <p>Your Holland Code</p>
+      </div>}
+
+      <p className="recommendation-advisory">
+        These interest-aligned pathways are starting points for exploration. They do not predict
+        success or decide placement; use them alongside your subjects, goals, opportunities, and
+        guidance from a counsellor.
+      </p>
 
       <div className="recommendation-cards">
         {recommendations.map((rec) => (
@@ -31,21 +36,13 @@ export default function RecommendationCards({ recommendations, hollandCode }: Pr
               </div>
               <span className="recommendation-name">{rec.pathway.name}</span>
             </div>
-            <div
-              className="recommendation-fit-bar"
-              role="progressbar"
-              aria-valuenow={rec.fit_pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Fit: ${rec.fit_pct}%`}
-            >
-              <div
-                className="recommendation-fit-fill"
-                style={{ width: `${rec.fit_pct}%` }}
-              />
-            </div>
-            <p className="recommendation-fit-pct">{rec.fit_pct}% match</p>
+            <p className="recommendation-fit-pct">
+              {rec.rank === 1 ? 'Strongest interest alignment' : 'Suggested for exploration'}
+            </p>
             <p className="recommendation-description">{rec.pathway.description}</p>
+            {rec.explanation?.summary && (
+              <p className="recommendation-explanation">{rec.explanation.summary}</p>
+            )}
           </div>
         ))}
       </div>

@@ -12,7 +12,7 @@ export default function LikertQuestion({ question, questionNumber, value, onChan
   return (
     <div className="likert-question">
       <p className="likert-text">
-        <span style={{ color: 'var(--color-text-secondary)', marginRight: '0.5rem' }}>
+        <span className="likert-number">
           {questionNumber}.
         </span>
         {question.text}

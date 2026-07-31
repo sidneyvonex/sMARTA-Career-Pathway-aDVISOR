@@ -8,18 +8,25 @@ test('How It Works shows the six RIASEC dimensions', () => {
       <HowItWorksPage />
     </MemoryRouter>
   )
+  expect(
+    screen.getByRole('heading', {
+      level: 1,
+      name: /from confused to confident/i,
+    }),
+  ).toBeInTheDocument()
   ;['Realistic', 'Investigative', 'Artistic', 'Social', 'Enterprising', 'Conventional'].forEach((d) =>
     expect(screen.getByRole('heading', { name: d })).toBeInTheDocument()
   )
 })
 
-test('How It Works shows the four process steps', () => {
+test('How It Works shows the implemented five-stage learner journey', () => {
   render(
     <MemoryRouter>
       <HowItWorksPage />
     </MemoryRouter>
   )
-  ;['Discover', 'Plan', 'Choose', 'Succeed'].forEach((step) =>
+  ;['Evidence', 'Interests', 'Compare', 'Plan', 'Review'].forEach((step) =>
     expect(screen.getByRole('heading', { name: step })).toBeInTheDocument()
   )
+  expect(screen.getAllByText(/five-county pilot/i).length).toBeGreaterThan(0)
 })

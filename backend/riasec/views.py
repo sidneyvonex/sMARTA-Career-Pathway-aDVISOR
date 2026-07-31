@@ -12,12 +12,15 @@ from parents.models import ParentStudentLink
 from notifications.utils import create_notification
 from .models import (
     RIASECQuestion, RIASECAssessment, RIASECResponse,
-    RIASECScore, Pathway, Recommendation,
+    RIASECScore, Pathway, Recommendation, CURRENT_INSTRUMENT_VERSION,
+    CURRENT_ALGORITHM_VERSION,
 )
 from .serializers import (
     RIASECQuestionSerializer, AssessmentResultSerializer, AssessmentSubmitSerializer,
 )
-from .scoring import compute_dim_scores, holland_code, compute_pathway_fits
+from .scoring import (
+    compute_dim_scores, holland_code, compute_pathway_fits, build_interest_explanation,
+)
 
 
 class QuestionListView(APIView):
@@ -59,7 +62,10 @@ class AssessmentView(APIView):
         pathway_fits = compute_pathway_fits(dim_scores, pathways)
 
         with transaction.atomic():
-            assessment = RIASECAssessment.objects.create(student_profile=profile)
+            assessment = RIASECAssessment.objects.create(
+                student_profile=profile,
+                instrument_version=CURRENT_INSTRUMENT_VERSION,
+            )
 
             RIASECResponse.objects.bulk_create([
                 RIASECResponse(assessment=assessment, question_id=qid, score=score)
@@ -79,12 +85,17 @@ class AssessmentView(APIView):
                     rank=fit['rank'],
                     fit_score=fit['fit_score'],
                     fit_pct=fit['fit_pct'],
+                    algorithm_version=CURRENT_ALGORITHM_VERSION,
+                    explanation=build_interest_explanation(dim_scores, fit['pathway']),
                 )
                 for fit in pathway_fits
             ])
 
         try:
-            parent_links = ParentStudentLink.objects.filter(student=request.user)
+            parent_links = ParentStudentLink.objects.filter(
+                student=request.user,
+                status=ParentStudentLink.STATUS_ACTIVE,
+            )
             student_name = f'{request.user.first_name} {request.user.last_name}'.strip()
             for link in parent_links:
                 create_notification(

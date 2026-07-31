@@ -8,6 +8,8 @@ describe('LandingPage', () => {
   it('renders the hero heading, all pathway cards, community section, and every register CTA', () => {
     render(<LandingPage />, { wrapper: MemoryRouter })
 
+    expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
+
     // Hero — v4 heading
     expect(
       screen.getByRole('heading', { level: 1 })

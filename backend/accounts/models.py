@@ -61,10 +61,21 @@ class School(models.Model):
 class StudentProfile(models.Model):
     MODE_CHOICES = [('self_guided', 'Self-Guided'), ('school_linked', 'School-Linked')]
     GRADE_CHOICES = [(9, 'Grade 9'), (10, 'Grade 10')]
+    SCHOOL_MEMBERSHIP_STATUS_CHOICES = [
+        ('not_applicable', 'Not Applicable'),
+        ('pending', 'Pending Approval'),
+        ('active', 'Active'),
+        ('rejected', 'Rejected'),
+    ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
     mode = models.CharField(max_length=20, choices=MODE_CHOICES)
     school = models.ForeignKey(School, on_delete=models.SET_NULL, null=True, blank=True)
+    school_membership_status = models.CharField(
+        max_length=20,
+        choices=SCHOOL_MEMBERSHIP_STATUS_CHOICES,
+        default='not_applicable',
+    )
     grade = models.IntegerField(choices=GRADE_CHOICES)
     bio = models.TextField(blank=True, default='')
     date_of_birth = models.DateField(null=True, blank=True)

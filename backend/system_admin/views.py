@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
@@ -11,6 +12,7 @@ from accounts.models import School, User, StudentProfile, COUNTY_CHOICES
 from accounts.permissions import IsSystemAdmin, IsEmailVerified
 from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
+from guidance.models import FrameworkVersion, LearnerPlan, SubjectCombination
 from riasec.models import RIASECAssessment
 from .models import AuditLog
 from .utils import log_action
@@ -20,6 +22,37 @@ logger = logging.getLogger(__name__)
 SYSTEM_ADMIN_PERMS = [IsAuthenticated, IsEmailVerified, IsSystemAdmin]
 VALID_COUNTIES = {c[0] for c in COUNTY_CHOICES}
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
+
+
+def _catalogue_combination_data(combination):
+    return {
+        'id': combination.id,
+        'code': combination.code,
+        'title': combination.title,
+        'description': combination.description,
+        'related_routes': combination.related_routes,
+        'is_active': combination.is_active,
+        'track': {
+            'id': combination.track.id,
+            'code': combination.track.code,
+            'name': combination.track.name,
+            'is_active': combination.track.is_active,
+            'pathway': {
+                'id': combination.track.pathway.id,
+                'name': combination.track.pathway.name,
+            },
+        },
+        'subjects': [
+            {
+                'id': subject.id,
+                'code': subject.code,
+                'name': subject.name,
+            }
+            for subject in combination.subjects
+        ],
+        'active_school_count': combination.active_school_count,
+        'learner_choice_count': combination.learner_choice_count,
+    }
 
 
 class DashboardView(APIView):
@@ -35,6 +68,45 @@ class DashboardView(APIView):
             schools_by_county[row['county']] = row['count']
 
         total_schools = School.objects.filter(is_active=True).count()
+        learner_profiles = StudentProfile.objects.select_related('user')
+        registered_learners = learner_profiles.count()
+        verified_learners = learner_profiles.filter(
+            user__is_email_verified=True,
+        ).count()
+        pending_school_links = learner_profiles.filter(
+            mode='school_linked',
+            school_membership_status='pending',
+        ).count()
+        learners_by_county = {
+            county: 0 for county in VALID_COUNTIES
+        }
+        for row in (
+            learner_profiles.exclude(user__county__isnull=True)
+            .values('user__county')
+            .annotate(count=Count('id'))
+        ):
+            if row['user__county'] in learners_by_county:
+                learners_by_county[row['user__county']] = row['count']
+
+        assignment_eligible = learner_profiles.filter(
+            mode='school_linked',
+            school_membership_status='active',
+            school__is_active=True,
+        )
+        eligible_count = assignment_eligible.count()
+        assigned_count = assignment_eligible.filter(
+            counselor_assignments__is_active=True,
+        ).distinct().count()
+        assignment_percent = (
+            round((assigned_count / eligible_count) * 100)
+            if eligible_count
+            else 0
+        )
+        plans_completed = LearnerPlan.objects.filter(
+            student_profile__in=assignment_eligible,
+            review_status='reviewed',
+        ).count()
+        framework = FrameworkVersion.objects.current()
         recent_signups = User.objects.filter(
             created_at__gte=timezone.now() - timedelta(days=7),
         ).count()
@@ -54,9 +126,154 @@ class DashboardView(APIView):
             'users_by_role': users_by_role,
             'schools_by_county': schools_by_county,
             'total_schools': total_schools,
+            'registered_learners': registered_learners,
+            'learners_by_county': learners_by_county,
+            'verified_learners': verified_learners,
+            'pending_school_links': pending_school_links,
+            'assignment_coverage': {
+                'assigned': assigned_count,
+                'eligible': eligible_count,
+                'percent': assignment_percent,
+            },
+            'plans_completed': plans_completed,
+            'framework': (
+                {
+                    'code': framework.code,
+                    'title': framework.title,
+                    'source_url': framework.source_url,
+                    'effective_date': framework.effective_date.isoformat(),
+                }
+                if framework is not None
+                else None
+            ),
             'recent_signups': recent_signups,
             'recent_audit': recent_audit,
         })
+
+
+class FrameworkCatalogueView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def get(self, request):
+        framework = FrameworkVersion.objects.current()
+        if framework is None:
+            return _success(data={
+                'framework': None,
+                'combinations': [],
+            })
+
+        combinations = (
+            SubjectCombination.objects.filter(framework_version=framework)
+            .select_related(
+                'track',
+                'track__pathway',
+                'subject_one',
+                'subject_two',
+                'subject_three',
+            )
+            .annotate(
+                active_school_count=Count(
+                    'school_offerings',
+                    filter=Q(
+                        school_offerings__is_active=True,
+                        school_offerings__school__is_active=True,
+                    ),
+                    distinct=True,
+                ),
+                learner_choice_count=Count(
+                    'learner_choices',
+                    distinct=True,
+                ),
+            )
+            .order_by('track__pathway__name', 'track__name', 'title')
+        )
+
+        return _success(data={
+            'framework': {
+                'id': framework.id,
+                'code': framework.code,
+                'title': framework.title,
+                'description': framework.description,
+                'source_url': framework.source_url,
+                'effective_date': framework.effective_date.isoformat(),
+                'is_active': framework.is_active,
+            },
+            'combinations': [
+                _catalogue_combination_data(combination)
+                for combination in combinations
+            ],
+        })
+
+
+class FrameworkCombinationStatusView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    @transaction.atomic
+    def patch(self, request, combination_id):
+        new_status = request.data.get('is_active')
+        if type(new_status) is not bool:
+            return _error('is_active must be a boolean.')
+
+        try:
+            combination = (
+                SubjectCombination.objects.select_for_update()
+                .filter(framework_version__is_active=True)
+                .select_related(
+                    'track',
+                    'track__pathway',
+                    'subject_one',
+                    'subject_two',
+                    'subject_three',
+                )
+                .annotate(
+                    active_school_count=Count(
+                        'school_offerings',
+                        filter=Q(
+                            school_offerings__is_active=True,
+                            school_offerings__school__is_active=True,
+                        ),
+                        distinct=True,
+                    ),
+                    learner_choice_count=Count(
+                        'learner_choices',
+                        distinct=True,
+                    ),
+                )
+                .get(pk=combination_id)
+            )
+        except SubjectCombination.DoesNotExist:
+            return _error(
+                'Combination not found in the current framework.',
+                status.HTTP_404_NOT_FOUND,
+            )
+
+        previous_status = combination.is_active
+        if previous_status != new_status:
+            combination.is_active = new_status
+            combination.save(update_fields=['is_active'])
+
+            log_action(
+                actor=request.user,
+                action='framework_combination_status_changed',
+                target_type='combination',
+                target_id=combination.id,
+                details={
+                    'code': combination.code,
+                    'previous_is_active': previous_status,
+                    'is_active': new_status,
+                    'active_school_count': combination.active_school_count,
+                    'learner_choice_count': combination.learner_choice_count,
+                },
+                request=request,
+            )
+
+        return _success(
+            data=_catalogue_combination_data(combination),
+            message=(
+                f'{combination.title} is now '
+                f'{"active" if new_status else "inactive"}.'
+            ),
+        )
 
 
 class SchoolListView(APIView):
@@ -66,7 +283,10 @@ class SchoolListView(APIView):
         qs = School.objects.annotate(
             student_count=Count(
                 'studentprofile',
-                filter=Q(studentprofile__mode='school_linked'),
+                filter=Q(
+                    studentprofile__mode='school_linked',
+                    studentprofile__school_membership_status='active',
+                ),
             ),
             counselor_count=Count(
                 'staff',
@@ -203,11 +423,17 @@ class SchoolDetailView(APIView):
         )
 
         student_count = StudentProfile.objects.filter(
-            school=school, mode='school_linked',
+            school=school,
+            mode='school_linked',
+            school_membership_status='active',
         ).count()
 
         recent_students = list(
-            StudentProfile.objects.filter(school=school, mode='school_linked')
+            StudentProfile.objects.filter(
+                school=school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
             .select_related('user')
             .order_by('-created_at')[:10]
         )

@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'school_admin',
     'system_admin',
     'reports',
+    'guidance',
 ]
 
 MIDDLEWARE = [

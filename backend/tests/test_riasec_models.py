@@ -24,7 +24,11 @@ class TestRIASECQuestionModel:
         questions = list(RIASECQuestion.objects.order_by('order'))
         for i in range(len(questions) - 1):
             assert questions[i].dimension != questions[i + 1].dimension, \
-                f'Adjacent questions {questions[i].order} and {questions[i+1].order} share dimension {questions[i].dimension}'
+                (
+                    f'Adjacent questions {questions[i].order} and '
+                    f'{questions[i + 1].order} share dimension '
+                    f'{questions[i].dimension}'
+                )
 
 
 @pytest.mark.django_db
@@ -50,6 +54,32 @@ class TestPathwayModel:
 
 @pytest.mark.django_db
 class TestRIASECAssessmentConstraints:
+    def test_new_records_receive_current_versions(self):
+        from riasec.models import (
+            CURRENT_ALGORITHM_VERSION,
+            CURRENT_INSTRUMENT_VERSION,
+            Pathway,
+            Recommendation,
+            RIASECAssessment,
+        )
+        from tests.factories import StudentProfileFactory, VerifiedUserFactory
+        profile = StudentProfileFactory(
+            user=VerifiedUserFactory(role='student'),
+            grade=9,
+        )
+        assessment = RIASECAssessment.objects.create(student_profile=profile)
+        recommendation = Recommendation.objects.create(
+            assessment=assessment,
+            pathway=Pathway.objects.first(),
+            rank=1,
+            fit_score=18.25,
+            fit_pct=73,
+        )
+
+        assert assessment.instrument_version == CURRENT_INSTRUMENT_VERSION
+        assert recommendation.algorithm_version == CURRENT_ALGORITHM_VERSION
+        assert recommendation.explanation == {}
+
     def test_duplicate_response_raises_integrity_error(self):
         from riasec.models import RIASECQuestion, RIASECAssessment, RIASECResponse
         from tests.factories import StudentProfileFactory, VerifiedUserFactory

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import InstallBanner from '../../components/InstallBanner'
+import { PWA_RUNTIME_CACHING } from '../../../pwa.config'
+import { clearUserScopedStorage } from '../../lib/sessionCleanup'
 
 vi.mock('../../hooks/useInstallPrompt', () => ({
   useInstallPrompt: vi.fn(),
@@ -54,5 +56,48 @@ describe('InstallBanner', () => {
     fireEvent.click(screen.getByLabelText('Dismiss install prompt'))
     expect(screen.queryByText('Install Smarta Shauri for quick access')).not.toBeInTheDocument()
     expect(sessionStorage.getItem('install-banner-dismissed')).toBe('true')
+  })
+})
+
+describe('PWA cache safety', () => {
+  it.each([
+    'https://smarta-shauri.test/api/v1/students/profile/',
+    'https://smarta-shauri.test/api/v1/parents/children/',
+    'https://smarta-shauri.test/api/v1/profile/photo.png',
+  ])('does not runtime-cache authenticated route %s', (url) => {
+    const matchingCacheRules = PWA_RUNTIME_CACHING.filter((rule) => (
+      rule.handler !== 'NetworkOnly' && rule.urlPattern.test(url)
+    ))
+    expect(matchingCacheRules).toEqual([])
+  })
+
+  it('retains versioned runtime caching for non-API images', () => {
+    const publicImageUrl = 'https://smarta-shauri.test/assets/pathway.webp'
+    const matchingRule = PWA_RUNTIME_CACHING.find((rule) => rule.urlPattern.test(publicImageUrl))
+    expect(matchingRule?.handler).toBe('CacheFirst')
+    expect(matchingRule?.options?.cacheName).toBe('smarta-shauri-images-v1')
+  })
+
+  it('caches only the public current-framework response for offline fallback', () => {
+    const frameworkUrl = 'https://smarta-shauri.test/api/v1/guidance/framework/current/'
+    const matchingRule = PWA_RUNTIME_CACHING.find((rule) => (
+      rule.urlPattern.test(frameworkUrl)
+    ))
+
+    expect(matchingRule?.handler).toBe('NetworkFirst')
+    expect(matchingRule?.options?.cacheName).toBe('smarta-shauri-public-framework-v1')
+    expect(matchingRule?.options?.expiration.maxEntries).toBe(1)
+  })
+})
+
+describe('logout storage cleanup', () => {
+  it('removes learner drafts without clearing unrelated browser preferences', () => {
+    localStorage.setItem('riasec_draft', '{"1":4}')
+    localStorage.setItem('theme-preference', 'dark')
+
+    clearUserScopedStorage()
+
+    expect(localStorage.getItem('riasec_draft')).toBeNull()
+    expect(localStorage.getItem('theme-preference')).toBe('dark')
   })
 })

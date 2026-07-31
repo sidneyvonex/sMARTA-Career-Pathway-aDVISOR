@@ -36,8 +36,8 @@ export default function StudentTable({ students }: Props) {
             <th>Student</th>
             <th>Grade</th>
             <th>Status</th>
-            <th>Best pathway</th>
-            <th>Fit %</th>
+            <th>Pathway to explore</th>
+            <th>Interest alignment</th>
             <th>Last active</th>
             <th>Actions</th>
           </tr>
@@ -63,7 +63,7 @@ export default function StudentTable({ students }: Props) {
               <td>{s.top_pathway ?? '--'}</td>
               <td>
                 {s.fit_pct != null ? (
-                  <span className="fit-pct">{s.fit_pct}%</span>
+                  <span className="fit-pct">Strongest</span>
                 ) : (
                   <span className="fit-pct fit-pct--na">--</span>
                 )}

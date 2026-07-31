@@ -1,4 +1,12 @@
 DIMENSIONS = ['R', 'I', 'A', 'S', 'E', 'C']
+DIMENSION_LABELS = {
+    'R': 'Realistic',
+    'I': 'Investigative',
+    'A': 'Artistic',
+    'S': 'Social',
+    'E': 'Enterprising',
+    'C': 'Conventional',
+}
 
 
 def compute_dim_scores(responses: dict, questions: list) -> dict:
@@ -66,3 +74,38 @@ def compute_pathway_fits(scores: dict, pathways: list) -> list:
         result['rank'] = i + 1
 
     return results
+
+
+def build_interest_explanation(scores: dict, pathway: dict) -> dict:
+    """Create a stable, non-predictive explanation snapshot for a recommendation."""
+    weighted_dimensions = sorted(
+        DIMENSIONS,
+        key=lambda dim: (
+            -(scores[dim] * pathway[f'weight_{dim.lower()}']),
+            DIMENSIONS.index(dim),
+        ),
+    )
+    leading = [
+        {
+            'code': dim,
+            'label': DIMENSION_LABELS[dim],
+            'score': scores[dim],
+        }
+        for dim in weighted_dimensions[:2]
+    ]
+    labels = ' and '.join(item['label'] for item in leading)
+    return {
+        'summary': (
+            f'{pathway["name"]} is suggested because your {labels} interests '
+            'contribute most strongly to this alignment.'
+        ),
+        'leading_dimensions': leading,
+        'limitations': (
+            'This reflects stated interests only. It does not predict success, '
+            'eligibility or school placement.'
+        ),
+        'next_step': (
+            'Review your subject evidence and the combinations offered by schools '
+            'before making a provisional choice.'
+        ),
+    }

@@ -5,13 +5,13 @@ export default function LandingPurpose() {
       <div className="landing-statement">
         <h2 className="landing-statement__heading">
           Three pathways.
-          <span className="landing-script">One decision.</span>
+          <span className="landing-script"> One decision.</span>
         </h2>
         <div className="landing-statement__side">
           <p className="landing-section__lede">
             You don&apos;t need to have it all figured out. CBC groups every subject choice
-            into three broad pathways — we help you see which one actually fits, not just
-            which one your friends picked.
+            into three broad pathways — we help you compare which options align with your
+            interests and evidence, not just which one your friends picked.
           </p>
         </div>
       </div>

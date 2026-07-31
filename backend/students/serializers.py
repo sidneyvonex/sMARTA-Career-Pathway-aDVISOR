@@ -14,11 +14,12 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         model = StudentProfile
         fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
-            'grade', 'mode', 'bio', 'date_of_birth', 'career_interests', 'photo_url',
+            'grade', 'mode', 'school_membership_status',
+            'bio', 'date_of_birth', 'career_interests', 'photo_url',
         )
         read_only_fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
-            'grade', 'mode', 'photo_url',
+            'grade', 'mode', 'school_membership_status', 'photo_url',
         )
 
     def validate_bio(self, value):
@@ -35,13 +36,13 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
-        fields = ('id', 'name', 'code', 'grade', 'category')
+        fields = ('id', 'name', 'code', 'grade', 'category', 'is_active')
 
 
 class StudentSubjectSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     subject_id = serializers.PrimaryKeyRelatedField(
-        queryset=Subject.objects.all(), source='subject', write_only=True
+        queryset=Subject.objects.filter(is_active=True), source='subject', write_only=True
     )
 
     class Meta:
@@ -53,8 +54,25 @@ class StudentSubjectSerializer(serializers.ModelSerializer):
 class CBCGradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CBCGrade
-        fields = ('id', 'term', 'year', 'level', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        fields = (
+            'id',
+            'term',
+            'year',
+            'level',
+            'source',
+            'verified_by',
+            'verified_at',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = (
+            'id',
+            'source',
+            'verified_by',
+            'verified_at',
+            'created_at',
+            'updated_at',
+        )
 
     def validate_year(self, value):
         current_year = date.today().year
