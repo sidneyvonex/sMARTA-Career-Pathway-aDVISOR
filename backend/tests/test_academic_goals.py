@@ -1,9 +1,13 @@
 import pytest
+from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.apps import apps
 from django.db import IntegrityError, transaction
+from django.test import RequestFactory
 from rest_framework.test import APIClient
 
 from counselors.models import CounselorAssignment
+from students.admin import AcademicGoalAdmin
 from students.models import AcademicGoal, AssessmentFramework, PerformanceLevelDefinition
 from tests.factories import (
     AcademicGoalFactory,
@@ -13,6 +17,7 @@ from tests.factories import (
     StudentProfileFactory,
     StudentSubjectFactory,
     SubjectFactory,
+    SystemAdminFactory,
     VerifiedUserFactory,
 )
 
@@ -151,7 +156,7 @@ def test_database_constraint_blocks_two_active_goals_but_allows_closed_history()
                 created_by=profile.user,
             )
 
-    goal.close()
+    goal.close(actor=profile.user)
     replacement = AcademicGoalFactory(
         learner=profile,
         continuity_code='MAT',
@@ -330,3 +335,320 @@ def test_assigned_counselor_has_read_only_access_to_selected_learner_goals():
         f'{GOALS_URL}?student_id={profile.user_id}'
     ).status_code == 404
     assert counselor_client.get(f'{GOALS_URL}{goal_id}/').status_code == 404
+
+
+@pytest.mark.django_db
+def test_creation_snapshot_survives_permitted_evidence_edit_and_goal_close():
+    """Catches goal history depending on a learner-editable CBCGrade row."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    created = client.post(GOALS_URL, create_payload(grade), format='json')
+    goal_id = created.data['data']['id']
+
+    snapshot = created.data['data']['creation_evidence_snapshot']
+    assert snapshot == {
+        'evidence_id': grade.id,
+        'period': {'academic_grade': 10, 'year': 2026, 'term': 1},
+        'level': {'code': 'ME2', 'rank': 5},
+        'framework': {
+            'id': grade.framework_id,
+            'code': grade.framework.code,
+            'version': grade.framework.version,
+            'level_ranks': {
+                'EE1': 8, 'EE2': 7, 'ME1': 6, 'ME2': 5,
+                'AE1': 4, 'AE2': 3, 'BE1': 2, 'BE2': 1,
+            },
+        },
+        'source': 'learner',
+        'verification': {
+            'confidence': 'learner_entered',
+            'verified_by': None,
+            'verified_school': None,
+            'verified_at': None,
+        },
+        'recorded_at': grade.created_at.isoformat(),
+    }
+
+    edited = client.put(
+        f'/api/v1/students/my-subjects/{enrollment.id}/grades/{grade.id}/',
+        {'term': 1, 'year': 2026, 'level': 'AE1', 'raw_score': None},
+        format='json',
+    )
+    updated = client.patch(
+        f'{GOALS_URL}{goal_id}/',
+        {'action_plan': 'Keep the historical baseline and adjust the weekly plan.'},
+        format='json',
+    )
+    closed = client.delete(f'{GOALS_URL}{goal_id}/')
+
+    assert edited.status_code == 200
+    assert updated.status_code == 200
+    assert updated.data['data']['creation_evidence_snapshot'] == snapshot
+    assert closed.status_code == 200
+    assert closed.data['data']['creation_evidence_snapshot'] == snapshot
+
+
+@pytest.mark.django_db
+def test_deleted_creation_evidence_does_not_break_readiness_or_confirmation():
+    """Catches a goal revoking deletion or losing its baseline after SET_NULL."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    goal_id = client.post(
+        GOALS_URL, create_payload(grade), format='json'
+    ).data['data']['id']
+    later = CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+
+    deleted = client.delete(
+        f'/api/v1/students/my-subjects/{enrollment.id}/grades/{grade.id}/'
+    )
+    ready = client.get(f'{GOALS_URL}{goal_id}/')
+    confirmed = client.post(
+        f'{GOALS_URL}{goal_id}/confirm-achievement/',
+        {'confirm': True},
+        format='json',
+    )
+
+    assert deleted.status_code == 200
+    assert deleted.data == {'data': None, 'error': None, 'message': 'Grade deleted.'}
+    assert ready.status_code == 200
+    assert ready.data['data']['current_evidence'] is None
+    assert ready.data['data']['ready_for_achievement'] is True
+    assert ready.data['data']['readiness_evidence'] == later.id
+    assert confirmed.status_code == 200
+    achieved = confirmed.data['data']
+    assert achieved['status'] == 'achieved'
+    assert achieved['ready_for_achievement'] is True
+    assert achieved['readiness_evidence'] == later.id
+    assert achieved['achievement_evidence_snapshot']['evidence_id'] == later.id
+    assert achieved['confirmed_by'] == profile.user_id
+
+
+@pytest.mark.django_db
+def test_model_and_database_reject_lifecycle_bypasses():
+    """Catches direct state jumps and incoherent terminal timestamp identities."""
+    goal = AcademicGoalFactory()
+
+    goal.status = AcademicGoal.STATUS_ACHIEVED
+    with pytest.raises(ValidationError, match='lifecycle transition'):
+        goal.save()
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            AcademicGoal.objects.filter(pk=goal.pk).update(
+                status=AcademicGoal.STATUS_ACHIEVED,
+                active_identity=None,
+                achieved_at=None,
+            )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            AcademicGoal.objects.filter(pk=goal.pk).update(
+                status=AcademicGoal.STATUS_CLOSED,
+                active_identity=None,
+                achieved_at=goal.created_at,
+                closed_at=goal.created_at,
+            )
+
+
+@pytest.mark.django_db
+def test_new_goals_cannot_claim_the_legacy_migration_exemption():
+    """Catches callers fabricating the migration-only lifecycle provenance flag."""
+    with pytest.raises(ValidationError, match='legacy'):
+        AcademicGoalFactory(
+            status=AcademicGoal.STATUS_ACHIEVED,
+            legacy_lifecycle_unverifiable=True,
+        )
+
+@pytest.mark.django_db
+def test_domain_achievement_requires_owner_actor_and_ready_evidence():
+    """Catches callers bypassing learner confirmation or readiness below the API."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        current_evidence=grade,
+        learner=profile,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+
+    with pytest.raises(ValidationError, match='not ready'):
+        goal.mark_achieved(actor=profile.user)
+
+    later = CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+    outsider = VerifiedUserFactory(role='student')
+    with pytest.raises(ValidationError, match='learner'):
+        goal.mark_achieved(actor=outsider)
+
+    goal.mark_achieved(actor=profile.user)
+    goal.refresh_from_db()
+    assert goal.confirmed_by_id == profile.user_id
+    assert goal.achievement_evidence_snapshot['evidence_id'] == later.id
+
+    goal.achievement_evidence_snapshot = {
+        **goal.achievement_evidence_snapshot,
+        'evidence_id': grade.id,
+    }
+    with pytest.raises(ValidationError, match='immutable'):
+        goal.save(update_fields=['achievement_evidence_snapshot'])
+
+
+@pytest.mark.django_db
+def test_admin_is_view_only_for_academic_goals():
+    """Catches Django admin paths that mutate learner-owned lifecycle state."""
+    request = RequestFactory().get('/admin/students/academicgoal/')
+    request.user = SystemAdminFactory()
+    model_admin = AcademicGoalAdmin(AcademicGoal, admin.site)
+    goal = AcademicGoalFactory()
+
+    assert model_admin.has_view_permission(request, goal) is True
+    assert model_admin.has_add_permission(request) is False
+    assert model_admin.has_change_permission(request, goal) is False
+    assert model_admin.has_delete_permission(request, goal) is False
+
+
+@pytest.mark.django_db
+def test_target_snapshot_and_readiness_do_not_drift_with_live_definition_edits():
+    """Catches unrelated goal saves recopying mutable framework definitions."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    created = client.post(GOALS_URL, create_payload(grade), format='json')
+    goal_id = created.data['data']['id']
+    target = target_level(grade.framework, 'ME1')
+    target.code = 'MEX'
+    target.rank = 9
+    target.save(update_fields=['code', 'rank'])
+    later = CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+
+    updated = client.patch(
+        f'{GOALS_URL}{goal_id}/',
+        {'action_plan': 'Only this plan text changes.'},
+        format='json',
+    )
+
+    assert updated.status_code == 200
+    assert updated.data['data']['target_level']['code'] == 'ME1'
+    assert updated.data['data']['target_level']['rank'] == 6
+    assert updated.data['data']['ready_for_achievement'] is True
+    assert updated.data['data']['readiness_evidence'] == later.id
+
+
+@pytest.mark.django_db
+def test_explicit_target_change_refreshes_snapshot_and_revalidates():
+    """Catches implicit or unvalidated target snapshot refreshes."""
+    profile, _enrollment, grade = learner_with_evidence(level='AE1', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    goal_id = client.post(
+        GOALS_URL, create_payload(grade, target='ME2'), format='json'
+    ).data['data']['id']
+
+    changed = client.patch(
+        f'{GOALS_URL}{goal_id}/', {'target_level': 'ME1'}, format='json'
+    )
+    invalid = client.patch(
+        f'{GOALS_URL}{goal_id}/', {'target_level': 'BE1'}, format='json'
+    )
+
+    assert changed.status_code == 200
+    assert changed.data['data']['target_level']['code'] == 'ME1'
+    assert changed.data['data']['target_level']['rank'] == 6
+    assert invalid.status_code == 400
+
+
+@pytest.mark.django_db
+def test_stale_terminal_transition_cannot_overwrite_achievement():
+    """Catches confirm-vs-close lost updates on databases with row locking."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        current_evidence=grade,
+        learner=profile,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    stale = AcademicGoal.objects.get(pk=goal.pk)
+    CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+    goal.mark_achieved(actor=profile.user)
+
+    with pytest.raises(ValidationError, match='active'):
+        stale.close(actor=profile.user)
+
+    stale.refresh_from_db()
+    assert stale.status == AcademicGoal.STATUS_ACHIEVED
+    assert stale.achieved_at is not None
+    assert stale.closed_at is None
+
+
+@pytest.mark.django_db
+def test_academic_goal_factory_defaults_create_a_valid_goal():
+    """Catches independently generated learner, continuity, and evidence defaults."""
+    goal = AcademicGoalFactory()
+
+    assert goal.learner_id == goal.current_evidence.student_subject.student_profile_id
+    assert goal.continuity_code == goal.current_evidence.student_subject.continuity_code
+
+
+@pytest.mark.django_db
+def test_goal_list_readiness_queries_are_bounded(django_assert_num_queries):
+    """Catches per-goal evidence and definition lookups during list serialization."""
+    profile = StudentProfileFactory(user=VerifiedUserFactory(role='student'), grade=10)
+    for index in range(5):
+        continuity_code = f'GQ{index}'
+        enrollment = StudentSubjectFactory(
+            student_profile=profile,
+            subject=SubjectFactory(
+                code=f'{continuity_code}10',
+                continuity_code=continuity_code,
+                grade=10,
+            ),
+        )
+        current = CBCGradeFactory(
+            student_subject=enrollment, level='ME2', term=1, year=2026
+        )
+        AcademicGoalFactory(
+            current_evidence=current,
+            learner=profile,
+            continuity_code=continuity_code,
+            created_by=profile.user,
+        )
+        CBCGradeFactory(
+            student_subject=enrollment,
+            framework=current.framework,
+            level='ME1',
+            term=2,
+            year=2026,
+        )
+
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    with django_assert_num_queries(3):
+        response = client.get(GOALS_URL)
+
+    assert response.status_code == 200
+    assert len(response.data['data']) == 5
+    assert all(item['ready_for_achievement'] for item in response.data['data'])

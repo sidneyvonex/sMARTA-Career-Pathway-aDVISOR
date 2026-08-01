@@ -200,9 +200,13 @@ class AcademicGoalFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AcademicGoal
 
-    learner = factory.SubFactory(StudentProfileFactory, grade=10)
-    continuity_code = factory.Sequence(lambda n: f'GOAL{n:04d}')
     current_evidence = factory.SubFactory(CBCGradeFactory)
+    learner = factory.LazyAttribute(
+        lambda goal: goal.current_evidence.student_subject.student_profile
+    )
+    continuity_code = factory.LazyAttribute(
+        lambda goal: goal.current_evidence.student_subject.continuity_code
+    )
     current_level_definition = factory.LazyAttribute(
         lambda goal: PerformanceLevelDefinition.objects.get(
             framework=goal.current_evidence.framework,

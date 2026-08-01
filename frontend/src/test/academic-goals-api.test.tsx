@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { studentsApi } from '../api/students'
 import { useAcademicGoalMutations } from '../hooks/useAcademicGoalMutations'
+import { academicGoalFixture } from './msw/handlers'
 import { server } from './msw/server'
 
 
@@ -43,7 +44,7 @@ describe('academic goal API', () => {
     const confirmed = await studentsApi.confirmAcademicGoalAchievement(
       created.data.data.id,
     )
-    const closed = await studentsApi.closeAcademicGoal(created.data.data.id)
+    const closed = await studentsApi.closeAcademicGoal(8)
 
     expect(listed.data.data[0].current_level).toEqual({
       code: 'ME2',
@@ -53,7 +54,14 @@ describe('academic goal API', () => {
     expect(created.data.data.target_level.code).toBe('ME1')
     expect(updated.data.data.action_plan).toBe('Attend weekly support sessions.')
     expect(confirmed.data.data.status).toBe('achieved')
+    expect(confirmed.data.data.ready_for_achievement).toBe(true)
+    expect(confirmed.data.data.achievement_evidence_snapshot?.evidence_id).toBe(21)
     expect(closed.data.data.status).toBe('closed')
+    expect(closed.data.data.current_level.code).toBe('ME2')
+
+    await expect(
+      studentsApi.closeAcademicGoal(created.data.data.id),
+    ).rejects.toMatchObject({ response: { status: 409 } })
   })
 
   it('shows loading and success toasts for goal mutations', async () => {
@@ -61,31 +69,7 @@ describe('academic goal API', () => {
       http.post('/api/v1/students/academic-goals/', async () => {
         await delay(80)
         return HttpResponse.json({
-          data: {
-            id: 7,
-            continuity_code: 'MTH',
-            current_evidence: 20,
-            current_level: {
-              code: 'ME2', rank: 5,
-              framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
-            },
-            target_level: {
-              id: 3, code: 'ME1', rank: 6,
-              framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
-            },
-            target_term: 3,
-            target_year: 2026,
-            target_academic_grade: 10,
-            action_plan: payload.action_plan,
-            status: 'active',
-            ready_for_achievement: false,
-            readiness_evidence: null,
-            created_by: 1,
-            achieved_at: null,
-            closed_at: null,
-            created_at: '2026-08-01T10:00:00Z',
-            updated_at: '2026-08-01T10:00:00Z',
-          },
+          data: academicGoalFixture({ action_plan: payload.action_plan }),
           error: null,
           message: 'Academic goal created.',
         }, { status: 201 })
@@ -118,6 +102,37 @@ describe('academic goal API', () => {
 
     expect(await screen.findByText(
       'Server error. Please try again in a moment.',
+    )).toBeInTheDocument()
+  })
+
+  it('replaces the close loading toast with an invalid-transition API error', async () => {
+    server.use(
+      http.delete('/api/v1/students/academic-goals/7/', async () => {
+        await delay(80)
+        return HttpResponse.json(
+          {
+            data: null,
+            error: true,
+            message: 'Only an active academic goal can be closed.',
+          },
+          { status: 409 },
+        )
+      }),
+    )
+    const { result } = renderHook(() => useAcademicGoalMutations(), { wrapper })
+
+    let mutation: Promise<unknown>
+    act(() => {
+      mutation = result.current.close.mutateAsync(7)
+    })
+    expect(await screen.findByText('Closing academic goal…')).toBeInTheDocument()
+    await act(async () => {
+      await expect(mutation).rejects.toBeTruthy()
+    })
+
+    expect(screen.queryByText('Closing academic goal…')).not.toBeInTheDocument()
+    expect(await screen.findByText(
+      'Only an active academic goal can be closed.',
     )).toBeInTheDocument()
   })
 })

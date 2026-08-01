@@ -1,6 +1,72 @@
 import { http, HttpResponse } from 'msw'
 
+import type { AcademicGoal, AcademicGoalEvidenceSnapshot } from '../../api/students'
+
 const BASE = '/api/v1/auth'
+
+const creationEvidence: AcademicGoalEvidenceSnapshot = {
+  evidence_id: 20,
+  period: { academic_grade: 10, year: 2026, term: 1 },
+  level: { code: 'ME2', rank: 5 },
+  framework: {
+    id: 1,
+    code: 'CBC-SENIOR-SCHOOL',
+    version: 'pilot-2026',
+    level_ranks: {
+      EE1: 8, EE2: 7, ME1: 6, ME2: 5,
+      AE1: 4, AE2: 3, BE1: 2, BE2: 1,
+    },
+  },
+  source: 'learner',
+  verification: {
+    confidence: 'learner_entered',
+    verified_by: null,
+    verified_school: null,
+    verified_at: null,
+  },
+  recorded_at: '2026-08-01T09:00:00Z',
+}
+
+const achievementEvidence: AcademicGoalEvidenceSnapshot = {
+  ...creationEvidence,
+  evidence_id: 21,
+  period: { academic_grade: 10, year: 2026, term: 2 },
+  level: { code: 'ME1', rank: 6 },
+  recorded_at: '2026-08-01T11:00:00Z',
+}
+
+export function academicGoalFixture(overrides: Partial<AcademicGoal> = {}): AcademicGoal {
+  return {
+    id: 7,
+    continuity_code: 'MTH',
+    current_evidence: 20,
+    creation_evidence_snapshot: creationEvidence,
+    current_level: {
+      code: 'ME2', rank: 5,
+      framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+    },
+    target_level: {
+      id: 3, code: 'ME1', rank: 6,
+      framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+    },
+    target_term: 3,
+    target_year: 2026,
+    target_academic_grade: 10,
+    action_plan: 'Practise twice each week.',
+    status: 'active',
+    ready_for_achievement: true,
+    readiness_evidence: 21,
+    achievement_evidence_snapshot: null,
+    legacy_lifecycle_unverifiable: false,
+    created_by: 1,
+    confirmed_by: null,
+    achieved_at: null,
+    closed_at: null,
+    created_at: '2026-08-01T10:00:00Z',
+    updated_at: '2026-08-01T10:00:00Z',
+    ...overrides,
+  }
+}
 
 export const handlers = [
   http.post(`${BASE}/login/`, async ({ request }) => {
@@ -160,31 +226,7 @@ export const handlers = [
 
   http.get('/api/v1/students/academic-goals/', () => {
     return HttpResponse.json({
-      data: [{
-        id: 7,
-        continuity_code: 'MTH',
-        current_evidence: 20,
-        current_level: {
-          code: 'ME2', rank: 5,
-          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
-        },
-        target_level: {
-          id: 3, code: 'ME1', rank: 6,
-          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
-        },
-        target_term: 3,
-        target_year: 2026,
-        target_academic_grade: 10,
-        action_plan: 'Practise twice each week.',
-        status: 'active',
-        ready_for_achievement: false,
-        readiness_evidence: null,
-        created_by: 1,
-        achieved_at: null,
-        closed_at: null,
-        created_at: '2026-08-01T10:00:00Z',
-        updated_at: '2026-08-01T10:00:00Z',
-      }],
+      data: [academicGoalFixture(), academicGoalFixture({ id: 8, ready_for_achievement: false, readiness_evidence: null })],
       error: null,
       message: '',
     })
@@ -193,31 +235,17 @@ export const handlers = [
   http.post('/api/v1/students/academic-goals/', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json({
-      data: {
-        id: 7,
-        continuity_code: body.continuity_code,
-        current_evidence: 20,
-        current_level: {
-          code: 'ME2', rank: 5,
-          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
-        },
+      data: academicGoalFixture({
+        continuity_code: body.continuity_code as string,
         target_level: {
-          id: 3, code: body.target_level, rank: 6,
+          id: 3, code: body.target_level as AcademicGoal['target_level']['code'], rank: 6,
           framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
         },
-        target_term: body.target_term,
-        target_year: body.target_year,
-        target_academic_grade: body.target_academic_grade,
-        action_plan: body.action_plan,
-        status: 'active',
-        ready_for_achievement: false,
-        readiness_evidence: null,
-        created_by: 1,
-        achieved_at: null,
-        closed_at: null,
-        created_at: '2026-08-01T10:00:00Z',
-        updated_at: '2026-08-01T10:00:00Z',
-      },
+        target_term: body.target_term as AcademicGoal['target_term'],
+        target_year: body.target_year as number,
+        target_academic_grade: body.target_academic_grade as AcademicGoal['target_academic_grade'],
+        action_plan: body.action_plan as string,
+      }),
       error: null,
       message: 'Academic goal created.',
     }, { status: 201 })
@@ -225,7 +253,7 @@ export const handlers = [
 
   http.get('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
     return HttpResponse.json({
-      data: { id: Number(params.goalId), status: 'active' },
+      data: academicGoalFixture({ id: Number(params.goalId) }),
       error: null,
       message: '',
     })
@@ -233,16 +261,44 @@ export const handlers = [
 
   http.patch('/api/v1/students/academic-goals/:goalId/', async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>
+    const targetCode = body.target_level as AcademicGoal['target_level']['code'] | undefined
     return HttpResponse.json({
-      data: { id: Number(params.goalId), status: 'active', ...body },
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        action_plan: (body.action_plan as string | undefined) ?? 'Practise twice each week.',
+        ...(targetCode ? {
+          target_level: {
+            id: 3,
+            code: targetCode,
+            rank: 6,
+            framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+          },
+        } : {}),
+      }),
       error: null,
       message: 'Academic goal updated.',
     })
   }),
 
   http.delete('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
+    if (Number(params.goalId) === 7) {
+      return HttpResponse.json(
+        {
+          data: null,
+          error: true,
+          message: 'Only an active academic goal can be closed.',
+        },
+        { status: 409 },
+      )
+    }
     return HttpResponse.json({
-      data: { id: Number(params.goalId), status: 'closed' },
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        status: 'closed',
+        ready_for_achievement: false,
+        readiness_evidence: null,
+        closed_at: '2026-08-02T10:00:00Z',
+      }),
       error: null,
       message: 'Academic goal closed.',
     })
@@ -250,7 +306,15 @@ export const handlers = [
 
   http.post('/api/v1/students/academic-goals/:goalId/confirm-achievement/', ({ params }) => {
     return HttpResponse.json({
-      data: { id: Number(params.goalId), status: 'achieved' },
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        status: 'achieved',
+        ready_for_achievement: true,
+        readiness_evidence: 21,
+        achievement_evidence_snapshot: achievementEvidence,
+        confirmed_by: 1,
+        achieved_at: '2026-08-02T10:00:00Z',
+      }),
       error: null,
       message: 'Academic goal achieved.',
     })

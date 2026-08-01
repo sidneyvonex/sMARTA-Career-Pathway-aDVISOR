@@ -151,10 +151,36 @@ export interface AcademicGoalLevelSnapshot {
   framework: { code: string; version: string }
 }
 
+export interface AcademicGoalEvidenceSnapshot {
+  evidence_id: number
+  period: {
+    academic_grade: AcademicGrade
+    year: number
+    term: 1 | 2 | 3
+  }
+  level: { code: GradeLevel; rank: number }
+  framework: {
+    id: number
+    code: string
+    version: string
+    level_ranks: Partial<Record<GradeLevel, number>>
+  }
+  source: 'learner' | 'school'
+  verification: {
+    confidence: 'learner_entered' | 'school_verified'
+    verified_by: number | null
+    verified_school: number | null
+    verified_at: string | null
+  }
+  recorded_at: string
+  snapshot_provenance?: 'migration_0013_best_available'
+}
+
 export interface AcademicGoal {
   id: number
   continuity_code: string
-  current_evidence: number
+  current_evidence: number | null
+  creation_evidence_snapshot: AcademicGoalEvidenceSnapshot
   current_level: AcademicGoalLevelSnapshot
   target_level: AcademicGoalLevelSnapshot & { id: number }
   target_term: 1 | 2 | 3
@@ -164,7 +190,10 @@ export interface AcademicGoal {
   status: AcademicGoalStatus
   ready_for_achievement: boolean
   readiness_evidence: number | null
+  achievement_evidence_snapshot: AcademicGoalEvidenceSnapshot | null
+  legacy_lifecycle_unverifiable: boolean
   created_by: number
+  confirmed_by: number | null
   achieved_at: string | null
   closed_at: string | null
   created_at: string

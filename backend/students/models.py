@@ -31,6 +31,7 @@ GRADE_LEVEL_POINTS = {
 
 
 GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
+_ACADEMIC_GOAL_LIFECYCLE_TRANSITION = object()
 
 
 class AssessmentFramework(models.Model):
@@ -475,7 +476,9 @@ class AcademicGoal(models.Model):
     )
     current_evidence = models.ForeignKey(
         CBCGrade,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='goals_created_from_evidence',
     )
     current_level_definition = models.ForeignKey(
@@ -496,6 +499,16 @@ class AcademicGoal(models.Model):
     target_level_rank = models.PositiveSmallIntegerField(editable=False)
     target_framework_code = models.CharField(max_length=80, editable=False)
     target_framework_version = models.CharField(max_length=40, editable=False)
+    creation_evidence_snapshot = models.JSONField(default=dict, editable=False)
+    achievement_evidence_snapshot = models.JSONField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    legacy_lifecycle_unverifiable = models.BooleanField(
+        default=False,
+        editable=False,
+    )
     target_term = models.PositiveSmallIntegerField(choices=CBCGrade.TERM_CHOICES)
     target_year = models.PositiveSmallIntegerField()
     target_academic_grade = models.PositiveSmallIntegerField(
@@ -518,6 +531,14 @@ class AcademicGoal(models.Model):
         on_delete=models.PROTECT,
         related_name='academic_goals_created',
     )
+    confirmed_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name='academic_goals_confirmed',
+    )
     achieved_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -532,13 +553,43 @@ class AcademicGoal(models.Model):
             ),
             models.CheckConstraint(
                 check=(
-                    models.Q(status='active', active_identity__isnull=False)
+                    models.Q(
+                        status='active',
+                        legacy_lifecycle_unverifiable=False,
+                        active_identity__isnull=False,
+                        achieved_at__isnull=True,
+                        closed_at__isnull=True,
+                        confirmed_by__isnull=True,
+                        achievement_evidence_snapshot__isnull=True,
+                    )
                     | models.Q(
-                        status__in=['achieved', 'closed'],
+                        status='achieved',
+                        legacy_lifecycle_unverifiable=False,
                         active_identity__isnull=True,
+                        achieved_at__isnull=False,
+                        closed_at__isnull=True,
+                        confirmed_by__isnull=False,
+                        achievement_evidence_snapshot__isnull=False,
+                    )
+                    | models.Q(
+                        status='closed',
+                        legacy_lifecycle_unverifiable=False,
+                        active_identity__isnull=True,
+                        achieved_at__isnull=True,
+                        closed_at__isnull=False,
+                        confirmed_by__isnull=True,
+                        achievement_evidence_snapshot__isnull=True,
+                    )
+                    | models.Q(
+                        status='achieved',
+                        legacy_lifecycle_unverifiable=True,
+                        active_identity__isnull=True,
+                        closed_at__isnull=True,
+                        confirmed_by__isnull=True,
+                        achievement_evidence_snapshot__isnull=True,
                     )
                 ),
-                name='students_goal_status_identity_ck',
+                name='students_goal_lifecycle_coherence_ck',
             ),
         ]
 
@@ -548,42 +599,152 @@ class AcademicGoal(models.Model):
             evidence.academic_grade,
             evidence.year,
             evidence.term,
-            evidence.created_at,
+            evidence.created_at.isoformat(),
             evidence.pk,
         )
 
+    @staticmethod
+    def _snapshot_order(snapshot):
+        period = snapshot['period']
+        return (
+            period['academic_grade'],
+            period['year'],
+            period['term'],
+            snapshot['recorded_at'],
+            snapshot['evidence_id'],
+        )
+
+    @staticmethod
+    def _isoformat(value):
+        return value.isoformat() if value is not None else None
+
+    @classmethod
+    def evidence_snapshot(cls, evidence, *, level_ranks=None):
+        if level_ranks is None:
+            level_ranks = dict(
+                PerformanceLevelDefinition.objects.filter(
+                    framework=evidence.framework,
+                ).values_list('code', 'rank')
+            )
+        rank = level_ranks.get(evidence.level)
+        if rank is None:
+            raise ValidationError(
+                {'current_evidence': 'The assessment framework is incomplete.'}
+            )
+        return {
+            'evidence_id': evidence.pk,
+            'period': {
+                'academic_grade': evidence.academic_grade,
+                'year': evidence.year,
+                'term': evidence.term,
+            },
+            'level': {'code': evidence.level, 'rank': rank},
+            'framework': {
+                'id': evidence.framework_id,
+                'code': evidence.framework.code,
+                'version': evidence.framework.version,
+                'level_ranks': level_ranks,
+            },
+            'source': evidence.source,
+            'verification': {
+                'confidence': (
+                    'school_verified'
+                    if evidence.verified_at is not None
+                    else 'learner_entered'
+                ),
+                'verified_by': evidence.verified_by_id,
+                'verified_school': evidence.verified_school_id,
+                'verified_at': cls._isoformat(evidence.verified_at),
+            },
+            'recorded_at': cls._isoformat(evidence.created_at),
+        }
+
+    def _validate_lifecycle_coherence(self):
+        active = self.status == self.STATUS_ACTIVE
+        achieved = self.status == self.STATUS_ACHIEVED
+        closed = self.status == self.STATUS_CLOSED
+        valid = (
+            active
+            and not self.legacy_lifecycle_unverifiable
+            and self.active_identity is not None
+            and self.achieved_at is None
+            and self.closed_at is None
+            and self.confirmed_by_id is None
+            and self.achievement_evidence_snapshot is None
+        ) or (
+            achieved
+            and not self.legacy_lifecycle_unverifiable
+            and self.active_identity is None
+            and self.achieved_at is not None
+            and self.closed_at is None
+            and self.confirmed_by_id is not None
+            and self.confirmed_by_id == self.learner.user_id
+            and self.achievement_evidence_snapshot is not None
+        ) or (
+            closed
+            and not self.legacy_lifecycle_unverifiable
+            and self.active_identity is None
+            and self.achieved_at is None
+            and self.closed_at is not None
+            and self.confirmed_by_id is None
+            and self.achievement_evidence_snapshot is None
+        ) or (
+            achieved
+            and self.legacy_lifecycle_unverifiable
+            and self.active_identity is None
+            and self.closed_at is None
+            and self.confirmed_by_id is None
+            and self.achievement_evidence_snapshot is None
+        )
+        if not valid:
+            raise ValidationError('Academic goal lifecycle fields are incoherent.')
+
     def clean(self):
         super().clean()
+        if self._state.adding and self.legacy_lifecycle_unverifiable:
+            raise ValidationError(
+                'The legacy lifecycle exemption is migration-only.'
+            )
+        self._validate_lifecycle_coherence()
         if not all((
             self.learner_id,
-            self.current_evidence_id,
             self.current_level_definition_id,
             self.target_level_definition_id,
+            self.creation_evidence_snapshot,
         )):
             return
-        evidence = self.current_evidence
-        if evidence.student_subject.student_profile_id != self.learner_id:
-            raise ValidationError(
-                {'current_evidence': 'Current evidence must belong to the learner.'}
-            )
-        if evidence.student_subject.continuity_code != self.continuity_code:
-            raise ValidationError(
-                {'continuity_code': 'Current evidence must match the goal subject.'}
-            )
-        current_level = self.current_level_definition
+        snapshot = self.creation_evidence_snapshot
+        if self._state.adding:
+            evidence = self.current_evidence
+            if evidence is None:
+                raise ValidationError({'current_evidence': 'Current evidence is required.'})
+            if evidence.student_subject.student_profile_id != self.learner_id:
+                raise ValidationError(
+                    {'current_evidence': 'Current evidence must belong to the learner.'}
+                )
+            if evidence.student_subject.continuity_code != self.continuity_code:
+                raise ValidationError(
+                    {'continuity_code': 'Current evidence must match the goal subject.'}
+                )
+            current_level = self.current_level_definition
+            if (
+                current_level.framework_id != evidence.framework_id
+                or current_level.code != evidence.level
+            ):
+                raise ValidationError(
+                    {'current_level_definition': 'Current level must match the evidence snapshot.'}
+                )
+
         target_level = self.target_level_definition
+        target_framework = snapshot['framework']
         if (
-            current_level.framework_id != evidence.framework_id
-            or current_level.code != evidence.level
+            target_level.framework.code != target_framework['code']
+            or target_level.framework.version != target_framework['version']
         ):
-            raise ValidationError(
-                {'current_level_definition': 'Current level must match the evidence snapshot.'}
-            )
-        if target_level.framework_id != current_level.framework_id:
             raise ValidationError(
                 {'target_level_definition': 'Target level must use the current assessment framework.'}
             )
-        if target_level.rank < current_level.rank:
+        if self.target_level_rank < snapshot['level']['rank']:
             raise ValidationError(
                 {'target_level_definition': 'Target level cannot be lower than the current level.'}
             )
@@ -592,7 +753,11 @@ class AcademicGoal(models.Model):
             self.target_year,
             self.target_term,
         )
-        current_period = (evidence.academic_grade, evidence.year, evidence.term)
+        current_period = (
+            snapshot['period']['academic_grade'],
+            snapshot['period']['year'],
+            snapshot['period']['term'],
+        )
         if target_period <= current_period:
             raise ValidationError(
                 {'target_term': 'Target period must be later than the current evidence period.'}
@@ -612,6 +777,8 @@ class AcademicGoal(models.Model):
                 'current_level_rank',
                 'current_framework_code',
                 'current_framework_version',
+                'creation_evidence_snapshot',
+                'legacy_lifecycle_unverifiable',
                 'created_by_id',
             ).first()
             current_snapshot = {
@@ -623,23 +790,95 @@ class AcademicGoal(models.Model):
                 'current_level_rank': self.current_level_rank,
                 'current_framework_code': self.current_framework_code,
                 'current_framework_version': self.current_framework_version,
+                'creation_evidence_snapshot': self.creation_evidence_snapshot,
+                'legacy_lifecycle_unverifiable': self.legacy_lifecycle_unverifiable,
                 'created_by_id': self.created_by_id,
             }
             if original is not None and original != current_snapshot:
                 raise ValidationError('Academic goal creation snapshots are immutable.')
 
     def save(self, *args, **kwargs):
+        original = None
+        if not self._state.adding:
+            original = type(self).objects.filter(pk=self.pk).values(
+                'status',
+                'target_level_definition_id',
+                'target_level_code',
+                'target_level_rank',
+                'target_framework_code',
+                'target_framework_version',
+                'achieved_at',
+                'closed_at',
+                'confirmed_by_id',
+                'achievement_evidence_snapshot',
+                'legacy_lifecycle_unverifiable',
+            ).first()
+            if original is not None and original['status'] != self.status:
+                transition_token = getattr(
+                    self,
+                    '_lifecycle_transition_token',
+                    None,
+                )
+                if (
+                    transition_token is not _ACADEMIC_GOAL_LIFECYCLE_TRANSITION
+                    or original['status'] != self.STATUS_ACTIVE
+                ):
+                    raise ValidationError(
+                        'Only an active academic goal can use this lifecycle transition.'
+                    )
+            if original is not None and original['status'] == self.status:
+                lifecycle_record = {
+                    'achieved_at': self.achieved_at,
+                    'closed_at': self.closed_at,
+                    'confirmed_by_id': self.confirmed_by_id,
+                    'achievement_evidence_snapshot': self.achievement_evidence_snapshot,
+                    'legacy_lifecycle_unverifiable': (
+                        self.legacy_lifecycle_unverifiable
+                    ),
+                }
+                if any(
+                    original[field] != value
+                    for field, value in lifecycle_record.items()
+                ):
+                    raise ValidationError(
+                        'Academic goal lifecycle records are immutable.'
+                    )
+                if (
+                    original['target_level_definition_id']
+                    == self.target_level_definition_id
+                    and any((
+                        original['target_level_code'] != self.target_level_code,
+                        original['target_level_rank'] != self.target_level_rank,
+                        original['target_framework_code'] != self.target_framework_code,
+                        original['target_framework_version']
+                        != self.target_framework_version,
+                    ))
+                ):
+                    raise ValidationError(
+                        'Academic goal target snapshots are immutable.'
+                    )
         if self._state.adding:
             current = self.current_level_definition
             self.current_level_code = current.code
             self.current_level_rank = current.rank
             self.current_framework_code = current.framework.code
             self.current_framework_version = current.framework.version
-        target = self.target_level_definition
-        self.target_level_code = target.code
-        self.target_level_rank = target.rank
-        self.target_framework_code = target.framework.code
-        self.target_framework_version = target.framework.version
+            self.creation_evidence_snapshot = self.evidence_snapshot(
+                self.current_evidence
+            )
+        target_changed = (
+            self._state.adding
+            or original is None
+            or original['target_level_definition_id']
+            != self.target_level_definition_id
+            or getattr(self, '_refresh_target_snapshot', False)
+        )
+        if target_changed:
+            target = self.target_level_definition
+            self.target_level_code = target.code
+            self.target_level_rank = target.rank
+            self.target_framework_code = target.framework.code
+            self.target_framework_version = target.framework.version
         self.active_identity = (
             self.continuity_code if self.status == self.STATUS_ACTIVE else None
         )
@@ -648,52 +887,109 @@ class AcademicGoal(models.Model):
         if update_fields is not None:
             kwargs['update_fields'] = set(update_fields) | {
                 'active_identity',
-                'target_level_code',
-                'target_level_rank',
-                'target_framework_code',
-                'target_framework_version',
             }
+            if target_changed:
+                kwargs['update_fields'] |= {
+                    'target_level_code',
+                    'target_level_rank',
+                    'target_framework_code',
+                    'target_framework_version',
+                }
         return super().save(*args, **kwargs)
 
-    def close(self):
-        if self.status != self.STATUS_ACTIVE:
-            return
-        self.status = self.STATUS_CLOSED
-        self.closed_at = timezone.now()
-        self.save(update_fields=['status', 'closed_at'])
+    def _validate_actor(self, actor):
+        if actor is None or actor.pk != self.learner.user_id:
+            raise ValidationError(
+                'Only the learner can transition an academic goal.'
+            )
 
-    def mark_achieved(self):
+    def close(self, *, actor=None):
+        self._validate_actor(actor)
         if self.status != self.STATUS_ACTIVE:
-            return
+            raise ValidationError('Only an active academic goal can be closed.')
+        self._lifecycle_transition_token = _ACADEMIC_GOAL_LIFECYCLE_TRANSITION
+        self.status = self.STATUS_CLOSED
+        self.achieved_at = None
+        self.closed_at = timezone.now()
+        self.confirmed_by = None
+        self.achievement_evidence_snapshot = None
+        self.save(update_fields=[
+            'status', 'achieved_at', 'closed_at', 'confirmed_by',
+            'achievement_evidence_snapshot',
+        ])
+
+    def mark_achieved(self, *, actor=None, evidence_pool=None):
+        self._validate_actor(actor)
+        if self.status != self.STATUS_ACTIVE:
+            raise ValidationError(
+                'Only an active academic goal can be marked achieved.'
+            )
+        evidence = self.readiness_evidence(evidence_pool=evidence_pool)
+        if evidence is None:
+            raise ValidationError('This academic goal is not ready for achievement.')
+        level_ranks = self.creation_evidence_snapshot['framework']['level_ranks']
+        self._lifecycle_transition_token = _ACADEMIC_GOAL_LIFECYCLE_TRANSITION
         self.status = self.STATUS_ACHIEVED
         self.achieved_at = timezone.now()
-        self.save(update_fields=['status', 'achieved_at'])
+        self.closed_at = None
+        self.confirmed_by = actor
+        self.achievement_evidence_snapshot = self.evidence_snapshot(
+            evidence,
+            level_ranks=level_ranks,
+        )
+        self.save(update_fields=[
+            'status', 'achieved_at', 'closed_at', 'confirmed_by',
+            'achievement_evidence_snapshot',
+        ])
 
-    def readiness_evidence(self):
+    def readiness_evidence(self, *, evidence_pool=None):
         if self.status != self.STATUS_ACTIVE:
             return None
-        current_order = self._evidence_order(self.current_evidence)
-        later = [
-            evidence
-            for evidence in CBCGrade.objects.filter(
+        current_order = self._snapshot_order(self.creation_evidence_snapshot)
+        framework_snapshot = self.creation_evidence_snapshot['framework']
+        if evidence_pool is None:
+            evidence_pool = CBCGrade.objects.filter(
                 student_subject__student_profile=self.learner,
                 student_subject__continuity_code=self.continuity_code,
-                framework=self.current_level_definition.framework,
             ).select_related('student_subject', 'framework').order_by(
                 'academic_grade', 'year', 'term', 'created_at', 'pk'
             )
-            if self._evidence_order(evidence) > current_order
+        later = [
+            evidence
+            for evidence in evidence_pool
+            if evidence.student_subject.student_profile_id == self.learner_id
+            and evidence.student_subject.continuity_code == self.continuity_code
+            and evidence.framework.code == framework_snapshot['code']
+            and evidence.framework.version == framework_snapshot['version']
+            and self._evidence_order(evidence) > current_order
         ]
         if not later:
             return None
         latest = later[-1]
-        level = PerformanceLevelDefinition.objects.filter(
-            framework=latest.framework,
-            code=latest.level,
-        ).first()
-        if level is None or level.rank < self.target_level_rank:
+        rank = framework_snapshot['level_ranks'].get(latest.level)
+        if rank is None or rank < self.target_level_rank:
             return None
         return latest
+
+    @classmethod
+    def batch_readiness(cls, goals):
+        active_goals = [goal for goal in goals if goal.status == cls.STATUS_ACTIVE]
+        if not active_goals:
+            return {}
+        learner_ids = {goal.learner_id for goal in active_goals}
+        continuity_codes = {goal.continuity_code for goal in active_goals}
+        evidence = list(
+            CBCGrade.objects.filter(
+                student_subject__student_profile_id__in=learner_ids,
+                student_subject__continuity_code__in=continuity_codes,
+            ).select_related('student_subject', 'framework').order_by(
+                'academic_grade', 'year', 'term', 'created_at', 'pk'
+            )
+        )
+        return {
+            goal.pk: goal.readiness_evidence(evidence_pool=evidence)
+            for goal in active_goals
+        }
 
     def __str__(self):
         return f'{self.learner} — {self.continuity_code}: {self.status}'

@@ -3,6 +3,7 @@ from rest_framework import serializers
 from accounts.models import StudentProfile
 from .models import (
     AcademicGoal,
+    AssessmentFramework,
     CBCGrade,
     GRADE_LEVEL_CHOICES,
     PerformanceLevelDefinition,
@@ -210,6 +211,7 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
         attrs = super().validate(attrs)
         target_code = attrs.pop('target_level', None)
         supplied_target = attrs.get('target_level_definition')
+        self._target_changed = target_code is not None or supplied_target is not None
         if target_code is not None and supplied_target is not None:
             raise serializers.ValidationError(
                 {'target_level': 'Choose a target level by code or definition, not both.'}
@@ -234,33 +236,58 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
                 ) from exc
             attrs['current_evidence'] = current_evidence
             attrs['current_level_definition'] = current_level
+            current_rank = current_level.rank
+            framework_code = current_level.framework.code
+            framework_version = current_level.framework.version
+            current_period = (
+                current_evidence.academic_grade,
+                current_evidence.year,
+                current_evidence.term,
+            )
         else:
-            current_evidence = self.instance.current_evidence
-            current_level = self.instance.current_level_definition
             attrs['continuity_code'] = self.instance.continuity_code
+            snapshot = self.instance.creation_evidence_snapshot
+            current_rank = snapshot['level']['rank']
+            framework_code = snapshot['framework']['code']
+            framework_version = snapshot['framework']['version']
+            current_period = (
+                snapshot['period']['academic_grade'],
+                snapshot['period']['year'],
+                snapshot['period']['term'],
+            )
 
-        if target_code is not None:
+        if not self._target_changed and self.instance is not None:
+            target_level = self.instance.target_level_definition
+        elif target_code is not None:
             try:
+                framework = AssessmentFramework.objects.get(
+                    code=framework_code,
+                    version=framework_version,
+                )
                 target_level = PerformanceLevelDefinition.objects.select_related(
                     'framework'
-                ).get(framework=current_level.framework, code=target_code)
-            except PerformanceLevelDefinition.DoesNotExist as exc:
+                ).get(framework=framework, code=target_code)
+            except (
+                AssessmentFramework.DoesNotExist,
+                PerformanceLevelDefinition.DoesNotExist,
+            ) as exc:
                 raise serializers.ValidationError(
                     {'target_level': 'That target level is unavailable in the current framework.'}
                 ) from exc
         else:
-            target_level = supplied_target or (
-                self.instance.target_level_definition if self.instance else None
-            )
+            target_level = supplied_target
         if target_level is None:
             raise serializers.ValidationError(
                 {'target_level': 'Choose a target performance level.'}
             )
-        if target_level.framework_id != current_level.framework_id:
+        if self._target_changed and (
+            target_level.framework.code != framework_code
+            or target_level.framework.version != framework_version
+        ):
             raise serializers.ValidationError(
                 {'target_level_definition': 'Target level must use the current assessment framework.'}
             )
-        if target_level.rank < current_level.rank:
+        if self._target_changed and target_level.rank < current_rank:
             raise serializers.ValidationError(
                 {'target_level_definition': 'Target level cannot be lower than the current level.'}
             )
@@ -272,17 +299,17 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
             attrs.get('target_year', self.instance.target_year if self.instance else None),
             attrs.get('target_term', self.instance.target_term if self.instance else None),
         )
-        current_period = (
-            current_evidence.academic_grade,
-            current_evidence.year,
-            current_evidence.term,
-        )
         if target_period <= current_period:
             raise serializers.ValidationError(
                 {'target_term': 'Target period must be later than the current evidence period.'}
             )
         attrs['target_level_definition'] = target_level
         return attrs
+
+    def update(self, instance, validated_data):
+        if self._target_changed:
+            instance._refresh_target_snapshot = True
+        return super().update(instance, validated_data)
 
     def create(self, validated_data):
         learner = self.context['learner']
@@ -305,6 +332,7 @@ class AcademicGoalSerializer(serializers.ModelSerializer):
             'id',
             'continuity_code',
             'current_evidence',
+            'creation_evidence_snapshot',
             'current_level',
             'target_level',
             'target_term',
@@ -314,7 +342,10 @@ class AcademicGoalSerializer(serializers.ModelSerializer):
             'status',
             'ready_for_achievement',
             'readiness_evidence',
+            'achievement_evidence_snapshot',
+            'legacy_lifecycle_unverifiable',
             'created_by',
+            'confirmed_by',
             'achieved_at',
             'closed_at',
             'created_at',
@@ -352,8 +383,13 @@ class AcademicGoalSerializer(serializers.ModelSerializer):
         return cache[goal.pk]
 
     def get_ready_for_achievement(self, goal):
+        if goal.status == AcademicGoal.STATUS_ACHIEVED:
+            return goal.achievement_evidence_snapshot is not None
         return self._readiness(goal) is not None
 
     def get_readiness_evidence(self, goal):
+        if goal.status == AcademicGoal.STATUS_ACHIEVED:
+            snapshot = goal.achievement_evidence_snapshot or {}
+            return snapshot.get('evidence_id')
         evidence = self._readiness(goal)
         return evidence.pk if evidence is not None else None

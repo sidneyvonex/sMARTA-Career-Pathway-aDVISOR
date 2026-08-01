@@ -899,6 +899,34 @@ def _academic_goal_queryset():
     )
 
 
+def _serialize_academic_goals(goals, *, many=False):
+    goal_list = list(goals) if many else [goals]
+    context = {
+        'academic_goal_readiness': AcademicGoal.batch_readiness(goal_list),
+    }
+    value = goal_list if many else goals
+    return AcademicGoalSerializer(value, many=many, context=context).data
+
+
+def _lock_goal_evidence(goal):
+    enrollment_ids = list(
+        StudentSubject.objects.select_for_update().filter(
+            student_profile_id=goal.learner_id,
+            continuity_code=goal.continuity_code,
+        ).order_by('pk').values_list('pk', flat=True)
+    )
+    evidence_ids = list(
+        CBCGrade.objects.select_for_update().filter(
+            student_subject_id__in=enrollment_ids,
+        ).order_by('pk').values_list('pk', flat=True)
+    )
+    return list(
+        CBCGrade.objects.filter(pk__in=evidence_ids)
+        .select_related('student_subject', 'framework')
+        .order_by('academic_grade', 'year', 'term', 'created_at', 'pk')
+    )
+
+
 def _assigned_goal_profile(request):
     try:
         student_id = int(request.query_params.get('student_id', ''))
@@ -930,7 +958,7 @@ class AcademicGoalListCreateView(APIView):
                 status.HTTP_403_FORBIDDEN,
             )
         goals = _academic_goal_queryset().filter(learner=learner)
-        return _success(data=AcademicGoalSerializer(goals, many=True).data)
+        return _success(data=_serialize_academic_goals(goals, many=True))
 
     def post(self, request):
         if request.user.role != 'student':
@@ -965,7 +993,7 @@ class AcademicGoalListCreateView(APIView):
         except ValidationError as exc:
             return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
         return _success(
-            data=AcademicGoalSerializer(goal).data,
+            data=_serialize_academic_goals(goal),
             message='Academic goal created.',
             status_code=status.HTTP_201_CREATED,
         )
@@ -994,12 +1022,19 @@ class AcademicGoalDetailView(APIView):
             return denied
         if goal is None:
             return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
-        return _success(data=AcademicGoalSerializer(goal).data)
+        return _success(data=_serialize_academic_goals(goal))
 
+    @transaction.atomic
     def patch(self, request, goal_id):
-        goal, denied = self._get_goal(request, goal_id, mutation=True)
-        if denied:
-            return denied
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        goal = AcademicGoal.objects.select_for_update().filter(
+            pk=goal_id,
+            learner__user=request.user,
+        ).first()
         if goal is None:
             return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
         if goal.status != AcademicGoal.STATUS_ACTIVE:
@@ -1020,16 +1055,23 @@ class AcademicGoalDetailView(APIView):
         except ValidationError as exc:
             return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
         return _success(
-            data=AcademicGoalSerializer(goal).data,
+            data=_serialize_academic_goals(goal),
             message='Academic goal updated.',
         )
 
     put = patch
 
+    @transaction.atomic
     def delete(self, request, goal_id):
-        goal, denied = self._get_goal(request, goal_id, mutation=True)
-        if denied:
-            return denied
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        goal = AcademicGoal.objects.select_for_update().filter(
+            pk=goal_id,
+            learner__user=request.user,
+        ).first()
         if goal is None:
             return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
         if goal.status != AcademicGoal.STATUS_ACTIVE:
@@ -1037,9 +1079,15 @@ class AcademicGoalDetailView(APIView):
                 'Only an active academic goal can be closed.',
                 status.HTTP_409_CONFLICT,
             )
-        goal.close()
+        try:
+            goal.close(actor=request.user)
+        except ValidationError as exc:
+            return _error(
+                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages,
+                status.HTTP_409_CONFLICT,
+            )
         return _success(
-            data=AcademicGoalSerializer(goal).data,
+            data=_serialize_academic_goals(goal),
             message='Academic goal closed.',
         )
 
@@ -1049,7 +1097,7 @@ class AcademicGoalConfirmAchievementView(APIView):
 
     @transaction.atomic
     def post(self, request, goal_id):
-        goal = _academic_goal_queryset().select_for_update().filter(
+        goal = AcademicGoal.objects.select_for_update().filter(
             pk=goal_id,
             learner__user=request.user,
         ).first()
@@ -1062,14 +1110,24 @@ class AcademicGoalConfirmAchievementView(APIView):
                 'Only an active academic goal can be marked achieved.',
                 status.HTTP_409_CONFLICT,
             )
-        if goal.readiness_evidence() is None:
+        locked_evidence = _lock_goal_evidence(goal)
+        if goal.readiness_evidence(evidence_pool=locked_evidence) is None:
             return _error(
                 'Later evidence has not reached this academic goal yet.',
                 status.HTTP_409_CONFLICT,
             )
-        goal.mark_achieved()
+        try:
+            goal.mark_achieved(
+                actor=request.user,
+                evidence_pool=locked_evidence,
+            )
+        except ValidationError as exc:
+            return _error(
+                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages,
+                status.HTTP_409_CONFLICT,
+            )
         return _success(
-            data=AcademicGoalSerializer(goal).data,
+            data=_serialize_academic_goals(goal),
             message='Academic goal achieved.',
         )
 

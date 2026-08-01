@@ -91,6 +91,18 @@ class AcademicGoalAdmin(admin.ModelAdmin):
         'status',
         'updated_at',
     )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_active and request.user.role == 'system_admin'
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
     list_filter = ('status', 'target_academic_grade', 'target_year', 'target_term')
     search_fields = ('learner__user__email', 'continuity_code')
     readonly_fields = (
