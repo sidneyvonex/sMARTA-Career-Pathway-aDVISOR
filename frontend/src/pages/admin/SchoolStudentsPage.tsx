@@ -5,6 +5,8 @@ import { schoolAdminApi, type SchoolStudent } from '../../api/schoolAdmin'
 import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import ResponsiveDataList, { type DataColumn } from '../../components/common/dashboard/ResponsiveDataList'
+import SectionHeader from '../../components/common/dashboard/SectionHeader'
+import ManagementToolbar from '../../components/common/management/ManagementToolbar'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/dashboard.css'
 import '../../styles/school-admin.css'
@@ -85,18 +87,18 @@ export default function SchoolStudentsPage() {
   })
 
   if (studentsQ.isLoading || counselorsQ.isLoading) {
-    return <p className="loading-text">Loading students…</p>
+    return <p className="loading-text">Loading learners…</p>
   }
   if (studentsQ.isError || counselorsQ.isError) {
     return (
       <ErrorState
-        title="The student list could not load"
-        description="Student and counsellor assignments are unchanged. Check your connection and try again."
+        title="The learner list could not load"
+        description="Learner and counsellor assignments are unchanged. Check your connection and try again."
         onRetry={() => {
           studentsQ.refetch()
           counselorsQ.refetch()
         }}
-        actionLabel="Retry students"
+        actionLabel="Retry learners"
         secondaryAction={{ label: 'Return to dashboard', to: '/' }}
       />
     )
@@ -184,7 +186,7 @@ export default function SchoolStudentsPage() {
           <strong>{student.counselor_name ?? 'Unassigned'}</strong>
           <select
             className="assignment-select"
-            aria-label={`Assign counselor for ${student.first_name} ${student.last_name}`}
+            aria-label={`Assign counsellor for ${student.first_name} ${student.last_name}`}
             value={student.counselor_id ?? ''}
             onChange={(event) => {
               if (event.target.value) {
@@ -235,7 +237,13 @@ export default function SchoolStudentsPage() {
 
   return (
     <div className="school-students-page">
-      <h1>Students</h1>
+      <SectionHeader
+        titleAs="h1"
+        eyebrow="School cohort"
+        title="Learners"
+        description="Approve school-link requests, assign counsellors, and track each learner's progress."
+        className="school-students-page__header"
+      />
 
       <section className="membership-queue" aria-labelledby="membership-queue-title">
         <div className="membership-queue__heading">
@@ -311,28 +319,36 @@ export default function SchoolStudentsPage() {
         )}
       </section>
 
-      <div className="school-students-page__filters">
-        <label className="admin-search">
-          <span>Search students</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name or email"
-          />
-        </label>
-        <div className="admin-filter-chips" aria-label="Filter students">
-          {filters.map(item => (
-            <button
-              type="button"
-              key={item.value}
-              className={filter === item.value ? 'btn-primary' : 'btn-ghost'}
-              onClick={() => setFilter(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+      <div className="school-students-toolbar">
+        <ManagementToolbar
+          resultCount={`${filtered.length} learner${filtered.length === 1 ? '' : 's'}`}
+          search={(
+            <label htmlFor="student-search">
+              <span>Search learners</span>
+              <input
+                id="student-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by name or email"
+              />
+            </label>
+          )}
+          filters={(
+            <div className="admin-filter-chips" aria-label="Filter learners">
+              {filters.map(item => (
+                <button
+                  type="button"
+                  key={item.value}
+                  className={filter === item.value ? 'btn-primary' : 'btn-ghost'}
+                  onClick={() => setFilter(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        />
       </div>
 
       {selectedStudentIds.length > 0 && (

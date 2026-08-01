@@ -1,0 +1,19 @@
+# Normalize all text files to LF in the repository and working tree.
+# Ends the CRLF/LF churn that showed hundreds of files as "modified".
+* text=auto eol=lf
+
+# Treat common binary assets as binary (never normalize or diff as text).
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.svg   text eol=lf
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary
+*.sqlite3 binary

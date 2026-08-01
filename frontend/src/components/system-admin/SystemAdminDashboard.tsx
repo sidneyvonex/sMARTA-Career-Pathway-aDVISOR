@@ -22,9 +22,9 @@ const ACTION_LABELS: Record<string, string> = {
   school_edited: 'School edited',
   school_deactivated: 'School deactivated',
   school_activated: 'School activated',
-  counselor_added: 'Counselor added',
-  counselor_removed: 'Counselor removed',
-  counselor_assigned: 'Counselor assigned',
+  counselor_added: 'Counsellor added',
+  counselor_removed: 'Counsellor removed',
+  counselor_assigned: 'Counsellor assigned',
   school_membership_approved: 'School link approved',
   school_membership_rejected: 'School link rejected',
   grade_verified: 'Grade verified',
@@ -113,13 +113,13 @@ export default function SystemAdminDashboard() {
           description="Counts use live learner verification, school-link, assignment and reviewed-plan records."
         />
         <div className="db-metrics-grid pilot-admin__health">
-          <MetricCard label="Students" value={roles.student ?? 0} detail="User accounts" to="/system-admin/users?role=student" tone="neutral" />
+          <MetricCard label="Learners" value={roles.student ?? 0} detail="User accounts" to="/system-admin/users?role=student" tone="neutral" />
           <MetricCard label="Verified learners" value={stats.verified_learners} detail={`${stats.registered_learners} registered`} to="/system-admin/users?role=student" tone="positive" />
           <MetricCard label="Pending school links" value={stats.pending_school_links} detail="Awaiting school decision" tone="warning" />
           <MetricCard label="Assignment coverage" value={`${stats.assignment_coverage.percent}%`} detail={`${stats.assignment_coverage.assigned} of ${stats.assignment_coverage.eligible}`} tone="info" />
           <MetricCard label="Plans completed" value={stats.plans_completed} detail="Counsellor reviewed" tone="positive" />
           <MetricCard label="Schools" value={stats.total_schools} detail="Active rollout schools" to="/system-admin/schools" tone="info" />
-          <MetricCard label="Counselors" value={roles.counselor ?? 0} detail="Across rollout schools" to="/system-admin/users?role=counselor" tone="neutral" />
+          <MetricCard label="Counsellors" value={roles.counselor ?? 0} detail="Across rollout schools" to="/system-admin/users?role=counselor" tone="neutral" />
           <MetricCard label="Parents" value={roles.parent ?? 0} detail="Supporter accounts" to="/system-admin/users?role=parent" tone="neutral" />
         </div>
       </section>
@@ -143,7 +143,7 @@ export default function SystemAdminDashboard() {
       </section>
 
       <div className="pilot-admin__workspace">
-        <section className="db-panel" aria-labelledby="framework-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="framework-title">
           <SectionHeader
             eyebrow="Catalogue freshness"
             title="Current guidance framework"
@@ -169,10 +169,10 @@ export default function SystemAdminDashboard() {
           )}
         </section>
 
-        <section className="db-panel" aria-labelledby="recent-activity-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="recent-activity-title">
           <SectionHeader
             eyebrow="Important events"
-            title="Recent Activity"
+            title="Recent activity"
             titleId="recent-activity-title"
             action={{ label: 'View all', to: '/system-admin/audit-log' }}
           />

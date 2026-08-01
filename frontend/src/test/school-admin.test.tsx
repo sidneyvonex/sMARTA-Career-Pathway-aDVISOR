@@ -62,15 +62,15 @@ describe('SchoolAdminDashboard', () => {
     renderPage()
     expect(await screen.findByText('Starehe Boys Centre')).toBeInTheDocument()
     expect(screen.getByText('24')).toBeInTheDocument()
-    expect(screen.getByText('Students')).toBeInTheDocument()
+    expect(screen.getByText('Learners')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Counselors')).toBeInTheDocument()
+    expect(screen.getByText('Counsellors')).toBeInTheDocument()
   })
 
   it('shows manage buttons', async () => {
     renderPage()
-    expect(await screen.findByText('Manage School Profile')).toBeInTheDocument()
-    expect(screen.getByText('Manage Counselors')).toBeInTheDocument()
+    expect(await screen.findByText('Manage school profile')).toBeInTheDocument()
+    expect(screen.getAllByText('Manage counsellors')).not.toHaveLength(0)
   })
 
   it('displays assessed and unassigned stat cards', async () => {
@@ -91,7 +91,9 @@ describe('SchoolAdminDashboard', () => {
     expect(screen.getByText('Reviews completed')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Counsellor workload' })).toBeInTheDocument()
     expect(screen.getByText('Alice Wanjiku')).toBeInTheDocument()
-    expect(screen.getByText('Offerings configured')).toBeInTheDocument()
+    const offeringsStatus = screen.getByText('Offerings configured')
+    expect(offeringsStatus).toBeInTheDocument()
+    expect(offeringsStatus.closest('.db-panel')).toHaveClass('school-offerings-panel')
   })
 })
 
@@ -119,22 +121,22 @@ describe('SchoolProfilePage', () => {
 
   it('renders school profile form with labels', async () => {
     renderPage()
-    expect(await screen.findByLabelText('School Name')).toBeInTheDocument()
-    expect(screen.getByLabelText('School Code')).toBeInTheDocument()
+    expect(await screen.findByLabelText('School name')).toBeInTheDocument()
+    expect(screen.getByLabelText('School code')).toBeInTheDocument()
     expect(screen.getByLabelText('Phone')).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
   })
 
   it('shows upload logo button', async () => {
     renderPage()
-    expect(await screen.findByText('Upload Logo')).toBeInTheDocument()
+    expect(await screen.findByText('Upload logo')).toBeInTheDocument()
   })
 
   it('populates form with MSW school data', async () => {
     renderPage()
-    const nameInput = await screen.findByLabelText('School Name')
+    const nameInput = await screen.findByLabelText('School name')
     expect(nameInput).toHaveValue('Starehe Boys Centre')
-    const codeInput = screen.getByLabelText('School Code')
+    const codeInput = screen.getByLabelText('School code')
     expect(codeInput).toHaveValue('NAI001')
     expect(codeInput).toBeDisabled()
   })
@@ -174,21 +176,63 @@ describe('CounselorManagementPage', () => {
 
   it('renders counselor list from MSW data', async () => {
     renderPage()
+    expect(await screen.findByRole('heading', { name: 'Counsellors', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByText('2 counsellors')).toBeInTheDocument()
     expect(await screen.findByText('Alice Wanjiku')).toBeInTheDocument()
     expect(screen.getByText('Bob Ochieng')).toBeInTheDocument()
+    const email = screen.getByText('alice@school.co.ke')
+    expect(getComputedStyle(email).overflowWrap).toBe('anywhere')
+    expect(screen.getByRole('button', { name: 'View workload for Alice Wanjiku' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'More actions for Alice Wanjiku' })).toBeInTheDocument()
   })
 
   it('shows add counselor form with email input', async () => {
     renderPage()
-    expect(await screen.findByPlaceholderText('Counselor email address')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add Counselor' })).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText('Counsellor email address')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add counsellor' })).toBeInTheDocument()
   })
 
-  it('shows remove buttons for each counselor', async () => {
+  it('opens workload details from the visible primary action', async () => {
     renderPage()
     await screen.findByText('Alice Wanjiku')
-    const removeButtons = screen.getAllByRole('button', { name: 'Remove' })
-    expect(removeButtons.length).toBe(2)
+    await userEvent.click(screen.getByRole('button', { name: 'View workload for Alice Wanjiku' }))
+    expect(screen.getByRole('dialog', { name: 'Alice Wanjiku workload' })).toHaveTextContent('8 assigned learners')
+  })
+
+  it('removes a counsellor only after named confirmation', async () => {
+    let removed = false
+    server.use(
+      http.post('/api/v1/school-admin/counselors/10/remove/', () => {
+        removed = true
+        return HttpResponse.json({ data: null, error: null, message: 'Counselor removed.' })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Alice Wanjiku')
+
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Alice Wanjiku' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Remove' }))
+    expect(screen.getByRole('dialog', { name: 'Remove Alice Wanjiku?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Remove counsellor' }))
+    await waitFor(() => expect(removed).toBe(true))
+  })
+
+  it('cancels counsellor removal without sending a request', async () => {
+    let requestCount = 0
+    server.use(
+      http.post('/api/v1/school-admin/counselors/10/remove/', () => {
+        requestCount += 1
+        return HttpResponse.json({ data: null, error: null, message: 'Counselor removed.' })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Alice Wanjiku')
+
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Alice Wanjiku' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Remove' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Remove Alice Wanjiku?' })).not.toBeInTheDocument()
+    expect(requestCount).toBe(0)
   })
 
   it('uses a responsive workload list that can be searched', async () => {
@@ -235,6 +279,7 @@ describe('SchoolStudentsPage', () => {
 
   it('renders student list from MSW data', async () => {
     renderPage()
+    expect(await screen.findByRole('heading', { name: 'Learners', level: 1 })).toBeInTheDocument()
     expect(await screen.findByText('Jane Muthoni')).toBeInTheDocument()
     expect(screen.getByText('Kevin Otieno')).toBeInTheDocument()
   })
@@ -242,6 +287,8 @@ describe('SchoolStudentsPage', () => {
   it('shows filter buttons', async () => {
     renderPage()
     await screen.findByText('Jane Muthoni')
+    expect(screen.getByRole('searchbox', { name: 'Search learners' }).closest('.management-toolbar')).toBeInTheDocument()
+    expect(screen.getByText('2 learners')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Assigned' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unassigned' })).toBeInTheDocument()
@@ -313,13 +360,13 @@ describe('SchoolStudentsPage', () => {
     )
     renderPage()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('student list could not load')
-    expect(screen.getByRole('button', { name: 'Retry students' })).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('learner list could not load')
+    expect(screen.getByRole('button', { name: 'Retry learners' })).toBeInTheDocument()
   })
 })
 
 describe('SchoolOfferingsPage', () => {
-  it('groups the catalogue, shows three subjects and warns before removal', async () => {
+  it('renders the catalogue as a bounded selectable management table', async () => {
     const qc = makeClient()
     setSchoolAdmin()
     let savedIds: number[] | null = null
@@ -346,8 +393,17 @@ describe('SchoolOfferingsPage', () => {
       </QueryClientProvider>,
     )
 
-    expect(await screen.findByRole('heading', { name: 'School subject offerings' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'STEM' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', {
+      name: 'School subject offerings',
+      level: 1,
+    })).toBeInTheDocument()
+    expect(await screen.findByRole('table', { name: 'School subject offerings catalogue' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Combination' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Pathway and track' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Subjects' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Availability' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByText('Pure Sciences')).toBeInTheDocument()
     expect(screen.getByText('Agriculture')).toBeInTheDocument()
     expect(screen.getByText('Biology')).toBeInTheDocument()
@@ -355,6 +411,8 @@ describe('SchoolOfferingsPage', () => {
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Offer Agriculture, Biology & Chemistry' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Removing an offering can affect learners')
+    expect(screen.getByText('1 pending removal')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled()
     await userEvent.click(screen.getByRole('button', { name: 'Save offering set' }))
     await waitFor(() => expect(savedIds).toEqual([]))
   })

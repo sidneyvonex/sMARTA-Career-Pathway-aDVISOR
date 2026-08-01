@@ -115,16 +115,18 @@ export default function NotificationPanel() {
 
   return (
     <>
-      <div
-        className={`notification-overlay${drawerOpen ? ' open' : ''}`}
-        onClick={() => setDrawerOpen(false)}
-        aria-hidden="true"
-      />
-      <aside
-        className={`notification-drawer${drawerOpen ? ' open' : ''}`}
-        role="dialog"
-        aria-label="Notifications"
-      >
+      {drawerOpen && (
+        <>
+          <div
+            className="notification-overlay open"
+            onClick={() => setDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="notification-drawer open"
+            role="dialog"
+            aria-label="Notifications"
+          >
         {/* Header */}
         <div className="notification-drawer__header">
           <h2>Notifications</h2>
@@ -221,7 +223,9 @@ export default function NotificationPanel() {
             </li>
           ))}
         </ul>
-      </aside>
+          </aside>
+        </>
+      )}
     </>
   )
 }

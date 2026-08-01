@@ -380,13 +380,14 @@
   max-width: 1200px;
   margin: 0 auto;
   padding-bottom: var(--space-8);
+  container-type: inline-size;
 }
 
 .pilot-admin > section {
   margin-top: var(--space-7);
 }
 
-.pilot-admin__health {
+.db-metrics-grid.pilot-admin__health {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -449,7 +450,7 @@
 }
 
 @media (max-width: 980px) {
-  .pilot-admin__health,
+  .db-metrics-grid.pilot-admin__health,
   .pilot-admin__counties {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -462,9 +463,183 @@
 }
 
 @media (max-width: 520px) {
-  .pilot-admin__health,
+  .db-metrics-grid.pilot-admin__health,
   .pilot-admin__counties {
     grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 62rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 56rem) {
+  .pilot-admin__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 40rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 32rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ===== Shared system administration management details ===== */
+
+.sysadmin-create-form__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.sysadmin-create-form__heading h2,
+.sysadmin-create-form__heading p {
+  margin: 0;
+}
+
+.sysadmin-create-form__heading h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+}
+
+.sysadmin-create-form__heading p {
+  max-width: 42rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.sysadmin-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.sysadmin-detail-list > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.sysadmin-detail-list > div:first-child {
+  padding-top: 0;
+}
+
+.sysadmin-detail-list > div:last-child {
+  border-bottom: 0;
+}
+
+.sysadmin-detail-list dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sysadmin-detail-list dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  overflow-wrap: anywhere;
+}
+
+.sysadmin-audit-summary {
+  display: block;
+  max-width: 22rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.sysadmin-audit-page {
+  container-type: inline-size;
+}
+
+.sysadmin-audit-page .management-toolbar__search {
+  min-width: 0;
+}
+
+.sysadmin-audit-toolbar .management-toolbar__main {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(19rem, auto) auto;
+}
+
+.sysadmin-audit-page .management-toolbar__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(9rem, 10rem));
+  align-items: end;
+}
+
+@container (max-width: 60rem) {
+  .sysadmin-audit-page .management-table th:nth-child(4),
+  .sysadmin-audit-page .management-table td:nth-child(4),
+  .sysadmin-audit-page .management-table th:nth-child(5),
+  .sysadmin-audit-page .management-table td:nth-child(5) {
+    display: none;
+  }
+
+  .sysadmin-audit-page .management-table th:first-child,
+  .sysadmin-audit-page .management-table td:first-child {
+    width: 9rem;
+  }
+
+  .sysadmin-audit-page .management-table th:nth-child(3),
+  .sysadmin-audit-page .management-table td:nth-child(3) {
+    width: 12rem;
+  }
+
+  .sysadmin-audit-page .management-table th:last-child,
+  .sysadmin-audit-page .management-table td:last-child {
+    width: 7rem;
+  }
+}
+
+@container (max-width: 42rem) {
+  .sysadmin-audit-page .management-toolbar__main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sysadmin-audit-page .management-toolbar__search {
+    grid-column: 1 / -1;
+  }
+
+  .sysadmin-audit-page .management-toolbar__filters {
+    grid-template-columns: repeat(2, minmax(9rem, 1fr));
+  }
+}
+
+@container (max-width: 34rem) {
+  .sysadmin-audit-page .management-toolbar__main,
+  .sysadmin-audit-page .management-toolbar__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sysadmin-audit-page .management-toolbar__result-count {
+    justify-self: start;
+  }
+
+  .sysadmin-audit-page .management-table td[data-label] {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .sysadmin-create-form__heading {
+    flex-direction: column;
   }
 }
 
@@ -552,9 +727,18 @@
 
 .catalogue-toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  align-items: center;
   gap: var(--space-3);
   margin: var(--space-5) 0;
+}
+
+.catalogue-toolbar__count {
+  justify-self: end;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
 }
 
 .catalogue-toolbar input,

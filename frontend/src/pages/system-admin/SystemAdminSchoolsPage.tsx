@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { systemAdminApi, SchoolItem } from '../../api/systemAdmin'
-import '../../styles/system-admin.css'
+import { systemAdminApi, type SchoolItem } from '../../api/systemAdmin'
+import ConfirmDialog from '../../components/common/management/ConfirmDialog'
+import DetailDrawer from '../../components/common/management/DetailDrawer'
+import ManagementPage from '../../components/common/management/ManagementPage'
+import ManagementTable from '../../components/common/management/ManagementTable'
+import ManagementToolbar from '../../components/common/management/ManagementToolbar'
+import EmptyState from '../../components/common/dashboard/EmptyState'
+import type { ManagementColumn } from '../../components/common/management/types'
 import { ALL_ROLLOUT_COUNTIES, ROLLOUT_COUNTIES } from '../../lib/rollout'
+import '../../styles/system-admin.css'
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
+  { value: '', label: 'All statuses' },
   { value: 'true', label: 'Active' },
   { value: 'false', label: 'Inactive' },
 ]
@@ -16,21 +23,23 @@ function formatCounty(county: string): string {
   return county.charAt(0).toUpperCase() + county.slice(1)
 }
 
+function evidenceLabel(school: SchoolItem) {
+  if (school.verification_status === 'verified') return 'Verified'
+  if (school.verification_status === 'demonstration') return 'Demonstration'
+  return 'Not verified'
+}
+
 export default function SystemAdminSchoolsPage() {
   const queryClient = useQueryClient()
-
-  // Filter state
   const [county, setCounty] = useState('')
   const [search, setSearch] = useState('')
   const [active, setActive] = useState('')
   const [page, setPage] = useState(1)
-
-  // UI state
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editData, setEditData] = useState<{ name: string; phone: string; email: string }>({ name: '', phone: '', email: '' })
-
-  // Create form state
+  const [editingSchool, setEditingSchool] = useState<SchoolItem | null>(null)
+  const [detailSchool, setDetailSchool] = useState<SchoolItem | null>(null)
+  const [statusSchool, setStatusSchool] = useState<SchoolItem | null>(null)
+  const [editData, setEditData] = useState({ name: '', phone: '', email: '' })
   const [createData, setCreateData] = useState({
     name: '',
     county: '',
@@ -39,405 +48,313 @@ export default function SystemAdminSchoolsPage() {
     email: '',
   })
 
-  // Query
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['system-admin', 'schools', { county, search, active, page }],
-    queryFn: () =>
-      systemAdminApi
-        .getSchools({
-          ...(county && { county }),
-          ...(search && { search }),
-          ...(active && { active }),
-          page,
-        })
-        .then(r => r.data.data),
+    queryFn: () => systemAdminApi.getSchools({
+      ...(county && { county }),
+      ...(search && { search }),
+      ...(active && { active }),
+      page,
+    }).then(response => response.data.data),
   })
 
-  // Mutations
+  const invalidateSchools = () => {
+    queryClient.invalidateQueries({ queryKey: ['system-admin', 'schools'] })
+    queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
+  }
+
   const createMutation = useMutation({
-    mutationFn: (formData: typeof createData) =>
-      systemAdminApi.createSchool({
-        name: formData.name,
-        county: formData.county,
-        school_code: formData.school_code,
-        ...(formData.phone && { phone: formData.phone }),
-        ...(formData.email && { email: formData.email }),
-      }),
+    mutationFn: (formData: typeof createData) => systemAdminApi.createSchool({
+      name: formData.name,
+      county: formData.county,
+      school_code: formData.school_code,
+      ...(formData.phone && { phone: formData.phone }),
+      ...(formData.email && { email: formData.email }),
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'schools'] })
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
+      invalidateSchools()
       toast.success('School created successfully.')
       setCreateData({ name: '', county: '', school_code: '', phone: '', email: '' })
       setShowCreateForm(false)
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to create school.'
-      toast.error(msg)
+    onError: (error: any) => {
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to create school.')
     },
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name?: string; phone?: string; email?: string } }) =>
-      systemAdminApi.updateSchool(id, data),
+    mutationFn: ({ id, values }: { id: number; values: typeof editData }) => (
+      systemAdminApi.updateSchool(id, values)
+    ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'schools'] })
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
+      invalidateSchools()
       toast.success('School updated.')
-      setEditingId(null)
+      setEditingSchool(null)
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to update school.'
-      toast.error(msg)
-    },
-  })
-
-  const deactivateMutation = useMutation({
-    mutationFn: (id: number) => systemAdminApi.deactivateSchool(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'schools'] })
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
-      toast.success('School deactivated.')
-    },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to deactivate school.'
-      toast.error(msg)
+    onError: (error: any) => {
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to update school.')
     },
   })
 
-  const activateMutation = useMutation({
-    mutationFn: (id: number) => systemAdminApi.activateSchool(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'schools'] })
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
-      toast.success('School activated.')
+  const statusMutation = useMutation({
+    mutationFn: (school: SchoolItem) => (
+      school.is_active
+        ? systemAdminApi.deactivateSchool(school.id)
+        : systemAdminApi.activateSchool(school.id)
+    ),
+    onSuccess: (_, school) => {
+      invalidateSchools()
+      toast.success(school.is_active ? 'School deactivated.' : 'School activated.')
+      setStatusSchool(null)
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to activate school.'
-      toast.error(msg)
+    onError: (error: any) => {
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to update school status.')
     },
   })
-
-  // Handlers
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    createMutation.mutate(createData)
-  }
-
-  function startEdit(school: SchoolItem) {
-    setEditingId(school.id)
-    setEditData({ name: school.name, phone: school.phone || '', email: school.email || '' })
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-  }
-
-  function handleUpdate(id: number) {
-    updateMutation.mutate({ id, data: editData })
-  }
-
-  function handleToggleActive(school: SchoolItem) {
-    if (school.is_active) {
-      deactivateMutation.mutate(school.id)
-    } else {
-      activateMutation.mutate(school.id)
-    }
-  }
-
-  const isMutating = createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending || activateMutation.isPending
 
   useEffect(() => {
     if (isError) toast.error('Failed to load schools.')
   }, [isError])
 
-  // Loading skeleton
-  if (isLoading) {
-    return (
-      <div className="sysadmin-page">
-        <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)' }} />
-        <div className="skeleton" style={{ height: 44, width: '100%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }} />
-        {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="skeleton" style={{ height: 48, width: '100%', marginBottom: 'var(--space-2)', borderRadius: 'var(--radius-sm)' }} />
-        ))}
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="sysadmin-page">
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          Something went wrong loading schools. Please try again.
-        </p>
-      </div>
-    )
-  }
-
   const schools = data?.results ?? []
   const total = data?.total ?? 0
   const pageSize = data?.page_size ?? 20
-  const totalPages = Math.ceil(total / pageSize)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  const columns: ManagementColumn<SchoolItem>[] = [
+    {
+      key: 'school',
+      label: 'School',
+      priority: 'identity',
+      render: school => (
+        <div className="admin-person">
+          <strong>{school.name}</strong>
+          <span>{school.school_code ?? 'Code not recorded'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'county',
+      label: 'County',
+      priority: 'essential',
+      render: school => formatCounty(school.county),
+    },
+    {
+      key: 'learners',
+      label: 'Learners',
+      priority: 'essential',
+      align: 'end',
+      render: school => <span className="management-number">{school.student_count}</span>,
+    },
+    {
+      key: 'counsellors',
+      label: 'Counsellors',
+      priority: 'secondary',
+      align: 'end',
+      render: school => <span className="management-number">{school.counselor_count}</span>,
+    },
+    {
+      key: 'evidence',
+      label: 'Evidence',
+      priority: 'secondary',
+      render: school => (
+        <span className={`sysadmin-badge sysadmin-badge--${school.verification_status === 'verified' ? 'active' : 'inactive'}`}>
+          {evidenceLabel(school)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      priority: 'essential',
+      render: school => (
+        <span className={`sysadmin-badge sysadmin-badge--${school.is_active ? 'active' : 'inactive'}`}>
+          {school.is_active ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+  ]
+
+  function startEdit(school: SchoolItem) {
+    setEditingSchool(school)
+    setEditData({ name: school.name, phone: school.phone || '', email: school.email || '' })
+  }
+
+  const createForm = showCreateForm ? (
+    <form className="sysadmin-create-form" onSubmit={(event: FormEvent) => {
+      event.preventDefault()
+      createMutation.mutate(createData)
+    }}>
+      <div className="sysadmin-create-form__heading">
+        <div>
+          <h2>Create a pilot school</h2>
+          <p>Add the school identity first. Contact details can be completed now or updated later.</p>
+        </div>
+        <button type="button" className="btn-ghost" onClick={() => setShowCreateForm(false)}>Close form</button>
+      </div>
+      <div className="sysadmin-create-form__grid">
+        <div className="form-field">
+          <label htmlFor="create-name">School name</label>
+          <input id="create-name" value={createData.name} onChange={event => setCreateData(value => ({ ...value, name: event.target.value }))} required />
+        </div>
+        <div className="form-field">
+          <label htmlFor="create-county">County</label>
+          <select id="create-county" value={createData.county} onChange={event => setCreateData(value => ({ ...value, county: event.target.value }))} required>
+            <option value="">Select county</option>
+            {ROLLOUT_COUNTIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="create-code">School code</label>
+          <input id="create-code" value={createData.school_code} onChange={event => setCreateData(value => ({ ...value, school_code: event.target.value }))} required />
+        </div>
+        <div className="form-field">
+          <label htmlFor="create-phone">Phone</label>
+          <input id="create-phone" type="tel" value={createData.phone} onChange={event => setCreateData(value => ({ ...value, phone: event.target.value }))} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="create-email">Email</label>
+          <input id="create-email" type="email" value={createData.email} onChange={event => setCreateData(value => ({ ...value, email: event.target.value }))} />
+        </div>
+      </div>
+      <div className="sysadmin-create-form__actions">
+        <button type="submit" className="btn-primary" disabled={createMutation.isPending}>
+          {createMutation.isPending ? 'Creating…' : 'Create school'}
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => setShowCreateForm(false)} disabled={createMutation.isPending}>Cancel</button>
+      </div>
+    </form>
+  ) : null
+
+  const editForm = editingSchool ? (
+    <form className="sysadmin-create-form" onSubmit={(event: FormEvent) => {
+      event.preventDefault()
+      updateMutation.mutate({ id: editingSchool.id, values: editData })
+    }}>
+      <div className="sysadmin-create-form__heading">
+        <div>
+          <h2>Edit {editingSchool.name}</h2>
+          <p>Update the school name and contact details. County and school code remain system controlled.</p>
+        </div>
+      </div>
+      <div className="sysadmin-create-form__grid">
+        <div className="form-field">
+          <label htmlFor="edit-school-name">School name</label>
+          <input id="edit-school-name" value={editData.name} onChange={event => setEditData(value => ({ ...value, name: event.target.value }))} required />
+        </div>
+        <div className="form-field">
+          <label htmlFor="edit-school-phone">Phone</label>
+          <input id="edit-school-phone" type="tel" value={editData.phone} onChange={event => setEditData(value => ({ ...value, phone: event.target.value }))} />
+        </div>
+        <div className="form-field">
+          <label htmlFor="edit-school-email">Email</label>
+          <input id="edit-school-email" type="email" value={editData.email} onChange={event => setEditData(value => ({ ...value, email: event.target.value }))} />
+        </div>
+      </div>
+      <div className="sysadmin-create-form__actions">
+        <button type="submit" className="btn-primary" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save changes'}</button>
+        <button type="button" className="btn-ghost" onClick={() => setEditingSchool(null)} disabled={updateMutation.isPending}>Cancel</button>
+      </div>
+    </form>
+  ) : null
+
+  const toolbar = (
+    <ManagementToolbar
+      resultCount={`${total} school${total === 1 ? '' : 's'}`}
+      search={(
+        <label htmlFor="school-search">
+          <span>Search schools</span>
+          <input id="school-search" type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} placeholder="Name or school code" />
+        </label>
+      )}
+      filters={(
+        <>
+          <label htmlFor="school-county">
+            <span>County</span>
+            <select id="school-county" value={county} onChange={event => { setCounty(event.target.value); setPage(1) }}>
+              {ALL_ROLLOUT_COUNTIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label htmlFor="school-status">
+            <span>Status</span>
+            <select id="school-status" value={active} onChange={event => { setActive(event.target.value); setPage(1) }}>
+              {STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+        </>
+      )}
+    />
+  )
 
   return (
-    <div className="sysadmin-page">
-      {/* Header */}
-      <div className="sysadmin-page__header">
-        <h1 className="sysadmin-dashboard__title">Schools</h1>
-        <button
-          className="btn-primary"
-          style={{ minHeight: 'var(--min-touch-target)' }}
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
-          {showCreateForm ? 'Cancel' : 'Create School'}
-        </button>
-      </div>
-
-      {/* Create form */}
-      {showCreateForm && (
-        <form className="sysadmin-create-form" onSubmit={handleCreate}>
-          <div className="sysadmin-create-form__grid">
-            <div className="form-field">
-              <label htmlFor="create-name">School Name *</label>
-              <input
-                id="create-name"
-                type="text"
-                value={createData.name}
-                onChange={e => setCreateData(d => ({ ...d, name: e.target.value }))}
-                required
-                style={{ minHeight: 'var(--min-touch-target)' }}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="create-county">County *</label>
-              <select
-                id="create-county"
-                value={createData.county}
-                onChange={e => setCreateData(d => ({ ...d, county: e.target.value }))}
-                required
-                style={{ minHeight: 'var(--min-touch-target)' }}
-              >
-                <option value="">Select county</option>
-                {ROLLOUT_COUNTIES.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="create-code">School Code *</label>
-              <input
-                id="create-code"
-                type="text"
-                value={createData.school_code}
-                onChange={e => setCreateData(d => ({ ...d, school_code: e.target.value }))}
-                required
-                style={{ minHeight: 'var(--min-touch-target)' }}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="create-phone">Phone</label>
-              <input
-                id="create-phone"
-                type="tel"
-                value={createData.phone}
-                onChange={e => setCreateData(d => ({ ...d, phone: e.target.value }))}
-                style={{ minHeight: 'var(--min-touch-target)' }}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="create-email">Email</label>
-              <input
-                id="create-email"
-                type="email"
-                value={createData.email}
-                onChange={e => setCreateData(d => ({ ...d, email: e.target.value }))}
-                style={{ minHeight: 'var(--min-touch-target)' }}
-              />
-            </div>
-          </div>
-          <div className="sysadmin-create-form__actions">
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={createMutation.isPending}
-              style={{ minHeight: 'var(--min-touch-target)' }}
-            >
-              {createMutation.isPending ? 'Creating...' : 'Create School'}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => setShowCreateForm(false)}
-              style={{ minHeight: 'var(--min-touch-target)' }}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Filters */}
-      <div className="sysadmin-filters">
-        <label htmlFor="filter-county" className="sr-only">Filter by county</label>
-        <select
-          id="filter-county"
-          value={county}
-          onChange={e => { setCounty(e.target.value); setPage(1) }}
-        >
-          {ALL_ROLLOUT_COUNTIES.map(c => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-
-        <label htmlFor="filter-search" className="sr-only">Search schools</label>
-        <input
-          id="filter-search"
-          type="search"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-          placeholder="Search schools..."
+    <>
+      <ManagementPage
+        eyebrow="Five-county rollout"
+        title="Schools"
+        description="Review pilot schools, operational coverage, evidence status, and access."
+        pageAction={(
+          <button type="button" className="btn-primary" onClick={() => { setShowCreateForm(value => !value); setEditingSchool(null) }}>
+            {showCreateForm ? 'Close create form' : 'Create school'}
+          </button>
+        )}
+        toolbar={toolbar}
+        loading={isLoading}
+        error={isError ? { title: 'Schools could not load', description: 'No school records were changed. Check your connection and try again.' } : undefined}
+        onRetry={() => refetch()}
+      >
+        {createForm}
+        {editForm}
+        <ManagementTable
+          ariaLabel="Pilot schools"
+          records={schools}
+          columns={columns}
+          getKey={school => school.id}
+          getRecordLabel={school => school.name}
+          getPrimaryAction={school => ({ id: 'view', label: `View ${school.name}`, shortLabel: 'View', onSelect: () => setDetailSchool(school) })}
+          getSecondaryActions={school => [
+            { id: 'edit', label: 'Edit', disabled: statusMutation.isPending, onSelect: () => { setShowCreateForm(false); startEdit(school) } },
+            { id: 'status', label: school.is_active ? 'Deactivate' : 'Activate', tone: school.is_active ? 'danger' : 'default', disabled: statusMutation.isPending, onSelect: () => setStatusSchool(school) },
+          ]}
+          empty={<EmptyState title="No schools found" description="Try changing the county, status, or search term." />}
         />
+        {totalPages > 1 && (
+          <nav className="sysadmin-pagination" aria-label="School pages">
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
+            <span aria-live="polite">Page {page} of {totalPages}</span>
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
+          </nav>
+        )}
+      </ManagementPage>
 
-        <label htmlFor="filter-status" className="sr-only">Filter by status</label>
-        <select
-          id="filter-status"
-          value={active}
-          onChange={e => { setActive(e.target.value); setPage(1) }}
-        >
-          {STATUS_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
+      <DetailDrawer open={detailSchool !== null} title={detailSchool ? `${detailSchool.name} details` : 'School details'} onClose={() => setDetailSchool(null)}>
+        {detailSchool && (
+          <dl className="sysadmin-detail-list">
+            <div><dt>School code</dt><dd>{detailSchool.school_code ?? 'Not recorded'}</dd></div>
+            <div><dt>County</dt><dd>{formatCounty(detailSchool.county)}</dd></div>
+            <div><dt>Email</dt><dd>{detailSchool.email || 'Not recorded'}</dd></div>
+            <div><dt>Phone</dt><dd>{detailSchool.phone || 'Not recorded'}</dd></div>
+            <div><dt>Learners</dt><dd>{detailSchool.student_count}</dd></div>
+            <div><dt>Counsellors</dt><dd>{detailSchool.counselor_count}</dd></div>
+            <div><dt>Evidence</dt><dd>{evidenceLabel(detailSchool)}</dd></div>
+            <div><dt>Status</dt><dd>{detailSchool.is_active ? 'Active' : 'Inactive'}</dd></div>
+          </dl>
+        )}
+      </DetailDrawer>
 
-      {/* Table */}
-      {schools.length === 0 ? (
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          No schools found.
-        </p>
-      ) : (
-        <table className="sysadmin-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>County</th>
-              <th>Code</th>
-              <th>Students</th>
-              <th>Counselors</th>
-              <th>Evidence</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {schools.map(school => (
-              <tr key={school.id}>
-                {editingId === school.id ? (
-                  <>
-                    <td>
-                      <label htmlFor={`edit-name-${school.id}`} className="sr-only">School name</label>
-                      <input
-                        id={`edit-name-${school.id}`}
-                        type="text"
-                        value={editData.name}
-                        onChange={e => setEditData(d => ({ ...d, name: e.target.value }))}
-                        style={{ minHeight: 'var(--min-touch-target)', width: '100%' }}
-                      />
-                    </td>
-                    <td>{formatCounty(school.county)}</td>
-                    <td>{school.school_code}</td>
-                    <td>{school.student_count}</td>
-                    <td>{school.counselor_count}</td>
-                    <td>{school.verification_status}</td>
-                    <td>
-                      <span className={`sysadmin-badge sysadmin-badge--${school.is_active ? 'active' : 'inactive'}`}>
-                        {school.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                      <button
-                        className="sysadmin-action-btn"
-                        onClick={() => handleUpdate(school.id)}
-                        disabled={isMutating}
-                      >
-                        {updateMutation.isPending ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        className="sysadmin-action-btn"
-                        onClick={cancelEdit}
-                        disabled={isMutating}
-                      >
-                        Cancel
-                      </button>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td>{school.name}</td>
-                    <td>{formatCounty(school.county)}</td>
-                    <td>{school.school_code ?? 'Not recorded'}</td>
-                    <td>{school.student_count}</td>
-                    <td>{school.counselor_count}</td>
-                    <td>
-                      <span className={`sysadmin-badge sysadmin-badge--${school.verification_status === 'verified' ? 'active' : 'inactive'}`}>
-                        {school.verification_status}
-                      </span>
-                      <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                        {school.source_checked_at ? `Checked ${school.source_checked_at}` : 'No source check recorded'}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`sysadmin-badge sysadmin-badge--${school.is_active ? 'active' : 'inactive'}`}>
-                        {school.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                      <button
-                        className="sysadmin-action-btn"
-                        onClick={() => startEdit(school)}
-                        disabled={isMutating}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className={`sysadmin-action-btn ${school.is_active ? 'sysadmin-action-btn--danger' : ''}`}
-                        onClick={() => handleToggleActive(school)}
-                        disabled={isMutating}
-                      >
-                        {school.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="sysadmin-pagination">
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            Previous
-          </button>
-          <span>Page {page} of {totalPages}</span>
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </div>
+      <ConfirmDialog
+        open={statusSchool !== null}
+        title={statusSchool ? `${statusSchool.is_active ? 'Deactivate' : 'Activate'} ${statusSchool.name}?` : 'Change school status?'}
+        description={statusSchool?.is_active
+          ? `${statusSchool.name} will stop accepting administrative activity until it is activated again.`
+          : `${statusSchool?.name ?? 'This school'} will regain access to school administration.`}
+        confirmLabel={statusMutation.isPending ? 'Updating…' : statusSchool?.is_active ? 'Deactivate school' : 'Activate school'}
+        pending={statusMutation.isPending}
+        onClose={() => setStatusSchool(null)}
+        onConfirm={() => { if (statusSchool) statusMutation.mutate(statusSchool) }}
+      />
+    </>
   )
 }

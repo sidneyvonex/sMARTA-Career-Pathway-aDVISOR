@@ -1,307 +1,276 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { systemAdminApi, UserItem } from '../../api/systemAdmin'
+import { systemAdminApi, type UserItem } from '../../api/systemAdmin'
+import EmptyState from '../../components/common/dashboard/EmptyState'
+import ConfirmDialog from '../../components/common/management/ConfirmDialog'
+import DetailDrawer from '../../components/common/management/DetailDrawer'
+import ManagementPage from '../../components/common/management/ManagementPage'
+import ManagementTable from '../../components/common/management/ManagementTable'
+import ManagementToolbar from '../../components/common/management/ManagementToolbar'
+import type { ManagementColumn } from '../../components/common/management/types'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
-import '../../styles/system-admin.css'
 import { ALL_ROLLOUT_COUNTIES } from '../../lib/rollout'
+import '../../styles/system-admin.css'
 
 const ROLE_OPTIONS = [
-  { value: '', label: 'All Roles' },
+  { value: '', label: 'All roles' },
   { value: 'student', label: 'Student' },
-  { value: 'counselor', label: 'Counselor' },
-  { value: 'school_admin', label: 'School Admin' },
+  { value: 'counselor', label: 'Counsellor' },
+  { value: 'school_admin', label: 'School administrator' },
   { value: 'parent', label: 'Parent' },
-  { value: 'system_admin', label: 'System Admin' },
+  { value: 'system_admin', label: 'System administrator' },
 ]
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
+  { value: '', label: 'All statuses' },
   { value: 'true', label: 'Active' },
   { value: 'false', label: 'Inactive' },
 ]
 
 function formatCounty(county: string | null): string {
-  if (!county) return '—'
+  if (!county) return 'Not assigned'
   if (county === 'muranga') return "Murang'a"
   return county.charAt(0).toUpperCase() + county.slice(1)
 }
 
 function formatRole(role: string): string {
-  return role
-    .split('_')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
+  if (role === 'counselor') return 'Counsellor'
+  return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' })
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function userName(user: UserItem) {
+  return `${user.first_name} ${user.last_name}`
 }
 
 export default function SystemAdminUsersPage() {
   const queryClient = useQueryClient()
-
   const { downloadReport, downloadingId } = useDownloadReport()
-
-  // Filter state
   const [role, setRole] = useState('')
   const [county, setCounty] = useState('')
   const [school, setSchool] = useState('')
   const [search, setSearch] = useState('')
   const [active, setActive] = useState('')
   const [page, setPage] = useState(1)
+  const [detailUser, setDetailUser] = useState<UserItem | null>(null)
+  const [statusUser, setStatusUser] = useState<UserItem | null>(null)
 
-  // Users query
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['system-admin', 'users', { role, county, school, search, active, page }],
-    queryFn: () =>
-      systemAdminApi
-        .getUsers({
-          ...(role && { role }),
-          ...(county && { county }),
-          ...(school && { school }),
-          ...(search && { search }),
-          ...(active && { active }),
-          page,
-        })
-        .then(r => r.data.data),
+    queryFn: () => systemAdminApi.getUsers({
+      ...(role && { role }),
+      ...(county && { county }),
+      ...(school && { school }),
+      ...(search && { search }),
+      ...(active && { active }),
+      page,
+    }).then(response => response.data.data),
   })
 
-  // Schools query (for filter dropdown)
   const { data: schoolsData } = useQuery({
     queryKey: ['system-admin', 'schools-list'],
-    queryFn: () =>
-      systemAdminApi
-        .getSchools({ page: 1 })
-        .then(r => r.data.data.results),
+    queryFn: () => systemAdminApi.getSchools({ page: 1 }).then(response => response.data.data.results),
   })
 
-  // Mutations
-  const deactivateMutation = useMutation({
-    mutationFn: (id: number) => systemAdminApi.deactivateUser(id),
-    onSuccess: () => {
+  const statusMutation = useMutation({
+    mutationFn: (user: UserItem) => (
+      user.is_active
+        ? systemAdminApi.deactivateUser(user.id)
+        : systemAdminApi.activateUser(user.id)
+    ),
+    onSuccess: (_, user) => {
       queryClient.invalidateQueries({ queryKey: ['system-admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
-      toast.success('User deactivated.')
+      toast.success(user.is_active ? 'User deactivated.' : 'User activated.')
+      setStatusUser(null)
     },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to deactivate user.'
-      toast.error(msg)
-    },
-  })
-
-  const activateMutation = useMutation({
-    mutationFn: (id: number) => systemAdminApi.activateUser(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'users'] })
-      queryClient.invalidateQueries({ queryKey: ['system-admin', 'dashboard'] })
-      toast.success('User activated.')
-    },
-    onError: (err: any) => {
-      const message = err.response?.data?.message
-      const msg = typeof message === 'string' ? message : 'Failed to activate user.'
-      toast.error(msg)
+    onError: (error: any) => {
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to update user status.')
     },
   })
-
-  function handleToggleActive(user: UserItem) {
-    if (user.is_active) {
-      deactivateMutation.mutate(user.id)
-    } else {
-      activateMutation.mutate(user.id)
-    }
-  }
-
-  const isMutating = deactivateMutation.isPending || activateMutation.isPending
 
   useEffect(() => {
     if (isError) toast.error('Failed to load users.')
   }, [isError])
 
-  // Loading skeleton
-  if (isLoading) {
-    return (
-      <div className="sysadmin-page">
-        <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)' }} />
-        <div className="skeleton" style={{ height: 44, width: '100%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }} />
-        {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="skeleton" style={{ height: 48, width: '100%', marginBottom: 'var(--space-2)', borderRadius: 'var(--radius-sm)' }} />
-        ))}
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="sysadmin-page">
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          Something went wrong loading users. Please try again.
-        </p>
-      </div>
-    )
-  }
-
   const users = data?.results ?? []
   const total = data?.total ?? 0
   const pageSize = data?.page_size ?? 20
-  const totalPages = Math.ceil(total / pageSize)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const schools = schoolsData ?? []
 
-  return (
-    <div className="sysadmin-page">
-      {/* Header */}
-      <div className="sysadmin-page__header">
-        <h1 className="sysadmin-dashboard__title">Users</h1>
-        <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-          {total} user{total !== 1 ? 's' : ''} total
-        </span>
-      </div>
-
-      {/* Filters */}
-      <div className="sysadmin-filters">
-        <label htmlFor="filter-role" className="sr-only">Filter by role</label>
-        <select
-          id="filter-role"
-          value={role}
-          onChange={e => { setRole(e.target.value); setPage(1) }}
-        >
-          {ROLE_OPTIONS.map(r => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
-
-        <label htmlFor="filter-county" className="sr-only">Filter by county</label>
-        <select
-          id="filter-county"
-          value={county}
-          onChange={e => { setCounty(e.target.value); setPage(1) }}
-        >
-          {ALL_ROLLOUT_COUNTIES.map(c => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-
-        <label htmlFor="filter-school" className="sr-only">Filter by school</label>
-        <select
-          id="filter-school"
-          value={school}
-          onChange={e => { setSchool(e.target.value); setPage(1) }}
-        >
-          <option value="">All Schools</option>
-          {schools.map(s => (
-            <option key={s.id} value={String(s.id)}>{s.name}</option>
-          ))}
-        </select>
-
-        <label htmlFor="filter-search" className="sr-only">Search users</label>
-        <input
-          id="filter-search"
-          type="search"
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1) }}
-          placeholder="Search by name or email..."
-        />
-
-        <label htmlFor="filter-status" className="sr-only">Filter by status</label>
-        <select
-          id="filter-status"
-          value={active}
-          onChange={e => { setActive(e.target.value); setPage(1) }}
-        >
-          {STATUS_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Table */}
-      {users.length === 0 ? (
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          No users found.
-        </p>
-      ) : (
-        <table className="sysadmin-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>County</th>
-              <th>School</th>
-              <th>Verified</th>
-              <th>Status</th>
-              <th>Joined</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(user => (
-              <tr key={user.id}>
-                <td>{user.first_name} {user.last_name}</td>
-                <td>{user.email}</td>
-                <td>
-                  <span className={`sysadmin-role-badge sysadmin-role-badge--${user.role}`}>
-                    {formatRole(user.role)}
-                  </span>
-                </td>
-                <td>{formatCounty(user.county)}</td>
-                <td>{user.school_name ?? '—'}</td>
-                <td>{user.is_email_verified ? '✓' : '✗'}</td>
-                <td>
-                  <span className={`sysadmin-badge sysadmin-badge--${user.is_active ? 'active' : 'inactive'}`}>
-                    {user.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td>{formatDate(user.created_at)}</td>
-                <td>
-                  <button
-                    className={`sysadmin-action-btn ${user.is_active ? 'sysadmin-action-btn--danger' : ''}`}
-                    onClick={() => handleToggleActive(user)}
-                    disabled={isMutating}
-                  >
-                    {user.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  {user.role === 'student' && (
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => downloadReport(user.id)}
-                      disabled={downloadingId === user.id}
-                      aria-label={`Download report for ${user.first_name} ${user.last_name}`}
-                      style={{ minHeight: 'var(--min-touch-target)', padding: 'var(--space-1) var(--space-2)', marginLeft: 'var(--space-2)' }}
-                    >
-                      {downloadingId === user.id ? 'Generating…' : 'PDF'}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="sysadmin-pagination">
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            Previous
-          </button>
-          <span>Page {page} of {totalPages}</span>
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next
-          </button>
+  const columns: ManagementColumn<UserItem>[] = [
+    {
+      key: 'user',
+      label: 'User',
+      priority: 'identity',
+      render: user => (
+        <div className="admin-person">
+          <strong>{userName(user)}</strong>
+          <span>{user.email}</span>
         </div>
+      ),
+    },
+    {
+      key: 'role',
+      label: 'Role',
+      priority: 'essential',
+      render: user => <span className={`sysadmin-role-badge sysadmin-role-badge--${user.role}`}>{formatRole(user.role)}</span>,
+    },
+    {
+      key: 'affiliation',
+      label: 'School or county',
+      priority: 'essential',
+      render: user => (
+        <div className="admin-person">
+          <strong>{user.school_name ?? formatCounty(user.county)}</strong>
+          {user.school_name && <span>{formatCounty(user.county)}</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'verification',
+      label: 'Verification',
+      priority: 'secondary',
+      render: user => (
+        <span className={`sysadmin-badge sysadmin-badge--${user.is_email_verified ? 'active' : 'inactive'}`}>
+          {user.is_email_verified ? 'Verified' : 'Unverified'}
+        </span>
+      ),
+    },
+    {
+      key: 'joined',
+      label: 'Joined',
+      priority: 'secondary',
+      render: user => formatDate(user.created_at),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      priority: 'essential',
+      render: user => (
+        <span className={`sysadmin-badge sysadmin-badge--${user.is_active ? 'active' : 'inactive'}`}>
+          {user.is_active ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+  ]
+
+  const toolbar = (
+    <ManagementToolbar
+      resultCount={`${total} user${total === 1 ? '' : 's'}`}
+      search={(
+        <label htmlFor="user-search">
+          <span>Search users</span>
+          <input id="user-search" type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} placeholder="Name or email" />
+        </label>
       )}
-    </div>
+      filters={(
+        <>
+          <label htmlFor="user-role">
+            <span>Role</span>
+            <select id="user-role" value={role} onChange={event => { setRole(event.target.value); setPage(1) }}>
+              {ROLE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label htmlFor="user-county">
+            <span>County</span>
+            <select id="user-county" value={county} onChange={event => { setCounty(event.target.value); setPage(1) }}>
+              {ALL_ROLLOUT_COUNTIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label htmlFor="user-school">
+            <span>School</span>
+            <select id="user-school" value={school} onChange={event => { setSchool(event.target.value); setPage(1) }}>
+              <option value="">All schools</option>
+              {schools.map(option => <option key={option.id} value={String(option.id)}>{option.name}</option>)}
+            </select>
+          </label>
+          <label htmlFor="user-status">
+            <span>Status</span>
+            <select id="user-status" value={active} onChange={event => { setActive(event.target.value); setPage(1) }}>
+              {STATUS_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+        </>
+      )}
+    />
+  )
+
+  return (
+    <>
+      <ManagementPage
+        eyebrow="Platform access"
+        title="Users"
+        description="Review role, affiliation, verification, and account status without exposing unnecessary account metadata."
+        toolbar={toolbar}
+        loading={isLoading}
+        error={isError ? { title: 'Users could not load', description: 'No user records were changed. Check your connection and try again.' } : undefined}
+        onRetry={() => refetch()}
+      >
+        <ManagementTable
+          ariaLabel="Platform users"
+          records={users}
+          columns={columns}
+          getKey={user => user.id}
+          getRecordLabel={userName}
+          getPrimaryAction={user => ({ id: 'view', label: `View ${userName(user)}`, shortLabel: 'View', onSelect: () => setDetailUser(user) })}
+          getSecondaryActions={user => [
+            ...(user.role === 'student' ? [{
+              id: 'download',
+              label: 'Download PDF',
+              disabled: downloadingId === user.id,
+              onSelect: () => downloadReport(user.id),
+            }] : []),
+            {
+              id: 'status',
+              label: user.is_active ? 'Deactivate' : 'Activate',
+              tone: user.is_active ? 'danger' as const : 'default' as const,
+              disabled: statusMutation.isPending,
+              onSelect: () => setStatusUser(user),
+            },
+          ]}
+          empty={<EmptyState title="No users found" description="Try changing the role, school, county, status, or search term." />}
+        />
+        {totalPages > 1 && (
+          <nav className="sysadmin-pagination" aria-label="User pages">
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
+            <span aria-live="polite">Page {page} of {totalPages}</span>
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
+          </nav>
+        )}
+      </ManagementPage>
+
+      <DetailDrawer open={detailUser !== null} title={detailUser ? `${userName(detailUser)} details` : 'User details'} onClose={() => setDetailUser(null)}>
+        {detailUser && (
+          <dl className="sysadmin-detail-list">
+            <div><dt>Email</dt><dd>{detailUser.email}</dd></div>
+            <div><dt>Role</dt><dd>{formatRole(detailUser.role)}</dd></div>
+            <div><dt>School</dt><dd>{detailUser.school_name ?? 'Not assigned'}</dd></div>
+            <div><dt>County</dt><dd>{formatCounty(detailUser.county)}</dd></div>
+            <div><dt>Email verification</dt><dd>{detailUser.is_email_verified ? 'Verified' : 'Unverified'}</dd></div>
+            <div><dt>Joined</dt><dd>{formatDate(detailUser.created_at)}</dd></div>
+            <div><dt>Status</dt><dd>{detailUser.is_active ? 'Active' : 'Inactive'}</dd></div>
+          </dl>
+        )}
+      </DetailDrawer>
+
+      <ConfirmDialog
+        open={statusUser !== null}
+        title={statusUser ? `${statusUser.is_active ? 'Deactivate' : 'Activate'} ${userName(statusUser)}?` : 'Change user status?'}
+        description={statusUser?.is_active
+          ? `${userName(statusUser)} will lose platform access until the account is activated again.`
+          : `${statusUser ? userName(statusUser) : 'This user'} will regain platform access.`}
+        confirmLabel={statusMutation.isPending ? 'Updating…' : statusUser?.is_active ? 'Deactivate user' : 'Activate user'}
+        pending={statusMutation.isPending}
+        onClose={() => setStatusUser(null)}
+        onConfirm={() => { if (statusUser) statusMutation.mutate(statusUser) }}
+      />
+    </>
   )
 }

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/theme.css'
 import './styles/dashboard-primitives.css'
+import './styles/buttons.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

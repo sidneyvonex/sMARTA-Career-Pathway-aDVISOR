@@ -4,6 +4,8 @@ import type { ReactNode } from 'react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import NotificationPanel from './NotificationPanel'
+import BottomNav from './BottomNav'
+import MobileMoreSheet from './MobileMoreSheet'
 import ErrorBoundary from '../common/ErrorBoundary'
 import { useLayoutStore } from '../../store/layoutStore'
 import '../../styles/shell.css'
@@ -87,6 +89,8 @@ export default function Shell({ children }: ShellProps) {
         </div>
       )}
 
+      <BottomNav />
+      <MobileMoreSheet isOnline={isOnline} />
       <NotificationPanel />
     </div>
   )

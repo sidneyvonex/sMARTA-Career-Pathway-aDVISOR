@@ -160,7 +160,7 @@ describe('NotificationPanel', () => {
   it('is hidden when closed', () => {
     renderDrawer(false)
     const drawer = document.querySelector('.notification-drawer')
-    expect(drawer).not.toHaveClass('open')
+    expect(drawer).not.toBeInTheDocument()
   })
 
   it('is visible when open', () => {

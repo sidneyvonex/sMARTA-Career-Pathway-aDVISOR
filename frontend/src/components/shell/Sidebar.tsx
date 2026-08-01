@@ -1,18 +1,9 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
-import toast from 'react-hot-toast'
+import { NavLink } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
-import { authApi, type User } from '../../api/auth'
-import { clearUserScopedStorage } from '../../lib/sessionCleanup'
+import { useLogout } from '../../hooks/useLogout'
+import { useNavItems } from './navItems'
 import Avatar from '../common/Avatar'
-
-interface NavItem {
-  to: string
-  label: string
-  icon: React.ReactNode
-  badge?: string
-}
 
 const CHEVRON_LEFT = (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -25,69 +16,6 @@ const CHEVRON_RIGHT = (
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
   </svg>
 )
-
-const ICONS = {
-  grid: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
-  bar: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12h3m0 0V6m0 6v6m4-6h3m0 0V9m0 3v3m4-3h3m0 0V3m0 9v9" /></svg>,
-  clock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 7v5l3 3" /></svg>,
-  clipboard: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
-  person: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>,
-  users: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path strokeLinecap="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>,
-  note: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-  ),
-  school: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21V9l9-6 9 6v12H3z" /></svg>,
-  log: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>,
-}
-
-function getNavItems(role: User['role']): NavItem[] {
-  if (role === 'student') {
-    return [
-      { to: '/', label: 'Dashboard', icon: ICONS.grid },
-      { to: '/grades', label: 'My Grades', icon: ICONS.bar },
-      { to: '/explore', label: 'Explore Choices', icon: ICONS.grid },
-      { to: '/compare', label: 'Compare Choices', icon: ICONS.clipboard },
-      { to: '/plan', label: 'My Plan', icon: ICONS.note },
-      { to: '/access', label: 'Parent Access', icon: ICONS.users },
-      { to: '/assessment/results', label: 'Career Profile', icon: ICONS.clock },
-      { to: '/assessment', label: 'Career Quiz', icon: ICONS.clipboard },
-      { to: '/profile', label: 'My Profile', icon: ICONS.person },
-    ]
-  }
-  if (role === 'counselor') {
-    return [
-      { to: '/', label: 'Home', icon: ICONS.grid },
-      { to: '/counselor/students', label: 'My Students', icon: ICONS.users },
-      { to: '/counselor/notes', label: 'Notes', icon: ICONS.note },
-    ]
-  }
-  if (role === 'school_admin') {
-    return [
-      { to: '/', label: 'Home', icon: ICONS.grid },
-      { to: '/admin/school', label: 'School Profile', icon: ICONS.school },
-      { to: '/admin/counselors', label: 'Counselors', icon: ICONS.users },
-      { to: '/admin/students', label: 'Students', icon: ICONS.users },
-      { to: '/admin/offerings', label: 'Offerings', icon: ICONS.clipboard },
-    ]
-  }
-  if (role === 'system_admin') {
-    return [
-      { to: '/', label: 'Dashboard', icon: ICONS.grid },
-      { to: '/system-admin/catalogue', label: 'Catalogue', icon: ICONS.clipboard },
-      { to: '/system-admin/schools', label: 'Schools', icon: ICONS.school },
-      { to: '/system-admin/users', label: 'Users', icon: ICONS.users },
-      { to: '/system-admin/audit-log', label: 'Audit Log', icon: ICONS.log },
-    ]
-  }
-  if (role === 'parent') {
-    return [
-      { to: '/', label: 'Dashboard', icon: ICONS.grid },
-    ]
-  }
-  return [{ to: '/', label: 'Home', icon: ICONS.grid }]
-}
 
 const LOGOUT_ICON = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -102,27 +30,16 @@ const CLOSE_ICON = (
 )
 
 export default function Sidebar() {
-  const { user, clearUser } = useAuthStore()
+  const { user } = useAuthStore()
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const { baseNavItems, learnerNavItems } = useNavItems()
+  const handleLogout = useLogout()
 
   if (!user) return <aside className="sidebar" aria-label="Main navigation" />
 
-  const navItems = getNavItems(user.role)
+  const allNavItems = [...baseNavItems, ...learnerNavItems]
   const collapsed = sidebarCollapsed
   const roleLabel = user.role.replace('_', ' ')
-
-  const handleLogout = async () => {
-    try {
-      await authApi.logout()
-    } catch { /* cookie cleared regardless */ }
-    queryClient.clear()
-    clearUserScopedStorage()
-    clearUser()
-    navigate('/login')
-    toast.success('Logged out.')
-  }
 
   return (
     <aside
@@ -159,11 +76,11 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="sidebar__nav" aria-label="Primary">
-        {navItems.map((item) => (
+        {baseNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end={item.to === '/' || allNavItems.some((other) => other.to.startsWith(`${item.to}/`))}
             className={({ isActive }) =>
               `sidebar__nav-item${isActive ? ' active' : ''}`
             }
@@ -174,6 +91,26 @@ export default function Sidebar() {
             {item.badge && <span className="sidebar__badge">{item.badge}</span>}
           </NavLink>
         ))}
+
+        {learnerNavItems.length > 0 && (
+          <>
+            <p className="sidebar__section-label">Your learners</p>
+            {learnerNavItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `sidebar__nav-item${isActive ? ' active' : ''}`
+                }
+                onClick={() => setMobileSidebarOpen(false)}
+              >
+                <span className="sidebar__nav-icon">{item.icon}</span>
+                <span className="sidebar__nav-label">{item.label}</span>
+                {item.badge && <span className="sidebar__badge sidebar__badge--soft">{item.badge}</span>}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Footer */}
