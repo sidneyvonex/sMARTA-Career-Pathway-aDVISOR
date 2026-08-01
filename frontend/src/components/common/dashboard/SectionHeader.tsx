@@ -9,7 +9,7 @@ interface Props {
   action?: DashboardAction
   aside?: ReactNode
   className?: string
-  titleAs?: 'h2' | 'h3'
+  titleAs?: 'h1' | 'h2' | 'h3'
   titleId?: string
 }
 

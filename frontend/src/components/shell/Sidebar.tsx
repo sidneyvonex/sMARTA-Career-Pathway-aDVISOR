@@ -103,7 +103,7 @@ const CLOSE_ICON = (
 
 export default function Sidebar() {
   const { user, clearUser } = useAuthStore()
-  const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } = useLayoutStore()
+  const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen, resetTransientNavigation } = useLayoutStore()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -119,6 +119,7 @@ export default function Sidebar() {
     } catch { /* cookie cleared regardless */ }
     queryClient.clear()
     clearUserScopedStorage()
+    resetTransientNavigation()
     clearUser()
     navigate('/login')
     toast.success('Logged out.')

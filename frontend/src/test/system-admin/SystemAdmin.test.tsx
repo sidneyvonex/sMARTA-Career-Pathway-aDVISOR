@@ -248,8 +248,26 @@ describe('SystemAdminSchoolsPage', () => {
   it('shows Create School button', async () => {
     renderPage()
     await waitFor(() => {
-      expect(screen.getByText('Create School')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Create school' })).toBeTruthy()
     })
+  })
+
+  it('coordinates school records with view, overflow, details, and confirmed status actions', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Schools', level: 1 })).toBeInTheDocument()
+    expect(await screen.findByRole('table', { name: 'Pilot schools' })).toBeInTheDocument()
+    expect(screen.getByText('2 schools')).toHaveAttribute('aria-live', 'polite')
+
+    await user.click(screen.getByRole('button', { name: 'View Starehe Boys Centre' }))
+    expect(screen.getByRole('dialog', { name: 'Starehe Boys Centre details' })).toHaveTextContent('info@starehe.ac.ke')
+    await user.click(screen.getByRole('button', { name: 'Close details' }))
+
+    await user.click(screen.getByRole('button', { name: 'More actions for Starehe Boys Centre' }))
+    expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
+    expect(screen.getByRole('dialog', { name: 'Deactivate Starehe Boys Centre?' })).toBeInTheDocument()
   })
 })
 
@@ -297,7 +315,7 @@ describe('SystemAdminUsersPage', () => {
       // Role badges have specific class names; use getAllByText since filter dropdown also has these labels
       const studentBadges = screen.getAllByText('Student')
       expect(studentBadges.length).toBeGreaterThanOrEqual(2) // one in filter, one in table
-      const counselorBadges = screen.getAllByText('Counselor')
+      const counselorBadges = screen.getAllByText('Counsellor')
       expect(counselorBadges.length).toBeGreaterThanOrEqual(2)
     })
   })
@@ -312,12 +330,27 @@ describe('SystemAdminUsersPage', () => {
   it('shows total user count', async () => {
     renderPage()
     await waitFor(() => {
-      // The count text is split across text nodes due to JSX interpolation
-      const header = screen.getByText((_, element) => {
-        return element?.tagName === 'SPAN' && element?.textContent === '2 users total'
-      })
-      expect(header).toBeTruthy()
+      expect(screen.getByText('2 users')).toHaveAttribute('aria-live', 'polite')
     })
+  })
+
+  it('coordinates users with decision fields, details, overflow actions, and confirmation', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('table', { name: 'Platform users' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Users', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('2 users')).toHaveAttribute('aria-live', 'polite')
+
+    await user.click(screen.getByRole('button', { name: 'View Jane Doe' }))
+    expect(screen.getByRole('dialog', { name: 'Jane Doe details' })).toHaveTextContent('jane@test.com')
+    expect(screen.getByRole('dialog', { name: 'Jane Doe details' })).toHaveTextContent('Starehe Boys')
+    await user.click(screen.getByRole('button', { name: 'Close details' }))
+
+    await user.click(screen.getByRole('button', { name: 'More actions for Jane Doe' }))
+    expect(screen.getByRole('menuitem', { name: 'Download PDF' })).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
+    expect(screen.getByRole('dialog', { name: 'Deactivate Jane Doe?' })).toBeInTheDocument()
   })
 })
 
@@ -365,17 +398,14 @@ describe('SystemAdminAuditLogPage', () => {
   it('shows page heading', async () => {
     renderPage()
     await waitFor(() => {
-      expect(screen.getByText('Audit Log')).toBeTruthy()
+      expect(screen.getByRole('heading', { name: 'Audit log', level: 1 })).toBeTruthy()
     })
   })
 
   it('shows total entry count', async () => {
     renderPage()
     await waitFor(() => {
-      // The count text is split across text nodes due to JSX interpolation
-      const header = screen.getByText((_, element) => {
-        return element?.tagName === 'SPAN' && element?.textContent === '2 entries total'
-      })
+      const header = screen.getByText('2 entries')
       expect(header).toBeTruthy()
     })
   })
@@ -390,5 +420,20 @@ describe('SystemAdminAuditLogPage', () => {
       expect(schoolTarget).toBeTruthy()
       expect(userTarget).toBeTruthy()
     })
+  })
+
+  it('keeps audit rows concise and opens structured metadata in a details drawer', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('table', { name: 'Audit log entries' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Audit log', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('2 entries')).toHaveAttribute('aria-live', 'polite')
+    expect(screen.queryByText(/\{"/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'View details for School created' }))
+    const drawer = screen.getByRole('dialog', { name: 'School created details' })
+    expect(drawer).toHaveTextContent('Starehe Boys')
+    expect(drawer).toHaveTextContent('192.168.1.1')
   })
 })

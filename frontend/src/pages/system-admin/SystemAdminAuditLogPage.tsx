@@ -1,7 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { systemAdminApi } from '../../api/systemAdmin'
+import { systemAdminApi, type AuditEntry } from '../../api/systemAdmin'
+import EmptyState from '../../components/common/dashboard/EmptyState'
+import DetailDrawer from '../../components/common/management/DetailDrawer'
+import ManagementPage from '../../components/common/management/ManagementPage'
+import ManagementTable from '../../components/common/management/ManagementTable'
+import ManagementToolbar from '../../components/common/management/ManagementToolbar'
+import type { ManagementColumn } from '../../components/common/management/types'
 import '../../styles/system-admin.css'
 
 const ACTION_LABELS: Record<string, string> = {
@@ -16,9 +22,9 @@ const ACTION_LABELS: Record<string, string> = {
   school_edited: 'School edited',
   school_deactivated: 'School deactivated',
   school_activated: 'School activated',
-  counselor_added: 'Counselor added',
-  counselor_removed: 'Counselor removed',
-  counselor_assigned: 'Counselor assigned',
+  counselor_added: 'Counsellor added',
+  counselor_removed: 'Counsellor removed',
+  counselor_assigned: 'Counsellor assigned',
   school_membership_approved: 'School link approved',
   school_membership_rejected: 'School link rejected',
   grade_verified: 'Grade verified',
@@ -28,18 +34,17 @@ const ACTION_LABELS: Record<string, string> = {
   provisional_combination_changed: 'Provisional combination changed',
   plan_review_status_changed: 'Plan review status changed',
   report_downloaded: 'Report downloaded',
-  framework_combination_status_changed: 'Framework combination status changed',
+  framework_combination_status_changed: 'Framework combination changed',
   school_offerings_changed: 'School offerings changed',
 }
 
 const ACTION_OPTIONS = [
-  { value: '', label: 'All Actions' },
+  { value: '', label: 'All events' },
   ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
 ]
 
-function formatTimestamp(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleString('en-KE', {
+function formatTimestamp(value: string): string {
+  return new Date(value).toLocaleString('en-KE', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -48,183 +53,183 @@ function formatTimestamp(dateStr: string): string {
   })
 }
 
-function truncateJson(details: Record<string, unknown>, maxLen = 60): string {
-  const str = JSON.stringify(details)
-  if (str.length <= maxLen) return str
-  return str.slice(0, maxLen) + '…'
+function formatLabel(value: string): string {
+  const words = value.replace(/_/g, ' ')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+function actionLabel(entry: AuditEntry): string {
+  return ACTION_LABELS[entry.action] ?? formatLabel(entry.action)
+}
+
+function targetLabel(entry: AuditEntry): string {
+  return `${entry.target_type.replace(/_/g, ' ')} #${entry.target_id}`
+}
+
+function formatDetailValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return 'Not recorded'
+  if (Array.isArray(value)) return value.map(formatDetailValue).join(', ')
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, nestedValue]) => `${formatLabel(key)}: ${formatDetailValue(nestedValue)}`)
+      .join(' · ')
+  }
+  return String(value)
+}
+
+function detailsSummary(details: Record<string, unknown>): string {
+  const values = Object.values(details)
+    .map(formatDetailValue)
+    .filter(value => value !== 'Not recorded')
+    .slice(0, 2)
+
+  return values.length > 0 ? values.join(' · ') : 'No additional metadata'
 }
 
 export default function SystemAdminAuditLogPage() {
-  // Filter state
   const [action, setAction] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
+  const [detailEntry, setDetailEntry] = useState<AuditEntry | null>(null)
 
-  // Expanded details rows
-  const [expandedId, setExpandedId] = useState<number | null>(null)
-
-  // Audit logs query
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['system-admin', 'audit-logs', { action, dateFrom, dateTo, page }],
-    queryFn: () =>
-      systemAdminApi
-        .getAuditLogs({
-          ...(action && { action }),
-          ...(dateFrom && { date_from: dateFrom }),
-          ...(dateTo && { date_to: dateTo }),
-          page,
-        })
-        .then(r => r.data.data),
+    queryFn: () => systemAdminApi.getAuditLogs({
+      ...(action && { action }),
+      ...(dateFrom && { date_from: dateFrom }),
+      ...(dateTo && { date_to: dateTo }),
+      page,
+    }).then(response => response.data.data),
   })
 
   useEffect(() => {
     if (isError) toast.error('Failed to load audit logs.')
   }, [isError])
 
-  // Loading skeleton
-  if (isLoading) {
-    return (
-      <div className="sysadmin-page">
-        <div className="skeleton" style={{ height: 40, width: '60%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)' }} />
-        <div className="skeleton" style={{ height: 44, width: '100%', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)' }} />
-        {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="skeleton" style={{ height: 48, width: '100%', marginBottom: 'var(--space-2)', borderRadius: 'var(--radius-sm)' }} />
-        ))}
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="sysadmin-page">
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          Something went wrong loading audit logs. Please try again.
-        </p>
-      </div>
-    )
-  }
-
   const entries = data?.results ?? []
   const total = data?.total ?? 0
   const pageSize = data?.page_size ?? 20
-  const totalPages = Math.ceil(total / pageSize)
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  const columns: ManagementColumn<AuditEntry>[] = [
+    {
+      key: 'time',
+      label: 'Time',
+      priority: 'essential',
+      render: entry => <time dateTime={entry.created_at}>{formatTimestamp(entry.created_at)}</time>,
+    },
+    {
+      key: 'actor',
+      label: 'Actor',
+      priority: 'identity',
+      render: entry => (
+        <div className="admin-person">
+          <strong>{entry.actor_name ?? 'System event'}</strong>
+          <span>{entry.actor_email ?? 'No account email'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'event',
+      label: 'Event',
+      priority: 'essential',
+      render: entry => <span className="sysadmin-badge sysadmin-badge--active">{actionLabel(entry)}</span>,
+    },
+    {
+      key: 'target',
+      label: 'Affected record',
+      priority: 'secondary',
+      render: targetLabel,
+    },
+    {
+      key: 'summary',
+      label: 'Summary',
+      priority: 'secondary',
+      render: entry => <span className="sysadmin-audit-summary">{detailsSummary(entry.details)}</span>,
+    },
+  ]
+
+  const toolbar = (
+    <ManagementToolbar
+      resultCount={`${total} ${total === 1 ? 'entry' : 'entries'}`}
+      search={(
+        <label htmlFor="audit-event">
+          <span>Event</span>
+          <select id="audit-event" value={action} onChange={event => { setAction(event.target.value); setPage(1) }}>
+            {ACTION_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+      )}
+      filters={(
+        <>
+          <label htmlFor="audit-date-from">
+            <span>From</span>
+            <input id="audit-date-from" type="date" value={dateFrom} onChange={event => { setDateFrom(event.target.value); setPage(1) }} />
+          </label>
+          <label htmlFor="audit-date-to">
+            <span>To</span>
+            <input id="audit-date-to" type="date" value={dateTo} onChange={event => { setDateTo(event.target.value); setPage(1) }} />
+          </label>
+        </>
+      )}
+    />
+  )
 
   return (
-    <div className="sysadmin-page">
-      {/* Header */}
-      <div className="sysadmin-page__header">
-        <h1 className="sysadmin-dashboard__title">Audit Log</h1>
-        <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-          {total} entr{total !== 1 ? 'ies' : 'y'} total
-        </span>
-      </div>
-
-      {/* Filters */}
-      <div className="sysadmin-filters">
-        <label htmlFor="filter-action" className="sr-only">Filter by action</label>
-        <select
-          id="filter-action"
-          value={action}
-          onChange={e => { setAction(e.target.value); setPage(1) }}
-        >
-          {ACTION_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-
-        <label htmlFor="filter-date-from" className="sr-only">Date from</label>
-        <input
-          id="filter-date-from"
-          type="date"
-          value={dateFrom}
-          onChange={e => { setDateFrom(e.target.value); setPage(1) }}
-          aria-label="Date from"
+    <>
+      <ManagementPage
+        eyebrow="Operational history"
+        title="Audit log"
+        description="Review who changed platform data, when it happened, and which record was affected. Full metadata stays in the details drawer."
+        toolbar={toolbar}
+        loading={isLoading}
+        error={isError ? { title: 'Audit log could not load', description: 'No audit data was changed. Check your connection and try again.' } : undefined}
+        onRetry={() => refetch()}
+      >
+        <ManagementTable
+          ariaLabel="Audit log entries"
+          records={entries}
+          columns={columns}
+          getKey={entry => entry.id}
+          getRecordLabel={entry => `${actionLabel(entry)} ${entry.id}`}
+          getPrimaryAction={entry => ({
+            id: 'view-details',
+            label: `View details for ${actionLabel(entry)}`,
+            onSelect: () => setDetailEntry(entry),
+          })}
+          getSecondaryActions={() => []}
+          empty={<EmptyState title="No audit entries found" description="Try changing the event or date filters." />}
         />
 
-        <label htmlFor="filter-date-to" className="sr-only">Date to</label>
-        <input
-          id="filter-date-to"
-          type="date"
-          value={dateTo}
-          onChange={e => { setDateTo(e.target.value); setPage(1) }}
-          aria-label="Date to"
-        />
-      </div>
+        {totalPages > 1 && (
+          <nav className="sysadmin-pagination" aria-label="Audit log pages">
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
+            <span aria-live="polite">Page {page} of {totalPages}</span>
+            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
+          </nav>
+        )}
+      </ManagementPage>
 
-      {/* Table */}
-      {entries.length === 0 ? (
-        <p style={{ color: 'var(--color-text-secondary)', textAlign: 'center', padding: 'var(--space-8)' }}>
-          No audit log entries found.
-        </p>
-      ) : (
-        <table className="sysadmin-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Actor</th>
-              <th>Action</th>
-              <th>Target</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map(entry => {
-              const isExpanded = expandedId === entry.id
-              const detailsStr = JSON.stringify(entry.details, null, 2)
-              const hasDetails = Object.keys(entry.details).length > 0
-
-              return (
-                <tr key={entry.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatTimestamp(entry.created_at)}</td>
-                  <td>{entry.actor_name ?? entry.actor_email ?? '—'}</td>
-                  <td>
-                    <span className="sysadmin-badge sysadmin-badge--active">
-                      {ACTION_LABELS[entry.action] ?? entry.action}
-                    </span>
-                  </td>
-                  <td>{entry.target_type} #{entry.target_id}</td>
-                  <td>
-                    {hasDetails ? (
-                      <button
-                        className="sysadmin-details-toggle"
-                        onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                        aria-expanded={isExpanded}
-                        aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-                      >
-                        {isExpanded ? detailsStr : truncateJson(entry.details)}
-                      </button>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-secondary)' }}>—</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="sysadmin-pagination">
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            Previous
-          </button>
-          <span>Page {page} of {totalPages}</span>
-          <button
-            className="sysadmin-action-btn"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </div>
+      <DetailDrawer
+        open={detailEntry !== null}
+        title={detailEntry ? `${actionLabel(detailEntry)} details` : 'Audit event details'}
+        onClose={() => setDetailEntry(null)}
+      >
+        {detailEntry && (
+          <dl className="sysadmin-detail-list">
+            <div><dt>Actor</dt><dd>{detailEntry.actor_name ?? 'System event'}</dd></div>
+            <div><dt>Actor email</dt><dd>{detailEntry.actor_email ?? 'No account email'}</dd></div>
+            <div><dt>Event</dt><dd>{actionLabel(detailEntry)}</dd></div>
+            <div><dt>Affected record</dt><dd>{targetLabel(detailEntry)}</dd></div>
+            <div><dt>IP address</dt><dd>{detailEntry.ip_address ?? 'Not recorded'}</dd></div>
+            <div><dt>Timestamp</dt><dd>{formatTimestamp(detailEntry.created_at)}</dd></div>
+            {Object.entries(detailEntry.details).map(([key, value]) => (
+              <div key={key}><dt>{formatLabel(key)}</dt><dd>{formatDetailValue(value)}</dd></div>
+            ))}
+          </dl>
+        )}
+      </DetailDrawer>
+    </>
   )
 }

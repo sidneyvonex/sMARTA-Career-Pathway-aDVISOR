@@ -1,175 +1,218 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { schoolAdminApi, type SchoolCounselor } from '../../api/schoolAdmin'
 import EmptyState from '../../components/common/dashboard/EmptyState'
-import ErrorState from '../../components/common/dashboard/ErrorState'
-import ResponsiveDataList, { type DataColumn } from '../../components/common/dashboard/ResponsiveDataList'
-import SectionHeader from '../../components/common/dashboard/SectionHeader'
+import ConfirmDialog from '../../components/common/management/ConfirmDialog'
+import DetailDrawer from '../../components/common/management/DetailDrawer'
+import ManagementPage from '../../components/common/management/ManagementPage'
+import ManagementTable from '../../components/common/management/ManagementTable'
+import ManagementToolbar from '../../components/common/management/ManagementToolbar'
+import type { ManagementColumn } from '../../components/common/management/types'
 import '../../styles/dashboard.css'
 import '../../styles/school-admin.css'
+
+const getCounsellorName = (counsellor: SchoolCounselor) => (
+  `${counsellor.first_name} ${counsellor.last_name}`
+)
 
 export default function CounselorManagementPage() {
   const queryClient = useQueryClient()
   const [email, setEmail] = useState('')
   const [search, setSearch] = useState('')
-  const [removingId, setRemovingId] = useState<number | null>(null)
+  const [detailCounsellor, setDetailCounsellor] = useState<SchoolCounselor | null>(null)
+  const [removingCounsellor, setRemovingCounsellor] = useState<SchoolCounselor | null>(null)
 
-  const { data: counselors, isLoading, isError, refetch } = useQuery({
+  const { data: counsellors, isLoading, isError, refetch } = useQuery({
     queryKey: ['school-admin', 'counselors'],
-    queryFn: () => schoolAdminApi.getCounselors().then(r => r.data.data),
+    queryFn: () => schoolAdminApi.getCounselors().then(response => response.data.data),
   })
 
   const addMutation = useMutation({
     mutationFn: (value: string) => schoolAdminApi.addCounselor(value),
-    onSuccess: (res) => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['school-admin', 'counselors'] })
       queryClient.invalidateQueries({ queryKey: ['school-admin', 'stats'] })
-      toast.success(res.data.message)
+      toast.success(response.data.message)
       setEmail('')
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message ?? 'Failed to add counselor.')
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message ?? 'Failed to add counsellor.')
     },
   })
 
   const removeMutation = useMutation({
     mutationFn: (id: number) => schoolAdminApi.removeCounselor(id),
-    onSuccess: (res) => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['school-admin', 'counselors'] })
       queryClient.invalidateQueries({ queryKey: ['school-admin', 'stats'] })
       queryClient.invalidateQueries({ queryKey: ['school-admin', 'students'] })
-      toast.success(res.data.message)
-      setRemovingId(null)
+      toast.success(response.data.message)
+      setRemovingCounsellor(null)
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message ?? 'Failed to remove counselor.')
-      setRemovingId(null)
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message ?? 'Failed to remove counsellor.')
     },
   })
 
-  function handleAdd(event: React.FormEvent) {
-    event.preventDefault()
-    if (email.trim()) addMutation.mutate(email.trim())
-  }
-
-  function handleRemove(id: number) {
-    if (removingId === id) {
-      removeMutation.mutate(id)
-    } else {
-      setRemovingId(id)
-    }
-  }
-
-  if (isLoading) return <p className="loading-text">Loading counsellors…</p>
-  if (isError) {
-    return (
-      <ErrorState
-        title="The counsellor list could not load"
-        description="No counsellor records were changed. Check your connection and try again."
-        onRetry={() => refetch()}
-        actionLabel="Retry counsellors"
-        secondaryAction={{ label: 'Return to dashboard', to: '/' }}
-      />
-    )
-  }
-
   const normalizedSearch = search.trim().toLowerCase()
-  const filtered = (counselors ?? []).filter(counselor => (
+  const filtered = useMemo(() => (counsellors ?? []).filter(counsellor => (
     !normalizedSearch
-    || `${counselor.first_name} ${counselor.last_name}`.toLowerCase().includes(normalizedSearch)
-    || counselor.email.toLowerCase().includes(normalizedSearch)
-  ))
-  const columns: DataColumn<SchoolCounselor>[] = [
+    || getCounsellorName(counsellor).toLowerCase().includes(normalizedSearch)
+    || counsellor.email.toLowerCase().includes(normalizedSearch)
+  )), [counsellors, normalizedSearch])
+
+  const columns: ManagementColumn<SchoolCounselor>[] = [
     {
-      key: 'name',
+      key: 'identity',
       label: 'Counsellor',
-      render: counselor => (
+      priority: 'identity',
+      render: counsellor => (
         <div className="admin-person">
-          <strong>{counselor.first_name} {counselor.last_name}</strong>
-          <span>{counselor.email}</span>
+          <strong>{getCounsellorName(counsellor)}</strong>
+          <span>{counsellor.email}</span>
         </div>
       ),
     },
     {
       key: 'workload',
       label: 'Workload',
-      render: counselor => (
+      priority: 'essential',
+      render: counsellor => (
         <span className="admin-workload">
-          {counselor.student_count} learner{counselor.student_count === 1 ? '' : 's'}
+          {counsellor.student_count} learner{counsellor.student_count === 1 ? '' : 's'}
         </span>
       ),
     },
     {
       key: 'joined',
       label: 'Joined',
-      render: counselor => new Date(counselor.joined_at).toLocaleDateString(),
-    },
-    {
-      key: 'actions',
-      label: 'Action',
-      align: 'end',
-      render: counselor => (
-        <button
-          type="button"
-          className="btn-ghost"
-          onClick={() => handleRemove(counselor.id)}
-          disabled={removeMutation.isPending}
-          style={removingId === counselor.id ? { color: 'var(--color-error)' } : undefined}
-        >
-          {removingId === counselor.id ? 'Confirm Remove' : 'Remove'}
-        </button>
-      ),
+      priority: 'secondary',
+      render: counsellor => new Date(counsellor.joined_at).toLocaleDateString(),
     },
   ]
 
-  return (
-    <div className="counselor-management-page">
-      <SectionHeader
-        eyebrow="School team"
-        title="Counselors"
-        description="Invite counsellors and keep learner workloads visible before making assignments."
+  function handleAdd(event: React.FormEvent) {
+    event.preventDefault()
+    if (email.trim()) addMutation.mutate(email.trim())
+  }
+
+  const inviteForm = (
+    <form onSubmit={handleAdd} className="counsellor-invite-form">
+      <label htmlFor="counselor-email" className="sr-only">Counselor email</label>
+      <input
+        id="counselor-email"
+        type="email"
+        value={email}
+        onChange={event => setEmail(event.target.value)}
+        placeholder="Counselor email address"
+        required
       />
+      <button type="submit" className="btn-primary" disabled={addMutation.isPending}>
+        {addMutation.isPending ? 'Adding…' : 'Add Counselor'}
+      </button>
+    </form>
+  )
 
-      <form onSubmit={handleAdd} className="counselor-management-page__add-form">
-        <label htmlFor="counselor-email" className="sr-only">Counselor email</label>
-        <input
-          id="counselor-email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="Counselor email address"
-          required
-        />
-        <button type="submit" className="btn-primary" disabled={addMutation.isPending}>
-          {addMutation.isPending ? 'Adding…' : 'Add Counselor'}
-        </button>
-      </form>
-
-      <label className="admin-search">
-        <span>Search counsellors</span>
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or email"
-        />
-      </label>
-
-      <ResponsiveDataList
-        ariaLabel="School counsellors"
-        items={filtered}
-        columns={columns}
-        getKey={counselor => counselor.id}
-        empty={(
-          <EmptyState
-            title={search ? 'No matching counsellors' : 'No counsellors yet'}
-            description={search
-              ? 'Try a different name or email.'
-              : 'Add a verified counsellor by email to begin assigning learners.'}
+  const toolbar = (
+    <ManagementToolbar
+      resultCount={`${filtered.length} counsellor${filtered.length === 1 ? '' : 's'}`}
+      search={(
+        <label htmlFor="counsellor-search">
+          <span>Search counsellors</span>
+          <input
+            id="counsellor-search"
+            type="search"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search by name or email"
           />
+        </label>
+      )}
+    />
+  )
+
+  return (
+    <>
+      <ManagementPage
+        eyebrow="School team"
+        title="Counsellors"
+        description="Invite counsellors and keep learner workloads visible before making assignments."
+        pageAction={inviteForm}
+        toolbar={toolbar}
+        loading={isLoading}
+        error={isError ? {
+          title: 'The counsellor list could not load',
+          description: 'No counsellor records were changed. Check your connection and try again.',
+        } : undefined}
+        onRetry={() => refetch()}
+        errorActionLabel="Retry counsellors"
+      >
+        <ManagementTable
+          ariaLabel="School counsellors"
+          records={filtered}
+          columns={columns}
+          getKey={counsellor => counsellor.id}
+          getRecordLabel={getCounsellorName}
+          getPrimaryAction={counsellor => ({
+            id: 'view-workload',
+            label: `View workload for ${getCounsellorName(counsellor)}`,
+            onSelect: () => setDetailCounsellor(counsellor),
+          })}
+          getSecondaryActions={counsellor => [{
+            id: 'remove',
+            label: 'Remove',
+            tone: 'danger',
+            disabled: removeMutation.isPending,
+            onSelect: () => setRemovingCounsellor(counsellor),
+          }]}
+          empty={(
+            <EmptyState
+              title={search ? 'No matching counsellors' : 'No counsellors yet'}
+              description={search
+                ? 'Try a different name or email.'
+                : 'Add a verified counsellor by email to begin assigning learners.'}
+            />
+          )}
+        />
+      </ManagementPage>
+
+      <DetailDrawer
+        open={detailCounsellor !== null}
+        title={detailCounsellor ? `${getCounsellorName(detailCounsellor)} workload` : 'Counsellor workload'}
+        onClose={() => setDetailCounsellor(null)}
+      >
+        {detailCounsellor && (
+          <dl className="counsellor-workload-details">
+            <div>
+              <dt>Email</dt>
+              <dd>{detailCounsellor.email}</dd>
+            </div>
+            <div>
+              <dt>Assigned learners</dt>
+              <dd>{detailCounsellor.student_count} assigned learners</dd>
+            </div>
+            <div>
+              <dt>Joined</dt>
+              <dd>{new Date(detailCounsellor.joined_at).toLocaleDateString()}</dd>
+            </div>
+          </dl>
         )}
+      </DetailDrawer>
+
+      <ConfirmDialog
+        open={removingCounsellor !== null}
+        title={removingCounsellor ? `Remove ${getCounsellorName(removingCounsellor)}?` : 'Remove counsellor?'}
+        description={removingCounsellor
+          ? `${getCounsellorName(removingCounsellor)} will no longer be available for learner assignments.`
+          : 'This counsellor will no longer be available for learner assignments.'}
+        confirmLabel={removeMutation.isPending ? 'Removing…' : 'Remove counsellor'}
+        pending={removeMutation.isPending}
+        onClose={() => setRemovingCounsellor(null)}
+        onConfirm={() => {
+          if (removingCounsellor) removeMutation.mutate(removingCounsellor.id)
+        }}
       />
-    </div>
+    </>
   )
 }

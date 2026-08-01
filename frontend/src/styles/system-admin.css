@@ -468,6 +468,81 @@
   }
 }
 
+/* ===== Shared system administration management details ===== */
+
+.sysadmin-create-form__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.sysadmin-create-form__heading h2,
+.sysadmin-create-form__heading p {
+  margin: 0;
+}
+
+.sysadmin-create-form__heading h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+}
+
+.sysadmin-create-form__heading p {
+  max-width: 42rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.sysadmin-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.sysadmin-detail-list > div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.sysadmin-detail-list > div:first-child {
+  padding-top: 0;
+}
+
+.sysadmin-detail-list > div:last-child {
+  border-bottom: 0;
+}
+
+.sysadmin-detail-list dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sysadmin-detail-list dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  overflow-wrap: anywhere;
+}
+
+.sysadmin-audit-summary {
+  display: block;
+  max-width: 22rem;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .sysadmin-create-form__heading {
+    flex-direction: column;
+  }
+}
+
 /* ===== Framework catalogue ===== */
 
 .catalogue-page {

@@ -5,6 +5,7 @@ interface LayoutState {
   mobileSidebarOpen: boolean
   toggleSidebar: () => void
   setMobileSidebarOpen: (open: boolean) => void
+  resetTransientNavigation: () => void
 }
 
 export const useLayoutStore = create<LayoutState>((set) => ({
@@ -12,4 +13,5 @@ export const useLayoutStore = create<LayoutState>((set) => ({
   mobileSidebarOpen: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
+  resetTransientNavigation: () => set({ mobileSidebarOpen: false }),
 }))

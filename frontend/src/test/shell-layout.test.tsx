@@ -103,6 +103,17 @@ describe('authenticated shell layout', () => {
     expect(openButton).toHaveFocus()
   })
 
+  it('closes transient mobile navigation when the user logs out', async () => {
+    useLayoutStore.setState({ mobileSidebarOpen: true })
+    renderShell()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+
+    await waitFor(() => {
+      expect(useLayoutStore.getState().mobileSidebarOpen).toBe(false)
+    })
+  })
+
   it('wraps page content in the shared authenticated content container', () => {
     renderShell()
 
@@ -120,5 +131,11 @@ describe('authenticated shell layout', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'Offline. Saved pages may remain available, but updates need a connection.',
     )
+  })
+
+  it('keeps the closed notification drawer out of the accessibility and layout trees', () => {
+    renderShell()
+
+    expect(screen.queryByRole('dialog', { name: 'Notifications' })).not.toBeInTheDocument()
   })
 })
