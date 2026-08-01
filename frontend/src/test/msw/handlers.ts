@@ -125,6 +125,22 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/progress/', () => {
+    return HttpResponse.json({
+      data: {
+        subjects: [],
+        overall: {
+          status: 'insufficient_evidence',
+          label: 'Insufficient evidence',
+          subject_continuity_codes: [],
+        },
+        advisory_disclaimer: 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
   http.get('/api/v1/students/dashboard/', () => {
     return HttpResponse.json({
       data: {

@@ -42,8 +42,9 @@ from counselors.models import CounselorAssignment
 from .models import Subject, StudentSubject, CBCGrade
 from .serializers import (
     StudentProfileSerializer, SubjectSerializer,
-    StudentSubjectSerializer, CBCGradeSerializer,
+    StudentSubjectSerializer, CBCGradeSerializer, ProgressAssessmentSerializer,
 )
+from .progress import derive_progress_for_enrolments
 from .summaries import (
     academic_evidence_summary,
     assessment_summary,
@@ -849,6 +850,31 @@ class MySubjectRemoveView(APIView):
             return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
         ss.archive()
         return _success(message='Subject removed.')
+
+
+class ProgressAssessmentView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        enrolments = (
+            StudentSubject.objects.filter(student_profile=profile)
+            .select_related('subject')
+            .prefetch_related(
+                Prefetch(
+                    'grades',
+                    queryset=(
+                        CBCGrade.objects.select_related('framework')
+                        .prefetch_related('framework__level_definitions')
+                        .order_by(
+                            'academic_grade', 'year', 'term', 'created_at', 'pk'
+                        )
+                    ),
+                )
+            )
+        )
+        assessment = derive_progress_for_enrolments(enrolments)
+        return _success(data=ProgressAssessmentSerializer(assessment).data)
 
 
 class CBCGradeListView(APIView):

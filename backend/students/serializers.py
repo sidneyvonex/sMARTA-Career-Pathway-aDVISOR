@@ -116,3 +116,43 @@ class CBCGradeSerializer(serializers.ModelSerializer):
                 f'Year must be between {current_year - 5} and {current_year + 1}.'
             )
         return value
+
+
+class ProgressEvidenceSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    academic_grade = serializers.IntegerField()
+    year = serializers.IntegerField()
+    term = serializers.IntegerField()
+    level = serializers.CharField()
+    rank = serializers.IntegerField()
+    framework = serializers.DictField()
+    source = serializers.CharField()
+    verified_by = serializers.IntegerField(allow_null=True)
+    verified_school = serializers.IntegerField(allow_null=True)
+    verified_at = serializers.DateTimeField(allow_null=True)
+    created_at = serializers.DateTimeField()
+
+
+class ProgressSubjectSerializer(serializers.Serializer):
+    continuity_code = serializers.CharField()
+    subject_name = serializers.CharField()
+    status = serializers.CharField()
+    label = serializers.CharField()
+    rule_code = serializers.CharField()
+    explanation = serializers.CharField()
+    suggested_action = serializers.CharField()
+    evidence_confidence = serializers.CharField()
+    records_used = ProgressEvidenceSerializer(many=True)
+    evidence = ProgressEvidenceSerializer(many=True)
+
+
+class ProgressOverallSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    label = serializers.CharField()
+    subject_continuity_codes = serializers.ListField(child=serializers.CharField())
+
+
+class ProgressAssessmentSerializer(serializers.Serializer):
+    subjects = ProgressSubjectSerializer(many=True)
+    overall = ProgressOverallSerializer()
+    advisory_disclaimer = serializers.CharField()

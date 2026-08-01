@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
-    CBCGradeListView, CBCGradeDetailView,
+    CBCGradeListView, CBCGradeDetailView, ProgressAssessmentView,
     StudentCounselorView, StudentDashboardView, EvidenceSummaryView, GradeSummaryView,
     StudentInterventionsView,
     StudentSchoolMembershipListCreateView,
@@ -48,6 +48,7 @@ urlpatterns = [
         name='student-interventions',
     ),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
+    path('progress/', ProgressAssessmentView.as_view(), name='student-progress'),
     path(
         'combination-choices/',
         LearnerCombinationChoiceListCreateView.as_view(),

@@ -84,6 +84,60 @@ export interface CBCGrade {
   updated_at: string
 }
 
+export type ProgressStatus =
+  | 'support'
+  | 'insufficient_evidence'
+  | 'needs_attention'
+  | 'strong'
+  | 'on_track'
+
+export type ProgressRuleCode =
+  | 'missing_evidence'
+  | 'latest_be_support'
+  | 'one_non_be_insufficient'
+  | 'two_ae_be_support'
+  | 'latest_ae_or_two_declines_attention'
+  | 'latest_ee_or_improving_to_me2_strong'
+  | 'otherwise_me_on_track'
+
+export interface ProgressEvidence {
+  id: number
+  academic_grade: AcademicGrade
+  year: number
+  term: 1 | 2 | 3
+  level: GradeLevel
+  rank: number
+  framework: { code: string; version: string }
+  source: 'learner' | 'school'
+  verified_by: number | null
+  verified_school: number | null
+  verified_at: string | null
+  created_at: string
+}
+
+export interface SubjectProgress {
+  continuity_code: string
+  subject_name: string
+  status: ProgressStatus
+  label: string
+  rule_code: ProgressRuleCode
+  explanation: string
+  suggested_action: string
+  evidence_confidence: 'school_verified' | 'learner_entered' | 'mixed'
+  records_used: ProgressEvidence[]
+  evidence: ProgressEvidence[]
+}
+
+export interface ProgressAssessment {
+  subjects: SubjectProgress[]
+  overall: {
+    status: ProgressStatus
+    label: string
+    subject_continuity_codes: string[]
+  }
+  advisory_disclaimer: string
+}
+
 export interface EvidenceSummary {
   profile_completion: {
     status: 'complete' | 'incomplete'
@@ -158,6 +212,9 @@ export const studentsApi = {
 
   getEvidenceSummary: () =>
     api.get<{ data: EvidenceSummary }>('/students/evidence-summary/'),
+
+  getProgress: () =>
+    api.get<{ data: ProgressAssessment }>('/students/progress/'),
 
   getInterventions: () =>
     api.get<{ data: CounselorIntervention[] }>('/students/interventions/'),
