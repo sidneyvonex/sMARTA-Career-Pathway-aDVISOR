@@ -1042,26 +1042,19 @@ class AcademicGoalDetailView(APIView):
 
     put = patch
 
-    @transaction.atomic
     def delete(self, request, goal_id):
         if request.user.role != 'student':
             return _error(
                 "You don't have permission to do that.",
                 status.HTTP_403_FORBIDDEN,
             )
-        goal = AcademicGoal.objects.select_for_update().filter(
-            pk=goal_id,
-            learner__user=request.user,
-        ).first()
-        if goal is None:
-            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
-        if goal.status != AcademicGoal.STATUS_ACTIVE:
-            return _error(
-                'Only an active academic goal can be closed.',
-                status.HTTP_409_CONFLICT,
-            )
         try:
-            goal.close(actor=request.user)
+            goal = AcademicGoal.close_goal(
+                goal_id=goal_id,
+                actor=request.user,
+            )
+        except AcademicGoal.DoesNotExist:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
         except ValidationError as exc:
             return _error(
                 exc.message_dict if hasattr(exc, 'message_dict') else exc.messages,

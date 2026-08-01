@@ -12,6 +12,7 @@ from students.admin import AcademicGoalAdmin
 from students.models import (
     AcademicGoal,
     AssessmentFramework,
+    CBCGrade,
     PerformanceLevelDefinition,
 )
 from tests.factories import (
@@ -19,6 +20,7 @@ from tests.factories import (
     CBCGradeFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
+    PerformanceLevelDefinitionFactory,
     StudentProfileFactory,
     StudentSubjectFactory,
     SubjectFactory,
@@ -569,6 +571,81 @@ def test_bulk_create_is_rejected_for_academic_goal_audit_rows():
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize('status', ['active', 'closed', 'achieved'])
+def test_instance_delete_rejects_erasing_goal_history(status):
+    """Catches public instance deletion erasing active or terminal audit history."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        learner=profile,
+        current_evidence=grade,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    if status == AcademicGoal.STATUS_CLOSED:
+        goal.close(actor=profile.user)
+    elif status == AcademicGoal.STATUS_ACHIEVED:
+        CBCGradeFactory(
+            student_subject=enrollment,
+            framework=grade.framework,
+            level='ME1',
+            term=2,
+            year=2026,
+        )
+        goal.mark_achieved(actor=profile.user)
+
+    with pytest.raises(ValidationError, match='cannot be deleted'):
+        goal.delete()
+
+    assert AcademicGoal.objects.filter(pk=goal.pk, status=status).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('status', ['active', 'closed', 'achieved'])
+def test_queryset_delete_rejects_erasing_goal_history(status):
+    """Catches public queryset deletion bypassing the goal history boundary."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        learner=profile,
+        current_evidence=grade,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    if status == AcademicGoal.STATUS_CLOSED:
+        goal.close(actor=profile.user)
+    elif status == AcademicGoal.STATUS_ACHIEVED:
+        CBCGradeFactory(
+            student_subject=enrollment,
+            framework=grade.framework,
+            level='ME1',
+            term=2,
+            year=2026,
+        )
+        goal.mark_achieved(actor=profile.user)
+
+    with pytest.raises(ValidationError, match='cannot be deleted'):
+        AcademicGoal.objects.filter(pk=goal.pk).delete()
+
+    assert AcademicGoal.objects.filter(pk=goal.pk, status=status).exists()
+
+
+@pytest.mark.django_db
+def test_student_profile_cascade_uses_django_collector_without_public_delete_bypass():
+    """Catches the public delete guard accidentally blocking the declared learner cascade."""
+    profile, enrollment, grade = learner_with_evidence()
+    goal = AcademicGoalFactory(
+        learner=profile,
+        current_evidence=grade,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    grade.delete()
+
+    profile.delete()
+
+    assert not AcademicGoal.objects.filter(pk=goal.pk).exists()
+
+
+@pytest.mark.django_db
 def test_database_rejects_achieved_goal_confirmed_by_non_creator():
     """Catches same-row confirmation actor incoherence below the model manager."""
     profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
@@ -819,6 +896,188 @@ def test_reused_level_code_cannot_redirect_later_evidence_definition_identity():
 
 
 @pytest.mark.django_db
+def test_later_evidence_with_new_reused_definition_id_does_not_fallback_by_code():
+    """Catches non-legacy stable evidence being remapped through a reused code."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    goal_id = client.post(
+        GOALS_URL, create_payload(grade), format='json'
+    ).data['data']['id']
+    original_target = target_level(grade.framework, 'ME1')
+    original_target.code = 'ME1-HISTORICAL'
+    original_target.save(update_fields=['code'])
+    reused_definition = PerformanceLevelDefinitionFactory(
+        framework=grade.framework,
+        code='ME1',
+        rank=9,
+    )
+    later = CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+
+    response = client.get(f'{GOALS_URL}{goal_id}/')
+
+    assert later.level_definition_id_snapshot == reused_definition.id
+    assert response.data['data']['ready_for_achievement'] is False
+    assert response.data['data']['readiness_evidence'] is None
+
+
+@pytest.mark.django_db
+def test_grade_save_rejects_snapshot_rewrite_when_definition_identity_is_unchanged():
+    """Catches direct model saves redirecting stable evidence to another definition."""
+    _profile, _enrollment, grade = learner_with_evidence(level='BE2')
+    original_definition_id = grade.level_definition_id_snapshot
+    forged_definition = target_level(grade.framework, 'ME1')
+    grade.level_definition_id_snapshot = forged_definition.id
+
+    with pytest.raises(ValidationError, match='definition snapshot is immutable'):
+        grade.save(update_fields=['level_definition_id_snapshot'])
+
+    grade.refresh_from_db()
+    assert grade.level_definition_id_snapshot == original_definition_id
+
+
+@pytest.mark.django_db
+def test_grade_level_change_recomputes_definition_snapshot_with_update_fields():
+    """Catches a validated level edit retaining a stale stable-definition ID."""
+    _profile, _enrollment, grade = learner_with_evidence(level='ME2')
+    changed_definition = target_level(grade.framework, 'AE1')
+    grade.level = 'AE1'
+
+    grade.save(update_fields=['level'])
+
+    grade.refresh_from_db()
+    assert grade.level == 'AE1'
+    assert grade.level_definition_id_snapshot == changed_definition.id
+
+
+@pytest.mark.django_db
+def test_cbc_grade_queryset_and_bulk_paths_reject_evidence_identity_rewrites():
+    """Catches bulk persistence bypassing validated evidence-definition identity."""
+    _profile, enrollment, grade = learner_with_evidence(level='ME2')
+
+    for field, value in (
+        ('student_subject_id', enrollment.id),
+        ('framework_id', grade.framework_id),
+        ('academic_grade', 10),
+        ('term', 2),
+        ('year', 2027),
+        ('level', 'AE1'),
+        (
+            'level_definition_id_snapshot',
+            target_level(grade.framework, 'AE1').id,
+        ),
+    ):
+        with pytest.raises(ValidationError, match='grade bulk persistence'):
+            CBCGrade.objects.filter(pk=grade.pk).update(**{field: value})
+
+    grade.level = 'AE1'
+    with pytest.raises(ValidationError, match='grade bulk persistence'):
+        CBCGrade.objects.bulk_update([grade], ['level'])
+
+    pending = CBCGradeFactory.build(
+        student_subject=enrollment,
+        framework=grade.framework,
+        term=2,
+        year=2026,
+    )
+    with pytest.raises(ValidationError, match='grade bulk persistence'):
+        CBCGrade.objects.bulk_create([pending])
+
+
+@pytest.mark.django_db
+def test_learner_grade_update_refreshes_stable_definition_identity():
+    """Catches the supported learner API retaining a stale definition after level edit."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2')
+    expected_definition = target_level(grade.framework, 'AE1')
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.put(
+        f'/api/v1/students/my-subjects/{enrollment.id}/grades/{grade.id}/',
+        {'term': 1, 'year': 2026, 'level': 'AE1', 'raw_score': None},
+        format='json',
+    )
+
+    assert response.status_code == 200
+    grade.refresh_from_db()
+    assert grade.level_definition_id_snapshot == expected_definition.id
+
+
+@pytest.mark.django_db
+def test_goal_creation_uses_grade_definition_id_after_definition_code_reuse():
+    """Catches a renamed definition's reused code redirecting a new goal baseline."""
+    profile, _enrollment, grade = learner_with_evidence(level='ME2')
+    original_definition = target_level(grade.framework, 'ME2')
+    original_definition.code = 'ME2-HISTORICAL'
+    original_definition.save(update_fields=['code'])
+    reused_definition = target_level(grade.framework, 'BE2')
+    reused_definition.code = 'ME2'
+    reused_definition.save(update_fields=['code'])
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.post(GOALS_URL, create_payload(grade), format='json')
+
+    assert response.status_code == 201
+    goal = AcademicGoal.objects.get(pk=response.data['data']['id'])
+    snapshot = response.data['data']['creation_evidence_snapshot']
+    assert goal.current_level_definition_id == original_definition.id
+    assert snapshot['level'] == {
+        'code': 'ME2',
+        'rank': 5,
+        'definition_id': original_definition.id,
+    }
+
+
+@pytest.mark.django_db
+def test_goal_creation_falls_back_to_code_only_for_legacy_missing_grade_snapshot():
+    """Catches removal of the explicit compatibility path for pre-snapshot evidence."""
+    profile, _enrollment, grade = learner_with_evidence(level='ME2')
+    definition = target_level(grade.framework, 'ME2')
+    CBCGrade._base_manager.filter(pk=grade.pk).update(
+        level_definition_id_snapshot=None,
+    )
+    grade.refresh_from_db()
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.post(GOALS_URL, create_payload(grade), format='json')
+
+    assert response.status_code == 201
+    assert response.data['data']['creation_evidence_snapshot']['level'][
+        'definition_id'
+    ] == definition.id
+
+
+@pytest.mark.django_db
+def test_goal_creation_rejects_grade_snapshot_from_another_framework():
+    """Catches accepting a stable definition ID that contradicts its stored framework."""
+    profile, _enrollment, grade = learner_with_evidence(level='ME2')
+    other_framework = AssessmentFramework.objects.get(
+        scope='junior_school',
+        status=AssessmentFramework.STATUS_ACTIVE,
+    )
+    other_definition = target_level(other_framework, 'ME2')
+    CBCGrade._base_manager.filter(pk=grade.pk).update(
+        level_definition_id_snapshot=other_definition.id,
+    )
+    grade.refresh_from_db()
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.post(GOALS_URL, create_payload(grade), format='json')
+
+    assert response.status_code == 400
+    assert 'framework' in str(response.data['message']).casefold()
+
+
+@pytest.mark.django_db
 def test_confirmation_acquires_enrolment_evidence_then_goal_locks():
     """Catches reintroducing the grade-delete/confirmation lock cycle."""
     profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
@@ -933,6 +1192,72 @@ def test_stale_terminal_transition_cannot_overwrite_achievement():
     assert stale.status == AcademicGoal.STATUS_ACHIEVED
     assert stale.achieved_at is not None
     assert stale.closed_at is None
+
+
+@pytest.mark.django_db
+def test_public_close_owns_atomic_goal_only_reload_and_returns_updated_instance():
+    """Catches close relying on a caller transaction or acquiring reverse-order locks."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        current_evidence=grade,
+        learner=profile,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    observed_goal_reads = []
+    observed_evidence_reads = []
+    baseline_atomic_depth = len(connection.atomic_blocks)
+
+    def capture_atomic_reads(execute, sql, params, many, context):
+        normalized = sql.casefold()
+        if normalized.lstrip().startswith('select'):
+            if 'students_academicgoal' in normalized:
+                observed_goal_reads.append(len(connection.atomic_blocks))
+            if any(
+                table in normalized
+                for table in ('students_studentsubject', 'students_cbcgrade')
+            ):
+                observed_evidence_reads.append(normalized)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(capture_atomic_reads):
+        returned = goal.close(actor=profile.user)
+
+    assert observed_goal_reads
+    assert all(depth > baseline_atomic_depth for depth in observed_goal_reads)
+    assert observed_evidence_reads == []
+    assert returned is goal
+    assert goal.status == AcademicGoal.STATUS_CLOSED
+
+
+@pytest.mark.django_db
+def test_close_endpoint_rejects_terminal_goal_without_overwriting_achievement():
+    """Catches endpoint code bypassing the transaction-owning close transition."""
+    profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
+    goal = AcademicGoalFactory(
+        current_evidence=grade,
+        learner=profile,
+        continuity_code=enrollment.continuity_code,
+        created_by=profile.user,
+    )
+    CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='ME1',
+        term=2,
+        year=2026,
+    )
+    goal.mark_achieved(actor=profile.user)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.delete(f'{GOALS_URL}{goal.id}/')
+
+    assert response.status_code == 409
+    goal.refresh_from_db()
+    assert goal.status == AcademicGoal.STATUS_ACHIEVED
+    assert goal.achieved_at is not None
+    assert goal.closed_at is None
 
 
 @pytest.mark.django_db

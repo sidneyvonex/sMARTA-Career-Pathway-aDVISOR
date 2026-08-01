@@ -34,6 +34,15 @@ GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
 _ACADEMIC_GOAL_LIFECYCLE_TRANSITION = object()
 
 
+class AcademicGoalHistoryDeletionError(ValidationError):
+    """Raised when application code attempts to erase a goal audit row."""
+
+    def __init__(self):
+        super().__init__(
+            'Academic goal history cannot be deleted; close an active goal instead.'
+        )
+
+
 def set_academic_goal_evidence_null(collector, field, sub_objs, using):
     """Preserve SET_NULL semantics without exposing a public queryset bypass."""
     collector.add_field_update(field, None, list(sub_objs))
@@ -252,6 +261,43 @@ class StudentSubject(models.Model):
         self.save(update_fields=['is_active', 'ended_at', 'active_identity'])
 
 
+class CBCGradeQuerySet(models.QuerySet):
+    PROTECTED_EVIDENCE_FIELDS = frozenset({
+        'student_subject',
+        'student_subject_id',
+        'framework',
+        'framework_id',
+        'academic_grade',
+        'term',
+        'year',
+        'level',
+        'level_definition_id_snapshot',
+    })
+
+    @staticmethod
+    def _bulk_persistence_error():
+        return ValidationError(
+            'CBC grade bulk persistence cannot modify evidence identity fields.'
+        )
+
+    def update(self, **kwargs):
+        if set(kwargs) & self.PROTECTED_EVIDENCE_FIELDS:
+            raise self._bulk_persistence_error()
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if set(fields) & self.PROTECTED_EVIDENCE_FIELDS:
+            raise self._bulk_persistence_error()
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+    def bulk_create(self, objs, **kwargs):
+        raise self._bulk_persistence_error()
+
+
+class CBCGradeManager(models.Manager.from_queryset(CBCGradeQuerySet)):
+    pass
+
+
 class CBCGrade(models.Model):
     TERM_CHOICES = [(1, 'Term 1'), (2, 'Term 2'), (3, 'Term 3')]
     SOURCE_CHOICES = [('learner', 'Learner'), ('school', 'School')]
@@ -309,6 +355,8 @@ class CBCGrade(models.Model):
     verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = CBCGradeManager()
 
     class Meta:
         unique_together = ('student_subject', 'term', 'year')
@@ -426,19 +474,6 @@ class CBCGrade(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        level_identity_changed = self._state.adding
-        if not self._state.adding:
-            original_identity = type(self).objects.filter(pk=self.pk).values(
-                'framework_id',
-                'level',
-                'level_definition_id_snapshot',
-            ).first()
-            level_identity_changed = (
-                original_identity is None
-                or original_identity['framework_id'] != self.framework_id
-                or original_identity['level'] != self.level
-                or original_identity['level_definition_id_snapshot'] is None
-            )
         if self._state.adding:
             if self.academic_grade is None:
                 self.academic_grade = self.student_subject.academic_grade
@@ -469,19 +504,87 @@ class CBCGrade(models.Model):
                             )
                         }
                     ) from exc
-        if level_identity_changed and self.framework_id is not None:
+
+        update_fields = kwargs.get('update_fields')
+        persisted_update_fields = (
+            None if update_fields is None else set(update_fields)
+        )
+        original_identity = None
+        definition_identity_changed = self._state.adding
+        definition_framework_id = self.framework_id
+        definition_level = self.level
+        if not self._state.adding:
+            original_identity = type(self).objects.filter(pk=self.pk).values(
+                'student_subject_id',
+                'academic_grade',
+                'framework_id',
+                'level',
+                'level_definition_id_snapshot',
+            ).first()
+            if original_identity is None:
+                definition_identity_changed = True
+            else:
+                persisted_identity = {
+                    'student_subject_id': self.student_subject_id,
+                    'academic_grade': self.academic_grade,
+                    'framework_id': self.framework_id,
+                    'level': self.level,
+                }
+                if persisted_update_fields is not None:
+                    field_aliases = {
+                        'student_subject_id': {
+                            'student_subject',
+                            'student_subject_id',
+                        },
+                        'academic_grade': {'academic_grade'},
+                        'framework_id': {'framework', 'framework_id'},
+                        'level': {'level'},
+                    }
+                    persisted_identity = {
+                        field: (
+                            value
+                            if persisted_update_fields & field_aliases[field]
+                            else original_identity[field]
+                        )
+                        for field, value in persisted_identity.items()
+                    }
+                definition_identity_changed = any(
+                    original_identity[field] != value
+                    for field, value in persisted_identity.items()
+                )
+                definition_framework_id = persisted_identity['framework_id']
+                definition_level = persisted_identity['level']
+                original_snapshot = original_identity[
+                    'level_definition_id_snapshot'
+                ]
+                if (
+                    not definition_identity_changed
+                    and original_snapshot is not None
+                    and self.level_definition_id_snapshot != original_snapshot
+                ):
+                    raise ValidationError(
+                        {
+                            'level_definition_id_snapshot': (
+                                'The grade definition snapshot is immutable while '
+                                'the evidence identity is unchanged.'
+                            )
+                        }
+                    )
+                if original_snapshot is None:
+                    definition_identity_changed = True
+
+        if definition_identity_changed and definition_framework_id is not None:
             try:
                 self.level_definition_id_snapshot = (
                     PerformanceLevelDefinition.objects.only('pk').get(
-                        framework_id=self.framework_id,
-                        code=self.level,
+                        framework_id=definition_framework_id,
+                        code=definition_level,
                     ).pk
                 )
             except PerformanceLevelDefinition.DoesNotExist:
                 self.level_definition_id_snapshot = None
         self.clean()
-        update_fields = kwargs.get('update_fields')
-        if update_fields is not None and level_identity_changed:
+        if update_fields is not None and definition_identity_changed:
             kwargs['update_fields'] = set(update_fields) | {
                 'level_definition_id_snapshot',
             }
@@ -507,6 +610,9 @@ class AcademicGoalQuerySet(models.QuerySet):
 
     def bulk_create(self, objs, **kwargs):
         raise self._bulk_persistence_error()
+
+    def delete(self):
+        raise AcademicGoalHistoryDeletionError()
 
 
 class AcademicGoalManager(models.Manager.from_queryset(AcademicGoalQuerySet)):
@@ -710,14 +816,16 @@ class AcademicGoal(models.Model):
                 )
             }
         if level_definition_id is None:
-            level_definition_id = next(
-                (
-                    int(definition_id)
-                    for definition_id, definition in level_definitions.items()
-                    if definition['code'] == evidence.level
-                ),
-                None,
-            )
+            level_definition_id = evidence.level_definition_id_snapshot
+            if level_definition_id is None:
+                level_definition_id = next(
+                    (
+                        int(definition_id)
+                        for definition_id, definition in level_definitions.items()
+                        if definition['code'] == evidence.level
+                    ),
+                    None,
+                )
         definition = level_definitions.get(str(level_definition_id))
         if definition is None:
             raise ValidationError(
@@ -835,10 +943,15 @@ class AcademicGoal(models.Model):
                     {'continuity_code': 'Current evidence must match the goal subject.'}
                 )
             current_level = self.current_level_definition
-            if (
-                current_level.framework_id != evidence.framework_id
-                or current_level.code != evidence.level
-            ):
+            current_definition_matches = (
+                current_level.framework_id == evidence.framework_id
+                and (
+                    current_level.pk == evidence.level_definition_id_snapshot
+                    if evidence.level_definition_id_snapshot is not None
+                    else current_level.code == evidence.level
+                )
+            )
+            if not current_definition_matches:
                 raise ValidationError(
                     {
                         'current_level_definition': 'Current level must match the evidence snapshot.'
@@ -985,7 +1098,7 @@ class AcademicGoal(models.Model):
                     )
         if self._state.adding:
             current = self.current_level_definition
-            self.current_level_code = current.code
+            self.current_level_code = self.current_evidence.level
             self.current_level_rank = current.rank
             self.current_framework_code = current.framework.code
             self.current_framework_version = current.framework.version
@@ -1023,11 +1136,14 @@ class AcademicGoal(models.Model):
                 }
         return super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        raise AcademicGoalHistoryDeletionError()
+
     def _validate_actor(self, actor):
         if actor is None or actor.pk != self.learner.user_id:
             raise ValidationError('Only the learner can transition an academic goal.')
 
-    def close(self, *, actor=None):
+    def _close_locked(self, *, actor):
         self._validate_actor(actor)
         if self.status != self.STATUS_ACTIVE:
             raise ValidationError('Only an active academic goal can be closed.')
@@ -1046,6 +1162,27 @@ class AcademicGoal(models.Model):
                 'achievement_evidence_snapshot',
             ]
         )
+        return self
+
+    @classmethod
+    def close_goal(cls, *, goal_id, actor):
+        """Close after reloading the goal under its transaction-owned row lock."""
+        with transaction.atomic():
+            goal = (
+                cls.objects.select_for_update()
+                .select_related('learner')
+                .get(pk=goal_id, learner__user=actor)
+            )
+            return goal._close_locked(actor=actor)
+
+    def close(self, *, actor=None):
+        """Public transition delegates to the transaction-safe close service."""
+        self._validate_actor(actor)
+        if self.pk is None:
+            raise ValidationError('An academic goal must be saved before closing.')
+        transitioned = type(self).close_goal(goal_id=self.pk, actor=actor)
+        self.__dict__.update(transitioned.__dict__)
+        return self
 
     def _mark_achieved_locked(
         self,
@@ -1210,7 +1347,10 @@ class AcademicGoal(models.Model):
             ):
                 continue
             definition_id = definition_id_lookup.get(evidence.pk)
-            if str(definition_id) not in frozen_definitions:
+            if (
+                evidence.level_definition_id_snapshot is None
+                and str(definition_id) not in frozen_definitions
+            ):
                 definition_id = next(
                     (
                         int(frozen_id)

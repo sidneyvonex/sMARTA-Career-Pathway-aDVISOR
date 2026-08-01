@@ -223,13 +223,28 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'continuity_code': 'Academic evidence is required before setting a goal.'}
                 )
+            current_levels = PerformanceLevelDefinition.objects.select_related(
+                'framework'
+            )
             try:
-                current_level = PerformanceLevelDefinition.objects.select_related(
-                    'framework'
-                ).get(
-                    framework=current_evidence.framework,
-                    code=current_evidence.level,
-                )
+                if current_evidence.level_definition_id_snapshot is not None:
+                    current_level = current_levels.get(
+                        pk=current_evidence.level_definition_id_snapshot,
+                    )
+                    if current_level.framework_id != current_evidence.framework_id:
+                        raise serializers.ValidationError(
+                            {
+                                'continuity_code': (
+                                    'The stored performance definition does not '
+                                    'belong to the evidence framework.'
+                                )
+                            }
+                        )
+                else:
+                    current_level = current_levels.get(
+                        framework=current_evidence.framework,
+                        code=current_evidence.level,
+                    )
             except PerformanceLevelDefinition.DoesNotExist as exc:
                 raise serializers.ValidationError(
                     {'continuity_code': 'The current assessment framework is incomplete.'}
