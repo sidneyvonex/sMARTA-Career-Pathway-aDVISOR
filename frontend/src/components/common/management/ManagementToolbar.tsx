@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import '../../../styles/management.css'
 
 interface ManagementToolbarProps {
+  className?: string
   resultCount: string
   search: ReactNode
   filters?: ReactNode
@@ -10,6 +11,7 @@ interface ManagementToolbarProps {
 }
 
 export default function ManagementToolbar({
+  className,
   resultCount,
   search,
   filters,
@@ -17,7 +19,7 @@ export default function ManagementToolbar({
   bulkActions,
 }: ManagementToolbarProps) {
   return (
-    <div className="management-toolbar">
+    <div className={`management-toolbar${className ? ` ${className}` : ''}`}>
       <div className="management-toolbar__main">
         <div className="management-toolbar__search">{search}</div>
         {filters && <div className="management-toolbar__filters">{filters}</div>}

@@ -429,6 +429,7 @@ describe('SystemAdminAuditLogPage', () => {
     const table = await screen.findByRole('table', { name: 'Audit log entries' })
     expect(table).toBeInTheDocument()
     expect(table.closest('.sysadmin-audit-page')).toBeInTheDocument()
+    expect(screen.getByLabelText('Event').closest('.management-toolbar')).toHaveClass('sysadmin-audit-toolbar')
     expect(screen.getByRole('heading', { name: 'Audit log', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('2 entries')).toHaveAttribute('aria-live', 'polite')
     expect(screen.queryByText(/\{"/)).not.toBeInTheDocument()

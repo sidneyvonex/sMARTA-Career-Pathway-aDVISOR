@@ -152,6 +152,7 @@ export default function SystemAdminAuditLogPage() {
 
   const toolbar = (
     <ManagementToolbar
+      className="sysadmin-audit-toolbar"
       resultCount={`${total} ${total === 1 ? 'entry' : 'entries'}`}
       search={(
         <label htmlFor="audit-event">

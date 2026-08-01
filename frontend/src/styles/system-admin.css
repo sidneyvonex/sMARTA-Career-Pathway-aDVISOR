@@ -573,9 +573,14 @@
   min-width: 0;
 }
 
+.sysadmin-audit-toolbar .management-toolbar__main {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(19rem, auto) auto;
+}
+
 .sysadmin-audit-page .management-toolbar__filters {
   display: grid;
-  grid-template-columns: repeat(2, minmax(9rem, 12rem));
+  grid-template-columns: repeat(2, minmax(9rem, 10rem));
   align-items: end;
 }
 
@@ -603,14 +608,17 @@
   }
 }
 
-@container (max-width: 50rem) {
+@container (max-width: 42rem) {
   .sysadmin-audit-page .management-toolbar__main {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .sysadmin-audit-page .management-toolbar__search {
     grid-column: 1 / -1;
+  }
+
+  .sysadmin-audit-page .management-toolbar__filters {
+    grid-template-columns: repeat(2, minmax(9rem, 1fr));
   }
 }
 
