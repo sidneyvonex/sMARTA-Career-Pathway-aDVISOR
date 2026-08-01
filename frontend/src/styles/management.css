@@ -70,6 +70,7 @@
 }
 
 .management-toolbar__search input,
+.management-toolbar__search select,
 .management-toolbar__filters input,
 .management-toolbar__filters select,
 .management-pagination select {
