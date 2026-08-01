@@ -5,6 +5,7 @@ from .views import (
     CBCGradeListView, CBCGradeDetailView,
     StudentCounselorView, StudentDashboardView, EvidenceSummaryView, GradeSummaryView,
     StudentInterventionsView,
+    StudentSchoolMembershipListCreateView,
     LearnerCombinationChoiceDetailView,
     LearnerCombinationChoiceListCreateView,
     LearnerCombinationChoiceProvisionalView,
@@ -19,6 +20,11 @@ from parents.views import (
 )
 
 urlpatterns = [
+    path(
+        'school-memberships/',
+        StudentSchoolMembershipListCreateView.as_view(),
+        name='student-school-memberships',
+    ),
     path('dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
     path(
         'parent-access/',

@@ -10,7 +10,11 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsStudent, IsEmailVerified
-from accounts.models import StudentProfile
+from accounts.models import StudentProfile, StudentSchoolMembership
+from accounts.serializers import (
+    StudentSchoolMembershipRequestSerializer,
+    StudentSchoolMembershipSerializer,
+)
 from accounts.response import _success, _error
 from guidance.models import (
     FrameworkVersion,
@@ -300,6 +304,107 @@ class StudentInterventionsView(APIView):
                 interventions,
                 many=True,
             ).data
+        )
+
+
+class StudentSchoolMembershipListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        memberships = (
+            StudentSchoolMembership.objects
+            .filter(student_profile__user=request.user)
+            .select_related('school')
+        )
+        return _success(
+            data=StudentSchoolMembershipSerializer(
+                memberships,
+                many=True,
+            ).data
+        )
+
+    def post(self, request):
+        serializer = StudentSchoolMembershipRequestSerializer(
+            data=request.data,
+            context={},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        target_school = serializer.context['target_school']
+
+        with transaction.atomic():
+            profile = (
+                StudentProfile.objects.select_for_update()
+                .select_related('school')
+                .get(user=request.user)
+            )
+            memberships = StudentSchoolMembership.objects.select_for_update().filter(
+                student_profile=profile,
+            )
+            if memberships.filter(status='pending').exists():
+                return _error(
+                    'A school membership request is already pending.',
+                    status.HTTP_409_CONFLICT,
+                )
+            active = memberships.filter(status='active').first()
+            legacy_active_school_id = (
+                profile.school_id
+                if (
+                    active is None
+                    and not memberships.exists()
+                    and profile.school_id is not None
+                    and profile.mode == 'school_linked'
+                    and profile.school_membership_status == 'active'
+                )
+                else None
+            )
+            if (
+                (active is not None and active.school_id == target_school.pk)
+                or (
+                    legacy_active_school_id == target_school.pk
+                )
+            ):
+                return _error('You are already an active member of this school.')
+
+            if legacy_active_school_id is not None:
+                active = StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school_id=legacy_active_school_id,
+                    status=StudentSchoolMembership.STATUS_ACTIVE,
+                    started_at=profile.created_at,
+                )
+
+            try:
+                membership = StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=target_school,
+                    status=StudentSchoolMembership.STATUS_PENDING,
+                )
+            except IntegrityError:
+                return _error(
+                    'A school membership request is already pending.',
+                    status.HTTP_409_CONFLICT,
+                )
+
+            if active is None:
+                profile.mode = 'school_linked'
+                profile.school = target_school
+                profile.school_membership_status = 'pending'
+                profile.save(
+                    update_fields=[
+                        'mode',
+                        'school',
+                        'school_membership_status',
+                    ]
+                )
+
+        membership = StudentSchoolMembership.objects.select_related('school').get(
+            pk=membership.pk
+        )
+        return _success(
+            data=StudentSchoolMembershipSerializer(membership).data,
+            message='School membership request submitted.',
+            status_code=status.HTTP_201_CREATED,
         )
 
 
@@ -799,6 +904,11 @@ class CBCGradeDetailView(APIView):
             return _error(
                 'Grades cannot be changed on an archived subject enrollment.'
             )
+        if grade.verified_at is not None:
+            return _error(
+                'School-verified evidence cannot be edited by a learner.',
+                status.HTTP_403_FORBIDDEN,
+            )
         serializer = CBCGradeSerializer(grade, data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
@@ -819,6 +929,11 @@ class CBCGradeDetailView(APIView):
         if not grade.student_subject.is_active:
             return _error(
                 'Grades cannot be changed on an archived subject enrollment.'
+            )
+        if grade.verified_at is not None:
+            return _error(
+                'School-verified evidence cannot be deleted by a learner.',
+                status.HTTP_403_FORBIDDEN,
             )
         grade.delete()
         return _success(message='Grade deleted.')

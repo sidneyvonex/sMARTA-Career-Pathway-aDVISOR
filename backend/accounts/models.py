@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 from .managers import CustomUserManager
 
 COUNTY_CHOICES = [
@@ -124,3 +125,140 @@ class StudentProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - Grade {self.grade}"
+
+
+class StudentSchoolMembership(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_ACTIVE = 'active'
+    STATUS_REJECTED = 'rejected'
+    STATUS_ENDED = 'ended'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending Approval'),
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_REJECTED, 'Rejected'),
+        (STATUS_ENDED, 'Ended'),
+    ]
+
+    student_profile = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name='school_memberships',
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.PROTECT,
+        related_name='student_memberships',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    active_identity_key = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    pending_identity_key = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='decided_student_school_memberships',
+    )
+
+    class Meta:
+        ordering = ['-requested_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['active_identity_key'],
+                name='accounts_membership_active_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['pending_identity_key'],
+                name='accounts_membership_pending_uniq',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        status='active',
+                        active_identity_key=models.F('student_profile_id'),
+                    )
+                    | (
+                        ~models.Q(status='active')
+                        & models.Q(active_identity_key__isnull=True)
+                    )
+                ),
+                name='accounts_membership_active_key_ck',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        status='pending',
+                        pending_identity_key=models.F('student_profile_id'),
+                    )
+                    | (
+                        ~models.Q(status='pending')
+                        & models.Q(pending_identity_key__isnull=True)
+                    )
+                ),
+                name='accounts_membership_pending_key_ck',
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.student_profile.user.email} — '
+            f'{self.school.name} ({self.status})'
+        )
+
+    def save(self, *args, **kwargs):
+        self.active_identity_key = (
+            self.student_profile_id
+            if self.status == self.STATUS_ACTIVE
+            else None
+        )
+        self.pending_identity_key = (
+            self.student_profile_id
+            if self.status == self.STATUS_PENDING
+            else None
+        )
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {
+                'active_identity_key',
+                'pending_identity_key',
+            }
+        return super().save(*args, **kwargs)
+
+    def activate(self, *, decided_by):
+        now = timezone.now()
+        self.status = self.STATUS_ACTIVE
+        self.decided_by = decided_by
+        self.decided_at = now
+        self.started_at = now
+        self.ended_at = None
+        self.save(
+            update_fields=[
+                'status',
+                'decided_by',
+                'decided_at',
+                'started_at',
+                'ended_at',
+            ]
+        )
+
+    def reject(self, *, decided_by):
+        self.status = self.STATUS_REJECTED
+        self.decided_by = decided_by
+        self.decided_at = timezone.now()
+        self.save(update_fields=['status', 'decided_by', 'decided_at'])
+
+    def end(self):
+        self.status = self.STATUS_ENDED
+        self.ended_at = timezone.now()
+        self.save(update_fields=['status', 'ended_at'])

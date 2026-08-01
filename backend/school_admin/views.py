@@ -10,7 +10,12 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsSchoolAdmin, IsEmailVerified
-from accounts.models import School, User, StudentProfile
+from accounts.models import (
+    School,
+    User,
+    StudentProfile,
+    StudentSchoolMembership,
+)
 from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
@@ -174,15 +179,47 @@ class SchoolGradeVerificationView(APIView):
 
         with transaction.atomic():
             try:
+                profile = (
+                    StudentProfile.objects.select_for_update()
+                    .get(user_id=student_id)
+                )
+            except StudentProfile.DoesNotExist:
+                return _error(
+                    'Grade not found for an active learner at your school.',
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            membership_history = list(
+                StudentSchoolMembership.objects.select_for_update().filter(
+                    student_profile=profile,
+                )
+            )
+            if membership_history:
+                has_active_membership = any(
+                    membership.school_id == school.id
+                    and membership.status
+                    == StudentSchoolMembership.STATUS_ACTIVE
+                    for membership in membership_history
+                )
+            else:
+                has_active_membership = (
+                    profile.school_id == school.id
+                    and profile.mode == 'school_linked'
+                    and profile.school_membership_status == 'active'
+                )
+            if not has_active_membership:
+                return _error(
+                    'Grade not found for an active learner at your school.',
+                    status.HTTP_404_NOT_FOUND,
+                )
+
+            try:
                 grade = (
                     CBCGrade.objects.select_for_update()
                     .select_related('student_subject__student_profile')
                     .get(
                         pk=grade_id,
-                        student_subject__student_profile__user_id=student_id,
-                        student_subject__student_profile__school=school,
-                        student_subject__student_profile__mode='school_linked',
-                        student_subject__student_profile__school_membership_status='active',
+                        student_subject__student_profile=profile,
                     )
                 )
             except CBCGrade.DoesNotExist:
@@ -544,16 +581,44 @@ class SchoolMembershipRequestsView(APIView):
                 status.HTTP_404_NOT_FOUND,
             )
 
-        profiles = (
+        memberships = (
+            StudentSchoolMembership.objects.filter(
+                school=school,
+                status=StudentSchoolMembership.STATUS_PENDING,
+            )
+            .select_related('student_profile__user')
+            .order_by(
+                'requested_at',
+                'student_profile__user__first_name',
+                'student_profile__user__last_name',
+            )
+        )
+        data = [
+            {
+                'student_id': membership.student_profile.user_id,
+                'first_name': membership.student_profile.user.first_name,
+                'last_name': membership.student_profile.user.last_name,
+                'email': membership.student_profile.user.email,
+                'grade': membership.student_profile.grade,
+                'requested_at': membership.requested_at.isoformat(),
+            }
+            for membership in memberships
+        ]
+        represented_profile_ids = {
+            membership.student_profile_id for membership in memberships
+        }
+        legacy_profiles = (
             StudentProfile.objects.filter(
                 school=school,
                 mode='school_linked',
                 school_membership_status='pending',
             )
+            .exclude(pk__in=represented_profile_ids)
+            .filter(school_memberships__isnull=True)
             .select_related('user')
             .order_by('created_at', 'user__first_name', 'user__last_name')
         )
-        return _success(data=[
+        data.extend([
             {
                 'student_id': profile.user_id,
                 'first_name': profile.user.first_name,
@@ -562,8 +627,9 @@ class SchoolMembershipRequestsView(APIView):
                 'grade': profile.grade,
                 'requested_at': profile.created_at.isoformat(),
             }
-            for profile in profiles
+            for profile in legacy_profiles
         ])
+        return _success(data=data)
 
 
 class SchoolMembershipDecisionView(APIView):
@@ -586,11 +652,7 @@ class SchoolMembershipDecisionView(APIView):
                 profile = (
                     StudentProfile.objects.select_for_update()
                     .select_related('user')
-                    .get(
-                        user_id=student_id,
-                        school=school,
-                        mode='school_linked',
-                    )
+                    .get(user_id=student_id)
                 )
             except StudentProfile.DoesNotExist:
                 return _error(
@@ -598,15 +660,92 @@ class SchoolMembershipDecisionView(APIView):
                     status.HTTP_404_NOT_FOUND,
                 )
 
-            if profile.school_membership_status != 'pending':
-                return _error(
-                    'This membership request has already been decided.',
-                    status.HTTP_409_CONFLICT,
+            try:
+                membership = (
+                    StudentSchoolMembership.objects.select_for_update()
+                    .select_related('school')
+                    .get(
+                        student_profile=profile,
+                        school=school,
+                        status=StudentSchoolMembership.STATUS_PENDING,
+                    )
+                )
+            except StudentSchoolMembership.DoesNotExist:
+                is_legacy_pending = (
+                    profile.school_id == school.id
+                    and profile.mode == 'school_linked'
+                    and profile.school_membership_status == 'pending'
+                    and not profile.school_memberships.exists()
+                )
+                if not is_legacy_pending:
+                    decided_exists = StudentSchoolMembership.objects.filter(
+                        student_profile=profile,
+                        school=school,
+                    ).exists()
+                    return _error(
+                        (
+                            'This membership request has already been decided.'
+                            if decided_exists
+                            else 'Pending membership request not found.'
+                        ),
+                        (
+                            status.HTTP_409_CONFLICT
+                            if decided_exists
+                            else status.HTTP_404_NOT_FOUND
+                        ),
+                    )
+                membership = StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=school,
+                    status=StudentSchoolMembership.STATUS_PENDING,
                 )
 
-            membership_status = 'active' if decision == 'approve' else 'rejected'
-            profile.school_membership_status = membership_status
-            profile.save(update_fields=['school_membership_status'])
+            active_membership = (
+                StudentSchoolMembership.objects.select_for_update()
+                .filter(
+                    student_profile=profile,
+                    status=StudentSchoolMembership.STATUS_ACTIVE,
+                )
+                .first()
+            )
+            previous_school_id = (
+                active_membership.school_id if active_membership else None
+            )
+            if decision == 'approve':
+                if active_membership is not None:
+                    active_membership.end()
+                membership.activate(decided_by=request.user)
+                profile.mode = 'school_linked'
+                profile.school = school
+                profile.school_membership_status = 'active'
+                profile.save(
+                    update_fields=[
+                        'mode',
+                        'school',
+                        'school_membership_status',
+                    ]
+                )
+                if previous_school_id is not None:
+                    CounselorAssignment.objects.filter(
+                        student_profile=profile,
+                        school_id=previous_school_id,
+                        is_active=True,
+                    ).update(is_active=False)
+                membership_status = 'active'
+            else:
+                membership.reject(decided_by=request.user)
+                if active_membership is None:
+                    profile.mode = 'school_linked'
+                    profile.school = school
+                    profile.school_membership_status = 'rejected'
+                    profile.save(
+                        update_fields=[
+                            'mode',
+                            'school',
+                            'school_membership_status',
+                        ]
+                    )
+                membership_status = 'rejected'
 
             action = (
                 'school_membership_approved'
@@ -628,6 +767,8 @@ class SchoolMembershipDecisionView(APIView):
                     'school_id': school.id,
                     'school_name': school.name,
                     'decision': decision,
+                    'membership_id': membership.id,
+                    'previous_school_id': previous_school_id,
                 },
                 ip_address=ip_address,
             )
@@ -697,10 +838,15 @@ class SchoolStatsView(APIView):
         reviews_completed = profiles.filter(
             learner_plan__review_status='reviewed',
         ).count()
-        pending_memberships = StudentProfile.objects.filter(
+        pending_memberships = StudentSchoolMembership.objects.filter(
+            school=school,
+            status=StudentSchoolMembership.STATUS_PENDING,
+        ).count()
+        pending_memberships += StudentProfile.objects.filter(
             school=school,
             mode='school_linked',
             school_membership_status='pending',
+            school_memberships__isnull=True,
         ).count()
         assigned_ids = set(
             CounselorAssignment.objects.filter(school=school, is_active=True)

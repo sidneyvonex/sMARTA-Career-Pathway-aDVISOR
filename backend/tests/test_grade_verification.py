@@ -71,7 +71,7 @@ class TestLearnerGradeProvenanceProtection:
         assert grade.verified_at is None
         assert response.data['data']['source'] == 'learner'
 
-    def test_learner_update_does_not_clear_existing_verification(self):
+    def test_learner_cannot_update_existing_verified_evidence(self):
         verifier = SchoolAdminFactory()
         grade = CBCGradeFactory(
             student_subject=self.enrollment,
@@ -91,10 +91,11 @@ class TestLearnerGradeProvenanceProtection:
             format='json',
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 403
         grade.refresh_from_db()
         assert grade.verified_by == verifier
         assert grade.verified_at is not None
+        assert grade.level == 'ME1'
 
 
 class TestSchoolGradeVerification:

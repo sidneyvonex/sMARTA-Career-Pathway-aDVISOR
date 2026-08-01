@@ -2,7 +2,7 @@ from datetime import date
 
 import factory
 from django.contrib.auth import get_user_model
-from accounts.models import School, StudentProfile
+from accounts.models import School, StudentProfile, StudentSchoolMembership
 from students.models import (
     AssessmentFramework,
     CBCGrade,
@@ -89,6 +89,15 @@ class StudentProfileFactory(factory.django.DjangoModelFactory):
         lambda profile: 'active' if profile.mode == 'school_linked' else 'not_applicable'
     )
     grade = factory.Iterator([9, 10])
+
+
+class StudentSchoolMembershipFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = StudentSchoolMembership
+
+    student_profile = factory.SubFactory(StudentProfileFactory)
+    school = factory.SubFactory(SchoolFactory)
+    status = StudentSchoolMembership.STATUS_PENDING
 
 
 class SubjectFactory(factory.django.DjangoModelFactory):
