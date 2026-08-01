@@ -119,22 +119,22 @@ describe('SchoolProfilePage', () => {
 
   it('renders school profile form with labels', async () => {
     renderPage()
-    expect(await screen.findByLabelText('School Name')).toBeInTheDocument()
-    expect(screen.getByLabelText('School Code')).toBeInTheDocument()
+    expect(await screen.findByLabelText('School name')).toBeInTheDocument()
+    expect(screen.getByLabelText('School code')).toBeInTheDocument()
     expect(screen.getByLabelText('Phone')).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
   })
 
   it('shows upload logo button', async () => {
     renderPage()
-    expect(await screen.findByText('Upload Logo')).toBeInTheDocument()
+    expect(await screen.findByText('Upload logo')).toBeInTheDocument()
   })
 
   it('populates form with MSW school data', async () => {
     renderPage()
-    const nameInput = await screen.findByLabelText('School Name')
+    const nameInput = await screen.findByLabelText('School name')
     expect(nameInput).toHaveValue('Starehe Boys Centre')
-    const codeInput = screen.getByLabelText('School Code')
+    const codeInput = screen.getByLabelText('School code')
     expect(codeInput).toHaveValue('NAI001')
     expect(codeInput).toBeDisabled()
   })

@@ -5,6 +5,7 @@ import { schoolAdminApi, type SchoolStudent } from '../../api/schoolAdmin'
 import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import ResponsiveDataList, { type DataColumn } from '../../components/common/dashboard/ResponsiveDataList'
+import SectionHeader from '../../components/common/dashboard/SectionHeader'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/dashboard.css'
 import '../../styles/school-admin.css'
@@ -235,7 +236,13 @@ export default function SchoolStudentsPage() {
 
   return (
     <div className="school-students-page">
-      <h1>Students</h1>
+      <SectionHeader
+        titleAs="h1"
+        eyebrow="Learners"
+        title="Students"
+        description="Approve school-link requests, assign counsellors, and track each learner's progress."
+        className="school-students-page__header"
+      />
 
       <section className="membership-queue" aria-labelledby="membership-queue-title">
         <div className="membership-queue__heading">

@@ -180,20 +180,62 @@
 
 /* ===== School Profile Page ===== */
 
-.school-profile-page {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: var(--space-6);
+.school-profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: var(--space-5);
+  align-items: start;
 }
 
-.school-profile-page__logo-section {
+.school-profile-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.school-profile-card__kicker {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.school-profile-card__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.school-profile-card__logo {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
-  padding: var(--space-5);
+  padding: var(--space-4);
   background: var(--color-primary-surface);
   border-radius: var(--radius-lg);
+}
+
+.school-profile-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.school-profile-form__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 860px) {
+  .school-profile-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .school-profile-page__logo-preview {
@@ -222,29 +264,45 @@
   gap: var(--space-2);
 }
 
-/* ===== Counselor Management Page ===== */
+/* ===== Counsellor Management Page ===== */
 
-.counselor-management-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: var(--space-6);
-}
-
-.counselor-management-page__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-5);
-}
-
-.counselor-management-page__add-form {
+.counsellor-invite-form {
   display: flex;
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
 }
 
-.counselor-management-page__add-form input {
-  flex: 1;
+.counsellor-invite-form input {
+  min-width: 13rem;
+  min-height: var(--min-touch-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+.counsellor-workload-details {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.counsellor-workload-details > div {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.counsellor-workload-details dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.counsellor-workload-details dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .admin-search {
@@ -267,10 +325,18 @@
   gap: var(--space-1);
 }
 
+.admin-person {
+  min-width: 0;
+}
+
 .admin-person span,
 .admin-status-stack > span:last-child {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
+}
+
+.admin-person span {
+  overflow-wrap: anywhere;
 }
 
 .admin-workload {
@@ -303,9 +369,14 @@
 /* ===== School Students Page ===== */
 
 .school-students-page {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: var(--space-6);
+  display: grid;
+  gap: var(--space-5);
+  width: min(100%, 76rem);
+  margin-inline: auto;
+}
+
+.school-students-page__header {
+  margin: 0;
 }
 
 .school-students-page__header {
@@ -385,10 +456,15 @@
 }
 
 @media (max-width: 700px) {
-  .counselor-management-page__add-form,
+  .counsellor-invite-form,
   .bulk-assignment {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .counsellor-invite-form input {
+    min-width: 0;
+    width: 100%;
   }
 
   .bulk-assignment > strong {
