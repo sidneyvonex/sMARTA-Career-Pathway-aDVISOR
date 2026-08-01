@@ -89,7 +89,14 @@
 .school-offerings-status {
   display: grid;
   align-content: start;
+  justify-items: start;
   gap: var(--space-3);
+}
+
+.school-offerings-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
 }
 
 .school-offerings-status strong {
@@ -325,6 +332,11 @@
   gap: var(--space-1);
 }
 
+.admin-status-stack {
+  align-items: start;
+  justify-items: start;
+}
+
 .admin-person {
   min-width: 0;
 }
@@ -376,38 +388,30 @@
 }
 
 .school-students-page__header {
-  margin: 0;
-}
-
-.school-students-page__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-5);
-}
-
-.school-students-page__filters {
-  display: flex;
-  align-items: end;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.school-students-page__filters .admin-search {
-  flex: 1 1 240px;
   margin: 0;
 }
 
+.school-students-toolbar .management-toolbar__main {
+  flex-wrap: wrap;
+}
+
+.school-students-toolbar .management-toolbar__filters {
+  flex: 1 1 38rem;
+  min-width: 0;
+}
+
 .admin-filter-chips {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: var(--space-1);
+  width: 100%;
 }
 
 .admin-filter-chips button {
-  flex: 0 0 auto;
+  width: 100%;
 }
 
 .admin-learner {
@@ -448,6 +452,8 @@
 }
 
 .assignment-select {
+  width: 100%;
+  min-height: var(--min-touch-target);
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -641,39 +647,56 @@
   }
 }
 
-.school-offerings-page {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: var(--space-6) 0 var(--space-8);
-}
-
-.school-offerings-page__summary {
+.school-offerings-tray {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(12rem, 1fr) auto;
   align-items: center;
-  gap: var(--space-5);
-  margin: var(--space-5) 0;
-  padding: var(--space-5);
-  border-radius: var(--radius-xl);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
   background: var(--color-primary-dark);
   color: var(--color-text-on-primary);
 }
 
-.school-offerings-page__summary > div {
+.school-offerings-tray__count,
+.school-offerings-tray__changes {
   display: grid;
+  gap: var(--space-1);
 }
 
-.school-offerings-page__summary strong {
-  font-size: var(--font-size-3xl);
+.school-offerings-tray__count strong {
+  font-size: var(--font-size-2xl);
+  line-height: 1;
 }
 
-.school-offerings-page__summary p {
+.school-offerings-tray__count span,
+.school-offerings-tray__changes,
+.school-offerings-tray p {
+  color: color-mix(in srgb, var(--color-text-on-primary) 78%, transparent);
+  font-size: var(--font-size-sm);
+}
+
+.school-offerings-tray p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.78);
+}
+
+.school-offerings-tray__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.school-offerings-tray .btn-ghost {
+  border-color: color-mix(in srgb, var(--color-text-on-primary) 32%, transparent);
+  color: var(--color-text-on-primary);
+  background: transparent;
+}
+
+.school-offerings-tray .btn-primary {
+  color: var(--color-primary-dark);
+  background: var(--color-accent);
 }
 
 .school-offerings-warning {
-  margin-bottom: var(--space-5);
   padding: var(--space-4);
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-lg);
@@ -684,83 +707,209 @@
   margin: var(--space-1) 0 0;
 }
 
-.offering-pathway {
-  margin-top: var(--space-7);
-}
-
-.offering-pathway > h2 {
-  margin-bottom: var(--space-4);
-}
-
-.offering-track {
-  margin-bottom: var(--space-6);
-}
-
-.offering-track h3 {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-}
-
-.offering-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.offering-card {
-  position: relative;
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.offering-card--selected {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-surface);
-}
-
-.offering-card > input {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  width: 20px;
-  height: 20px;
-  accent-color: var(--color-primary);
-}
-
-.offering-card__code {
-  color: var(--color-primary);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.offering-card__subjects {
+.school-offerings-filters {
   display: flex;
+  align-items: end;
   gap: var(--space-2);
-  flex-wrap: wrap;
 }
 
-.offering-card__subjects > span {
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--color-background);
+.school-offerings-filters label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.school-offerings-filters select {
+  min-width: 10rem;
+}
+
+.offering-table__identity,
+.offering-table__pathway {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.offering-table__identity span,
+.offering-table__pathway span {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
-@media (max-width: 700px) {
-  .school-offerings-page__summary,
-  .offering-grid {
+.offering-table__select {
+  display: inline-flex;
+  width: var(--min-touch-target);
+  min-height: var(--min-touch-target);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.offering-table__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--color-primary);
+}
+
+.offering-table__subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.offering-table__subjects > span {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  background: var(--color-background);
+  font-size: var(--font-size-xs);
+}
+
+.school-offerings-table .management-table th:first-child,
+.school-offerings-table .management-table td:first-child {
+  width: 4rem;
+}
+
+.school-offerings-table .management-table th:nth-child(2),
+.school-offerings-table .management-table td:nth-child(2) {
+  width: 23%;
+}
+
+.school-offerings-table .management-table th:nth-child(3),
+.school-offerings-table .management-table td:nth-child(3) {
+  width: 15%;
+}
+
+.school-offerings-table .management-table th:nth-child(6),
+.school-offerings-table .management-table td:nth-child(6),
+.school-offerings-table .management-table th:last-child,
+.school-offerings-table .management-table td:last-child {
+  width: 7rem;
+}
+
+/* Respond to the table's available content width, not the browser width. The
+   desktop sidebar can leave a laptop-sized viewport with a much narrower
+   management column than a viewport media query suggests. */
+.school-offerings-table {
+  container-type: inline-size;
+}
+
+@container (min-width: 40rem) and (max-width: 56rem) {
+  .school-offerings-table .management-table th:nth-child(4),
+  .school-offerings-table .management-table td:nth-child(4),
+  .school-offerings-table .management-table th:nth-child(6),
+  .school-offerings-table .management-table td:nth-child(6) {
+    display: none;
+  }
+
+  .school-offerings-table .management-table th:nth-child(2),
+  .school-offerings-table .management-table td:nth-child(2) {
+    width: 32%;
+  }
+
+  .school-offerings-table .management-table th:nth-child(3),
+  .school-offerings-table .management-table td:nth-child(3) {
+    width: 24%;
+  }
+
+  .school-offerings-table .management-table th:nth-child(5),
+  .school-offerings-table .management-table td:nth-child(5) {
+    width: 8rem;
+  }
+
+  .school-offerings-table .management-table th:last-child,
+  .school-offerings-table .management-table td:last-child {
+    width: 6rem;
+  }
+}
+
+.offering-details {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.offering-details > div {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.offering-details dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.offering-details dd {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+@media (max-width: 900px) {
+  .school-offerings-tray {
     grid-template-columns: 1fr;
   }
 
-  .school-offerings-page__summary {
-    align-items: stretch;
+  .school-offerings-tray__actions {
+    justify-content: stretch;
+  }
+
+  .school-offerings-tray__actions > button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .school-students-toolbar .management-toolbar__filters {
+    flex-basis: auto;
+  }
+
+  .school-offerings-filters {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .school-offerings-filters select {
+    width: 100%;
+  }
+
+  .admin-filter-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-filter-chips button {
+    padding-inline: var(--space-2);
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  /* Offering columns have explicit desktop widths with higher specificity
+     than the shared card styles. Reset them once each row becomes a record. */
+  .school-offerings-table .management-table td[data-label] {
+    width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .school-students-page .db-data-list td:first-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .school-students-page .db-data-list td:last-child {
+    display: block;
+    text-align: left;
+  }
+
+  .school-students-page .db-data-list td:last-child::before {
+    display: none;
+  }
+
+  .school-students-page .db-data-list td:last-child .btn-ghost {
+    width: 100%;
   }
 }

@@ -628,6 +628,7 @@
 
 .lv-card--activity .lv-card__head {
   grid-row: 1 / span 4;
+  align-items: flex-start;
   flex-direction: column;
   justify-content: flex-start;
 }
@@ -824,7 +825,9 @@
 
   .lv-card--activity .lv-card__head {
     grid-row: auto;
+    align-items: flex-end;
     flex-direction: row;
+    justify-content: space-between;
   }
 
   .lv-card--activity .lv-card__link {

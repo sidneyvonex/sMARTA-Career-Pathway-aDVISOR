@@ -62,15 +62,15 @@ describe('SchoolAdminDashboard', () => {
     renderPage()
     expect(await screen.findByText('Starehe Boys Centre')).toBeInTheDocument()
     expect(screen.getByText('24')).toBeInTheDocument()
-    expect(screen.getByText('Students')).toBeInTheDocument()
+    expect(screen.getByText('Learners')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
-    expect(screen.getByText('Counselors')).toBeInTheDocument()
+    expect(screen.getByText('Counsellors')).toBeInTheDocument()
   })
 
   it('shows manage buttons', async () => {
     renderPage()
-    expect(await screen.findByText('Manage School Profile')).toBeInTheDocument()
-    expect(screen.getByText('Manage Counselors')).toBeInTheDocument()
+    expect(await screen.findByText('Manage school profile')).toBeInTheDocument()
+    expect(screen.getAllByText('Manage counsellors')).not.toHaveLength(0)
   })
 
   it('displays assessed and unassigned stat cards', async () => {
@@ -91,7 +91,9 @@ describe('SchoolAdminDashboard', () => {
     expect(screen.getByText('Reviews completed')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Counsellor workload' })).toBeInTheDocument()
     expect(screen.getByText('Alice Wanjiku')).toBeInTheDocument()
-    expect(screen.getByText('Offerings configured')).toBeInTheDocument()
+    const offeringsStatus = screen.getByText('Offerings configured')
+    expect(offeringsStatus).toBeInTheDocument()
+    expect(offeringsStatus.closest('.db-panel')).toHaveClass('school-offerings-panel')
   })
 })
 
@@ -277,6 +279,7 @@ describe('SchoolStudentsPage', () => {
 
   it('renders student list from MSW data', async () => {
     renderPage()
+    expect(await screen.findByRole('heading', { name: 'Learners', level: 1 })).toBeInTheDocument()
     expect(await screen.findByText('Jane Muthoni')).toBeInTheDocument()
     expect(screen.getByText('Kevin Otieno')).toBeInTheDocument()
   })
@@ -284,6 +287,8 @@ describe('SchoolStudentsPage', () => {
   it('shows filter buttons', async () => {
     renderPage()
     await screen.findByText('Jane Muthoni')
+    expect(screen.getByRole('searchbox', { name: 'Search learners' }).closest('.management-toolbar')).toBeInTheDocument()
+    expect(screen.getByText('2 learners')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Assigned' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unassigned' })).toBeInTheDocument()
@@ -355,13 +360,13 @@ describe('SchoolStudentsPage', () => {
     )
     renderPage()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('student list could not load')
-    expect(screen.getByRole('button', { name: 'Retry students' })).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('learner list could not load')
+    expect(screen.getByRole('button', { name: 'Retry learners' })).toBeInTheDocument()
   })
 })
 
 describe('SchoolOfferingsPage', () => {
-  it('groups the catalogue, shows three subjects and warns before removal', async () => {
+  it('renders the catalogue as a bounded selectable management table', async () => {
     const qc = makeClient()
     setSchoolAdmin()
     let savedIds: number[] | null = null
@@ -392,7 +397,13 @@ describe('SchoolOfferingsPage', () => {
       name: 'School subject offerings',
       level: 1,
     })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'STEM' })).toBeInTheDocument()
+    expect(await screen.findByRole('table', { name: 'School subject offerings catalogue' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Combination' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Pathway and track' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Subjects' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Availability' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument()
     expect(screen.getByText('Pure Sciences')).toBeInTheDocument()
     expect(screen.getByText('Agriculture')).toBeInTheDocument()
     expect(screen.getByText('Biology')).toBeInTheDocument()
@@ -400,6 +411,8 @@ describe('SchoolOfferingsPage', () => {
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Offer Agriculture, Biology & Chemistry' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Removing an offering can affect learners')
+    expect(screen.getByText('1 pending removal')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled()
     await userEvent.click(screen.getByRole('button', { name: 'Save offering set' }))
     await waitFor(() => expect(savedIds).toEqual([]))
   })

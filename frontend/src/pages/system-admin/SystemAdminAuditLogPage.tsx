@@ -178,39 +178,41 @@ export default function SystemAdminAuditLogPage() {
 
   return (
     <>
-      <ManagementPage
-        eyebrow="Operational history"
-        title="Audit log"
-        description="Review who changed platform data, when it happened, and which record was affected. Full metadata stays in the details drawer."
-        toolbar={toolbar}
-        loading={isLoading}
-        error={isError ? { title: 'Audit log could not load', description: 'No audit data was changed. Check your connection and try again.' } : undefined}
-        onRetry={() => refetch()}
-      >
-        <ManagementTable
-          ariaLabel="Audit log entries"
-          records={entries}
-          columns={columns}
-          getKey={entry => entry.id}
-          getRecordLabel={entry => `${actionLabel(entry)} ${entry.id}`}
-          getPrimaryAction={entry => ({
-            id: 'view-details',
-            label: `View details for ${actionLabel(entry)}`,
-            shortLabel: 'Details',
-            onSelect: () => setDetailEntry(entry),
-          })}
-          getSecondaryActions={() => []}
-          empty={<EmptyState title="No audit entries found" description="Try changing the event or date filters." />}
-        />
+      <div className="sysadmin-audit-page">
+        <ManagementPage
+          eyebrow="Operational history"
+          title="Audit log"
+          description="Review who changed platform data, when it happened, and which record was affected. Full metadata stays in the details drawer."
+          toolbar={toolbar}
+          loading={isLoading}
+          error={isError ? { title: 'Audit log could not load', description: 'No audit data was changed. Check your connection and try again.' } : undefined}
+          onRetry={() => refetch()}
+        >
+          <ManagementTable
+            ariaLabel="Audit log entries"
+            records={entries}
+            columns={columns}
+            getKey={entry => entry.id}
+            getRecordLabel={entry => `${actionLabel(entry)} ${entry.id}`}
+            getPrimaryAction={entry => ({
+              id: 'view-details',
+              label: `View details for ${actionLabel(entry)}`,
+              shortLabel: 'Details',
+              onSelect: () => setDetailEntry(entry),
+            })}
+            getSecondaryActions={() => []}
+            empty={<EmptyState title="No audit entries found" description="Try changing the event or date filters." />}
+          />
 
-        {totalPages > 1 && (
-          <nav className="sysadmin-pagination" aria-label="Audit log pages">
-            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
-            <span aria-live="polite">Page {page} of {totalPages}</span>
-            <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
-          </nav>
-        )}
-      </ManagementPage>
+          {totalPages > 1 && (
+            <nav className="sysadmin-pagination" aria-label="Audit log pages">
+              <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Previous</button>
+              <span aria-live="polite">Page {page} of {totalPages}</span>
+              <button type="button" className="btn-ghost" onClick={() => setPage(value => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>Next</button>
+            </nav>
+          )}
+        </ManagementPage>
+      </div>
 
       <DetailDrawer
         open={detailEntry !== null}

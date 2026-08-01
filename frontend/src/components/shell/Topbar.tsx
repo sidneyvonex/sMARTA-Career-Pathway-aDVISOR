@@ -49,7 +49,7 @@ function getPageContext(pathname: string): PageContext {
   if (pathname === '/counselor/notes') return { title: 'Counsellor notes' }
   if (pathname === '/admin/school') return { title: 'School profile' }
   if (pathname === '/admin/counselors') return { title: 'Counsellors' }
-  if (pathname === '/admin/students') return { title: 'Students' }
+  if (pathname === '/admin/students') return { title: 'Learners' }
   if (pathname === '/admin/offerings') return { title: 'School offerings' }
   if (/^\/parent\/child\/[^/]+$/.test(pathname)) return {
     title: 'Learner profile',

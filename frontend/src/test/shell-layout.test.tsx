@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import Shell from '../components/shell/Shell'
 import { useAuthStore } from '../store/authStore'
@@ -16,6 +16,14 @@ const counselor = {
   role: 'counselor' as const,
   is_email_verified: true,
   county: 'kisumu',
+}
+
+const roleUsers = {
+  student: { ...counselor, role: 'student' as const },
+  counselor,
+  school_admin: { ...counselor, role: 'school_admin' as const },
+  system_admin: { ...counselor, role: 'system_admin' as const },
+  parent: { ...counselor, role: 'parent' as const },
 }
 
 function renderShell(path = '/') {
@@ -45,6 +53,7 @@ describe('authenticated shell layout', () => {
     useLayoutStore.setState({
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
+      mobileMoreOpen: false,
     })
     useNotificationStore.setState({ unreadCount: 0, drawerOpen: false })
     Object.defineProperty(window.navigator, 'onLine', {
@@ -104,14 +113,102 @@ describe('authenticated shell layout', () => {
   })
 
   it('closes transient mobile navigation when the user logs out', async () => {
-    useLayoutStore.setState({ mobileSidebarOpen: true })
+    useLayoutStore.setState({ mobileSidebarOpen: true, mobileMoreOpen: true })
     renderShell()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log out' }))
+    const moreDialog = screen.getByRole('dialog', { name: 'More navigation and account' })
+    await userEvent.click(within(moreDialog).getByRole('button', { name: 'Log out' }))
 
     await waitFor(() => {
       expect(useLayoutStore.getState().mobileSidebarOpen).toBe(false)
+      expect(useLayoutStore.getState().mobileMoreOpen).toBe(false)
     })
+  })
+
+  it.each([
+    ['student', ['Home', 'Grades', 'Explore', 'Plan', 'More']],
+    ['counselor', ['Home', 'Students', 'Notes', 'More']],
+    ['school_admin', ['Dashboard', 'Learners', 'Offerings', 'Team', 'More']],
+    ['system_admin', ['Home', 'Schools', 'Catalogue', 'Users', 'More']],
+  ] as const)('renders the approved %s phone destinations', (role, labels) => {
+    useAuthStore.setState({ user: roleUsers[role] })
+    renderShell()
+
+    const navigation = screen.getByRole('navigation', { name: 'Mobile primary navigation' })
+    expect(navigation).toBeInTheDocument()
+    expect(Array.from(navigation.querySelectorAll('a, button')).map((item) => item.textContent)).toEqual(labels)
+  })
+
+  it('uses the first linked learner as the parent phone destination', async () => {
+    useAuthStore.setState({ user: roleUsers.parent })
+    renderShell()
+
+    const navigation = screen.getByRole('navigation', { name: 'Mobile primary navigation' })
+    expect(within(navigation).getByRole('link', { name: 'Home' })).toBeInTheDocument()
+    expect(await within(navigation).findByRole('link', { name: 'Tom' })).toHaveAttribute('href', '/parent/child/10')
+    expect(within(navigation).getByRole('button', { name: 'More' })).toBeInTheDocument()
+    expect(navigation).toHaveStyle({ '--bottom-nav-count': '3' })
+  })
+
+  it('dismisses the More sheet on Escape and restores focus to its trigger', async () => {
+    renderShell()
+    const more = screen.getByRole('button', { name: 'More' })
+
+    await userEvent.click(more)
+    expect(screen.getByRole('dialog', { name: 'More navigation and account' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Close More menu' })).toHaveLength(1)
+    expect(more).toHaveClass('active')
+
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'More navigation and account' })).not.toBeInTheDocument()
+    expect(more).toHaveFocus()
+  })
+
+  it('closes the More sheet after navigating', async () => {
+    useAuthStore.setState({ user: roleUsers.student })
+    renderShell()
+
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    const dialog = screen.getByRole('dialog', { name: 'More navigation and account' })
+    await userEvent.click(within(dialog).getByRole('link', { name: 'Compare Choices' }))
+
+    expect(screen.queryByRole('dialog', { name: 'More navigation and account' })).not.toBeInTheDocument()
+  })
+
+  it('closes the More sheet when the viewport changes to tablet navigation', async () => {
+    let handleViewportChange: ((event: MediaQueryListEvent) => void) | undefined
+    const mediaQuery = vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+        handleViewportChange = listener as (event: MediaQueryListEvent) => void
+      },
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+    renderShell()
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+
+    act(() => handleViewportChange?.({ matches: true } as MediaQueryListEvent))
+
+    expect(screen.queryByRole('dialog', { name: 'More navigation and account' })).not.toBeInTheDocument()
+    expect(document.body.style.overflow).toBe('')
+    mediaQuery.mockRestore()
+  })
+
+  it('marks only the most specific More destination as current', async () => {
+    useAuthStore.setState({ user: roleUsers.student })
+    renderShell('/assessment/results')
+
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    const dialog = screen.getByRole('dialog', { name: 'More navigation and account' })
+    const currentLinks = within(dialog).getAllByRole('link', { current: 'page' })
+
+    expect(currentLinks).toHaveLength(1)
+    expect(currentLinks[0]).toHaveTextContent('Career Profile')
   })
 
   it('wraps page content in the shared authenticated content container', () => {

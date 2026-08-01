@@ -380,13 +380,14 @@
   max-width: 1200px;
   margin: 0 auto;
   padding-bottom: var(--space-8);
+  container-type: inline-size;
 }
 
 .pilot-admin > section {
   margin-top: var(--space-7);
 }
 
-.pilot-admin__health {
+.db-metrics-grid.pilot-admin__health {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
@@ -449,7 +450,7 @@
 }
 
 @media (max-width: 980px) {
-  .pilot-admin__health,
+  .db-metrics-grid.pilot-admin__health,
   .pilot-admin__counties {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -462,9 +463,36 @@
 }
 
 @media (max-width: 520px) {
-  .pilot-admin__health,
+  .db-metrics-grid.pilot-admin__health,
   .pilot-admin__counties {
     grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 62rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 56rem) {
+  .pilot-admin__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 40rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 32rem) {
+  .db-metrics-grid.pilot-admin__health,
+  .pilot-admin__counties {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -535,6 +563,70 @@
   max-width: 22rem;
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
+}
+
+.sysadmin-audit-page {
+  container-type: inline-size;
+}
+
+.sysadmin-audit-page .management-toolbar__search {
+  min-width: 0;
+}
+
+.sysadmin-audit-page .management-toolbar__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(9rem, 12rem));
+  align-items: end;
+}
+
+@container (max-width: 60rem) {
+  .sysadmin-audit-page .management-table th:nth-child(4),
+  .sysadmin-audit-page .management-table td:nth-child(4),
+  .sysadmin-audit-page .management-table th:nth-child(5),
+  .sysadmin-audit-page .management-table td:nth-child(5) {
+    display: none;
+  }
+
+  .sysadmin-audit-page .management-table th:first-child,
+  .sysadmin-audit-page .management-table td:first-child {
+    width: 9rem;
+  }
+
+  .sysadmin-audit-page .management-table th:nth-child(3),
+  .sysadmin-audit-page .management-table td:nth-child(3) {
+    width: 12rem;
+  }
+
+  .sysadmin-audit-page .management-table th:last-child,
+  .sysadmin-audit-page .management-table td:last-child {
+    width: 7rem;
+  }
+}
+
+@container (max-width: 50rem) {
+  .sysadmin-audit-page .management-toolbar__main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sysadmin-audit-page .management-toolbar__search {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 34rem) {
+  .sysadmin-audit-page .management-toolbar__main,
+  .sysadmin-audit-page .management-toolbar__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sysadmin-audit-page .management-toolbar__result-count {
+    justify-self: start;
+  }
+
+  .sysadmin-audit-page .management-table td[data-label] {
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {

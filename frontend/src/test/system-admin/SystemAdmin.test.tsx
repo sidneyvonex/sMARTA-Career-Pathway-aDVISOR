@@ -59,9 +59,9 @@ describe('SystemAdminDashboard', () => {
   it('renders stat cards with role labels', async () => {
     renderPage()
     expect(
-      await screen.findByText('Students', {}, { timeout: 5000 }),
+      await screen.findByText('Learners', {}, { timeout: 5000 }),
     ).toBeTruthy()
-    expect(screen.getByText('Counselors')).toBeTruthy()
+    expect(screen.getByText('Counsellors')).toBeTruthy()
     expect(screen.getByText('Schools')).toBeTruthy()
     expect(screen.getByText('Parents')).toBeTruthy()
   })
@@ -76,10 +76,10 @@ describe('SystemAdminDashboard', () => {
     })
   })
 
-  it('shows Recent Activity section', async () => {
+  it('shows Recent activity section', async () => {
     renderPage()
     await waitFor(() => {
-      expect(screen.getByText('Recent Activity')).toBeTruthy()
+      expect(screen.getByText('Recent activity')).toBeTruthy()
     })
   })
 
@@ -426,7 +426,9 @@ describe('SystemAdminAuditLogPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByRole('table', { name: 'Audit log entries' })).toBeInTheDocument()
+    const table = await screen.findByRole('table', { name: 'Audit log entries' })
+    expect(table).toBeInTheDocument()
+    expect(table.closest('.sysadmin-audit-page')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Audit log', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('2 entries')).toHaveAttribute('aria-live', 'polite')
     expect(screen.queryByText(/\{"/)).not.toBeInTheDocument()

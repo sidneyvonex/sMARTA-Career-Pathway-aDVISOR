@@ -80,10 +80,12 @@ export default function CombinationComparePage() {
       <header className="compare-header">
         <div>
           <span>Evidence-led comparison</span>
-          <h1>Compare your saved combinations</h1>
+          <div className="compare-header__title-row">
+            <h1>Compare your saved combinations</h1>
+            <Link to="/explore">Edit saved choices</Link>
+          </div>
           <p>Use the same evidence for each option. This comparison supports a provisional choice, not a final placement decision.</p>
         </div>
-        <Link to="/explore">Edit saved choices</Link>
       </header>
 
       <section className="compare-section compare-section--identity" aria-labelledby="compare-options">
