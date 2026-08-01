@@ -58,6 +58,18 @@ OVERALL_SEVERITY = (
 )
 
 
+class ProgressConfigurationError(Exception):
+    """Raised when stored evidence cannot be evaluated from its framework."""
+
+    def __init__(self, *, framework_code, framework_version, level):
+        self.context = {
+            'framework_code': framework_code,
+            'framework_version': framework_version,
+            'level': level,
+        }
+        super().__init__('Assessment framework is missing a level definition.')
+
+
 def _evidence_order(record):
     return (
         record['academic_grade'],
@@ -98,6 +110,7 @@ def _outcome(
     records_used,
 ):
     detail = STATUS_DETAILS[status]
+    latest = evidence[-1] if evidence else None
     return {
         'continuity_code': continuity_code,
         'subject_name': subject_name,
@@ -109,6 +122,10 @@ def _outcome(
         'evidence_confidence': _confidence(records_used),
         'records_used': records_used,
         'evidence': evidence,
+        'decision_inputs': {
+            'latest_framework': latest['framework'] if latest else None,
+            'me2_rank': latest.get('me2_rank') if latest else None,
+        },
     }
 
 
@@ -269,7 +286,11 @@ def derive_progress_for_enrolments(enrolments):
             }
             rank = rank_by_level.get(grade.level)
             if rank is None:
-                continue
+                raise ProgressConfigurationError(
+                    framework_code=grade.framework.code,
+                    framework_version=grade.framework.version,
+                    level=grade.level,
+                )
             evidence_by_continuity[continuity_code].append(
                 {
                     'id': grade.pk,

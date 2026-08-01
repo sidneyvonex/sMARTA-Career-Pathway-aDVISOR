@@ -126,6 +126,10 @@ export interface SubjectProgress {
   evidence_confidence: 'school_verified' | 'learner_entered' | 'mixed'
   records_used: ProgressEvidence[]
   evidence: ProgressEvidence[]
+  decision_inputs: {
+    latest_framework: { code: string; version: string } | null
+    me2_rank: number | null
+  }
 }
 
 export interface ProgressAssessment {

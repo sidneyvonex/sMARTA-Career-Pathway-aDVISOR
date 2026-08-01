@@ -133,6 +133,11 @@ class ProgressEvidenceSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
 
+class ProgressDecisionInputsSerializer(serializers.Serializer):
+    latest_framework = serializers.DictField(allow_null=True)
+    me2_rank = serializers.IntegerField(allow_null=True)
+
+
 class ProgressSubjectSerializer(serializers.Serializer):
     continuity_code = serializers.CharField()
     subject_name = serializers.CharField()
@@ -144,6 +149,7 @@ class ProgressSubjectSerializer(serializers.Serializer):
     evidence_confidence = serializers.CharField()
     records_used = ProgressEvidenceSerializer(many=True)
     evidence = ProgressEvidenceSerializer(many=True)
+    decision_inputs = ProgressDecisionInputsSerializer()
 
 
 class ProgressOverallSerializer(serializers.Serializer):

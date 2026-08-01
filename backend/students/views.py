@@ -44,7 +44,7 @@ from .serializers import (
     StudentProfileSerializer, SubjectSerializer,
     StudentSubjectSerializer, CBCGradeSerializer, ProgressAssessmentSerializer,
 )
-from .progress import derive_progress_for_enrolments
+from .progress import ProgressConfigurationError, derive_progress_for_enrolments
 from .summaries import (
     academic_evidence_summary,
     assessment_summary,
@@ -873,7 +873,16 @@ class ProgressAssessmentView(APIView):
                 )
             )
         )
-        assessment = derive_progress_for_enrolments(enrolments)
+        try:
+            assessment = derive_progress_for_enrolments(enrolments)
+        except ProgressConfigurationError:
+            return _error(
+                (
+                    'Academic progress is temporarily unavailable because an '
+                    'assessment framework configuration is incomplete.'
+                ),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         return _success(data=ProgressAssessmentSerializer(assessment).data)
 
 

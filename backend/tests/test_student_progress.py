@@ -1,7 +1,9 @@
 import pytest
 from rest_framework.test import APIClient
 
-from students.progress import derive_continuity_progress
+from students.models import PerformanceLevelDefinition
+from students import progress
+from students.progress import derive_continuity_progress, derive_progress_for_enrolments
 from tests.factories import (
     CBCGradeFactory,
     StudentProfileFactory,
@@ -205,6 +207,10 @@ def test_api_returns_explainable_snapshots_and_no_numeric_readiness_field():
         subject=SubjectFactory(code='PHY10', continuity_code='PHY', grade=10),
     )
     grade = CBCGradeFactory(student_subject=enrollment, level='BE2')
+    PerformanceLevelDefinition.objects.filter(
+        framework=grade.framework,
+        code='ME2',
+    ).update(rank=9)
     client = APIClient()
     client.force_authenticate(profile.user)
 
@@ -215,16 +221,74 @@ def test_api_returns_explainable_snapshots_and_no_numeric_readiness_field():
     assert set(subject) == {
         'continuity_code', 'subject_name', 'status', 'label', 'rule_code',
         'explanation', 'suggested_action', 'evidence_confidence', 'records_used',
-        'evidence',
+        'evidence', 'decision_inputs',
     }
     assert subject['records_used'][0]['id'] == grade.id
     assert subject['records_used'][0]['framework']['code'] == 'CBC-SENIOR-SCHOOL'
+    assert subject['decision_inputs'] == {
+        'latest_framework': {
+            'code': grade.framework.code,
+            'version': grade.framework.version,
+        },
+        'me2_rank': 9,
+    }
     assert {'status', 'subject_continuity_codes', 'label'} == set(response.data['data']['overall'])
     assert 'advisory_disclaimer' in response.data['data']
     assert 'percentage' not in str(response.data['data']).casefold()
     assert 'raw_score' not in str(response.data['data']).casefold()
     assert 'aggregate' not in response.data['data']
     assert 'admission' not in response.data['data']
+
+
+def test_service_rejects_evidence_with_a_missing_framework_level_definition():
+    """Catches silently discarding evidence from an incomplete framework."""
+    profile = StudentProfileFactory(user=VerifiedUserFactory(role='student'), grade=10)
+    enrollment = StudentSubjectFactory(
+        student_profile=profile,
+        subject=SubjectFactory(code='CFG10', continuity_code='CFG', grade=10),
+    )
+    grade = CBCGradeFactory(student_subject=enrollment, level='ME1')
+    PerformanceLevelDefinition.objects.filter(
+        framework=grade.framework,
+        code='ME1',
+    ).delete()
+
+    with pytest.raises(progress.ProgressConfigurationError) as error:
+        derive_progress_for_enrolments([enrollment])
+
+    assert error.value.context == {
+        'framework_code': grade.framework.code,
+        'framework_version': grade.framework.version,
+        'level': 'ME1',
+    }
+
+
+def test_api_fails_closed_when_the_latest_evidence_level_is_not_defined():
+    """Catches returning a partial progress status after configuration loss."""
+    profile = StudentProfileFactory(user=VerifiedUserFactory(role='student'), grade=10)
+    enrollment = StudentSubjectFactory(
+        student_profile=profile,
+        subject=SubjectFactory(code='ERR10', continuity_code='ERR', grade=10),
+    )
+    grade = CBCGradeFactory(student_subject=enrollment, level='ME1')
+    PerformanceLevelDefinition.objects.filter(
+        framework=grade.framework,
+        code='ME1',
+    ).delete()
+    client = APIClient()
+    client.force_authenticate(profile.user)
+
+    response = client.get(PROGRESS_URL)
+
+    assert response.status_code == 500
+    assert response.data == {
+        'data': None,
+        'error': True,
+        'message': (
+            'Academic progress is temporarily unavailable because an assessment '
+            'framework configuration is incomplete.'
+        ),
+    }
 
 
 def test_api_uses_a_bounded_prefetch_path_for_many_subjects(django_assert_num_queries):
