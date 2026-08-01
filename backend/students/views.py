@@ -908,25 +908,6 @@ def _serialize_academic_goals(goals, *, many=False):
     return AcademicGoalSerializer(value, many=many, context=context).data
 
 
-def _lock_goal_evidence(goal):
-    enrollment_ids = list(
-        StudentSubject.objects.select_for_update().filter(
-            student_profile_id=goal.learner_id,
-            continuity_code=goal.continuity_code,
-        ).order_by('pk').values_list('pk', flat=True)
-    )
-    evidence_ids = list(
-        CBCGrade.objects.select_for_update().filter(
-            student_subject_id__in=enrollment_ids,
-        ).order_by('pk').values_list('pk', flat=True)
-    )
-    return list(
-        CBCGrade.objects.filter(pk__in=evidence_ids)
-        .select_related('student_subject', 'framework')
-        .order_by('academic_grade', 'year', 'term', 'created_at', 'pk')
-    )
-
-
 def _assigned_goal_profile(request):
     try:
         student_id = int(request.query_params.get('student_id', ''))
@@ -1097,33 +1078,21 @@ class AcademicGoalConfirmAchievementView(APIView):
 
     @transaction.atomic
     def post(self, request, goal_id):
-        goal = AcademicGoal.objects.select_for_update().filter(
-            pk=goal_id,
-            learner__user=request.user,
-        ).first()
-        if goal is None:
-            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
         if request.data.get('confirm') is not True:
             return _error('Set confirm=true to mark this goal achieved.')
-        if goal.status != AcademicGoal.STATUS_ACTIVE:
-            return _error(
-                'Only an active academic goal can be marked achieved.',
-                status.HTTP_409_CONFLICT,
-            )
-        locked_evidence = _lock_goal_evidence(goal)
-        if goal.readiness_evidence(evidence_pool=locked_evidence) is None:
-            return _error(
-                'Later evidence has not reached this academic goal yet.',
-                status.HTTP_409_CONFLICT,
-            )
         try:
-            goal.mark_achieved(
+            goal = AcademicGoal.confirm_achievement(
+                goal_id=goal_id,
                 actor=request.user,
-                evidence_pool=locked_evidence,
             )
+        except AcademicGoal.DoesNotExist:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
         except ValidationError as exc:
+            messages = (
+                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages
+            )
             return _error(
-                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages,
+                messages,
                 status.HTTP_409_CONFLICT,
             )
         return _success(
@@ -1244,6 +1213,11 @@ class CBCGradeDetailView(APIView):
                     'School-verified evidence cannot be deleted by a learner.',
                     status.HTTP_403_FORBIDDEN,
                 )
+            list(
+                AcademicGoal.objects.select_for_update().filter(
+                    current_evidence=grade,
+                ).order_by('pk').values_list('pk', flat=True)
+            )
             grade.delete()
             return _success(message='Grade deleted.')
 

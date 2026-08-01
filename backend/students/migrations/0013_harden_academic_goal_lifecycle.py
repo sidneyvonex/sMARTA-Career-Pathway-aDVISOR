@@ -3,10 +3,34 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+import students.models
 
 
 def _isoformat(value):
     return value.isoformat() if value is not None else None
+
+
+def backfill_grade_level_definition_ids(apps, schema_editor):
+    CBCGrade = apps.get_model('students', 'CBCGrade')
+    PerformanceLevelDefinition = apps.get_model(
+        'students', 'PerformanceLevelDefinition'
+    )
+    definitions = {
+        (framework_id, code): definition_id
+        for framework_id, code, definition_id in (
+            PerformanceLevelDefinition.objects.values_list(
+                'framework_id',
+                'code',
+                'pk',
+            )
+        )
+    }
+    for grade in CBCGrade.objects.only('pk', 'framework_id', 'level').iterator():
+        definition_id = definitions.get((grade.framework_id, grade.level))
+        if definition_id is not None:
+            CBCGrade.objects.filter(pk=grade.pk).update(
+                level_definition_id_snapshot=definition_id,
+            )
 
 
 def backfill_factual_creation_snapshots(apps, schema_editor):
@@ -16,14 +40,22 @@ def backfill_factual_creation_snapshots(apps, schema_editor):
     )
     goals = AcademicGoal.objects.select_related(
         'current_evidence__framework',
+        'target_level_definition',
     )
     for goal in goals.iterator():
         evidence = goal.current_evidence
-        level_ranks = dict(
-            PerformanceLevelDefinition.objects.filter(
-                framework_id=evidence.framework_id,
-            ).values_list('code', 'rank')
-        )
+        level_definitions = {
+            str(definition_id): {'code': code, 'rank': rank}
+            for definition_id, code, rank in (
+                PerformanceLevelDefinition.objects.filter(
+                    framework_id=evidence.framework_id,
+                ).values_list('pk', 'code', 'rank')
+            )
+        }
+        level_ranks = {
+            definition['code']: definition['rank']
+            for definition in level_definitions.values()
+        }
         snapshot = {
             'evidence_id': evidence.pk,
             'period': {
@@ -34,12 +66,14 @@ def backfill_factual_creation_snapshots(apps, schema_editor):
             'level': {
                 'code': goal.current_level_code,
                 'rank': goal.current_level_rank,
+                'definition_id': goal.current_level_definition_id,
             },
             'framework': {
                 'id': evidence.framework_id,
                 'code': goal.current_framework_code,
                 'version': goal.current_framework_version,
                 'level_ranks': level_ranks,
+                'level_definitions': level_definitions,
             },
             'source': evidence.source,
             'verification': {
@@ -55,22 +89,21 @@ def backfill_factual_creation_snapshots(apps, schema_editor):
             'recorded_at': _isoformat(evidence.created_at),
             'snapshot_provenance': 'migration_0013_best_available',
         }
-        updates = {'creation_evidence_snapshot': snapshot}
-        if goal.status == 'achieved':
-            updates['legacy_lifecycle_unverifiable'] = True
-        elif goal.status == 'active' and any((
-            goal.achieved_at,
-            goal.closed_at,
-        )):
-            raise RuntimeError(
-                'Cannot migrate an incoherent pre-existing active academic goal.'
-            )
-        elif goal.status == 'closed' and (
-            goal.achieved_at is not None or goal.closed_at is None
-        ):
-            raise RuntimeError(
-                'Cannot migrate an incoherent pre-existing closed academic goal.'
-            )
+        normal_active = (
+            goal.status == 'active'
+            and goal.achieved_at is None
+            and goal.closed_at is None
+        )
+        normal_closed = (
+            goal.status == 'closed'
+            and goal.achieved_at is None
+            and goal.closed_at is not None
+        )
+        updates = {
+            'creation_evidence_snapshot': snapshot,
+            'target_framework_id_snapshot': goal.target_level_definition.framework_id,
+            'legacy_lifecycle_unverifiable': not (normal_active or normal_closed),
+        }
         AcademicGoal.objects.filter(pk=goal.pk).update(**updates)
 
 
@@ -99,24 +132,108 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='academicgoal',
             name='confirmed_by',
-            field=models.ForeignKey(blank=True, editable=False, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='academic_goals_confirmed', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(
+                blank=True,
+                editable=False,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name='academic_goals_confirmed',
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
             model_name='academicgoal',
             name='creation_evidence_snapshot',
             field=models.JSONField(default=dict, editable=False),
         ),
+        migrations.AddField(
+            model_name='academicgoal',
+            name='target_framework_id_snapshot',
+            field=models.PositiveBigIntegerField(editable=False, null=True),
+        ),
+        migrations.AddField(
+            model_name='cbcgrade',
+            name='level_definition_id_snapshot',
+            field=models.PositiveBigIntegerField(
+                editable=False,
+                null=True,
+            ),
+        ),
         migrations.AlterField(
             model_name='academicgoal',
             name='current_evidence',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='goals_created_from_evidence', to='students.cbcgrade'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=students.models.set_academic_goal_evidence_null,
+                related_name='goals_created_from_evidence',
+                to='students.cbcgrade',
+            ),
+        ),
+        migrations.RunPython(
+            backfill_grade_level_definition_ids,
+            migrations.RunPython.noop,
         ),
         migrations.RunPython(
             backfill_factual_creation_snapshots,
             migrations.RunPython.noop,
         ),
+        migrations.AlterField(
+            model_name='academicgoal',
+            name='target_framework_id_snapshot',
+            field=models.PositiveBigIntegerField(editable=False),
+        ),
         migrations.AddConstraint(
             model_name='academicgoal',
-            constraint=models.CheckConstraint(check=models.Q(models.Q(('achieved_at__isnull', True), ('achievement_evidence_snapshot__isnull', True), ('active_identity__isnull', False), ('closed_at__isnull', True), ('confirmed_by__isnull', True), ('legacy_lifecycle_unverifiable', False), ('status', 'active')), models.Q(('achieved_at__isnull', False), ('achievement_evidence_snapshot__isnull', False), ('active_identity__isnull', True), ('closed_at__isnull', True), ('confirmed_by__isnull', False), ('legacy_lifecycle_unverifiable', False), ('status', 'achieved')), models.Q(('achieved_at__isnull', True), ('achievement_evidence_snapshot__isnull', True), ('active_identity__isnull', True), ('closed_at__isnull', False), ('confirmed_by__isnull', True), ('legacy_lifecycle_unverifiable', False), ('status', 'closed')), models.Q(('achievement_evidence_snapshot__isnull', True), ('active_identity__isnull', True), ('closed_at__isnull', True), ('confirmed_by__isnull', True), ('legacy_lifecycle_unverifiable', True), ('status', 'achieved')), _connector='OR'), name='students_goal_lifecycle_coherence_ck'),
+            constraint=models.CheckConstraint(
+                check=(
+                    models.Q(
+                        status='active',
+                        legacy_lifecycle_unverifiable=False,
+                        active_identity__isnull=False,
+                        achieved_at__isnull=True,
+                        closed_at__isnull=True,
+                        confirmed_by__isnull=True,
+                        achievement_evidence_snapshot__isnull=True,
+                    )
+                    | models.Q(
+                        status='achieved',
+                        legacy_lifecycle_unverifiable=False,
+                        active_identity__isnull=True,
+                        achieved_at__isnull=False,
+                        closed_at__isnull=True,
+                        confirmed_by__isnull=False,
+                        confirmed_by=models.F('created_by'),
+                        achievement_evidence_snapshot__isnull=False,
+                    )
+                    | models.Q(
+                        status='closed',
+                        legacy_lifecycle_unverifiable=False,
+                        active_identity__isnull=True,
+                        achieved_at__isnull=True,
+                        closed_at__isnull=False,
+                        confirmed_by__isnull=True,
+                        achievement_evidence_snapshot__isnull=True,
+                    )
+                    | (
+                        models.Q(
+                            legacy_lifecycle_unverifiable=True,
+                            confirmed_by__isnull=True,
+                            achievement_evidence_snapshot__isnull=True,
+                        )
+                        & (
+                            models.Q(
+                                status='active',
+                                active_identity__isnull=False,
+                            )
+                            | models.Q(
+                                status__in=['achieved', 'closed'],
+                                active_identity__isnull=True,
+                            )
+                        )
+                    )
+                ),
+                name='students_goal_lifecycle_coherence_ck',
+            ),
         ),
     ]

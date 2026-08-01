@@ -211,7 +211,7 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
         attrs = super().validate(attrs)
         target_code = attrs.pop('target_level', None)
         supplied_target = attrs.get('target_level_definition')
-        self._target_changed = target_code is not None or supplied_target is not None
+        target_was_supplied = target_code is not None or supplied_target is not None
         if target_code is not None and supplied_target is not None:
             raise serializers.ValidationError(
                 {'target_level': 'Choose a target level by code or definition, not both.'}
@@ -237,8 +237,7 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
             attrs['current_evidence'] = current_evidence
             attrs['current_level_definition'] = current_level
             current_rank = current_level.rank
-            framework_code = current_level.framework.code
-            framework_version = current_level.framework.version
+            framework_id = current_level.framework_id
             current_period = (
                 current_evidence.academic_grade,
                 current_evidence.year,
@@ -248,27 +247,34 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
             attrs['continuity_code'] = self.instance.continuity_code
             snapshot = self.instance.creation_evidence_snapshot
             current_rank = snapshot['level']['rank']
-            framework_code = snapshot['framework']['code']
-            framework_version = snapshot['framework']['version']
+            framework_id = snapshot['framework']['id']
             current_period = (
                 snapshot['period']['academic_grade'],
                 snapshot['period']['year'],
                 snapshot['period']['term'],
             )
 
-        if not self._target_changed and self.instance is not None:
+        if not target_was_supplied and self.instance is not None:
             target_level = self.instance.target_level_definition
         elif target_code is not None:
             try:
-                framework = AssessmentFramework.objects.get(
-                    code=framework_code,
-                    version=framework_version,
-                )
-                target_level = PerformanceLevelDefinition.objects.select_related(
+                frozen_definition_id = None
+                if self.instance is not None:
+                    frozen_definition_id = next((
+                        int(definition_id)
+                        for definition_id, definition in snapshot['framework'][
+                            'level_definitions'
+                        ].items()
+                        if definition['code'] == target_code
+                    ), None)
+                target_levels = PerformanceLevelDefinition.objects.select_related(
                     'framework'
-                ).get(framework=framework, code=target_code)
+                ).filter(framework_id=framework_id)
+                if frozen_definition_id is not None:
+                    target_level = target_levels.get(pk=frozen_definition_id)
+                else:
+                    target_level = target_levels.get(code=target_code)
             except (
-                AssessmentFramework.DoesNotExist,
                 PerformanceLevelDefinition.DoesNotExist,
             ) as exc:
                 raise serializers.ValidationError(
@@ -280,10 +286,11 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'target_level': 'Choose a target performance level.'}
             )
-        if self._target_changed and (
-            target_level.framework.code != framework_code
-            or target_level.framework.version != framework_version
-        ):
+        self._target_changed = (
+            self.instance is None
+            or target_level.pk != self.instance.target_level_definition_id
+        )
+        if self._target_changed and target_level.framework_id != framework_id:
             raise serializers.ValidationError(
                 {'target_level_definition': 'Target level must use the current assessment framework.'}
             )
@@ -305,11 +312,6 @@ class AcademicGoalWriteSerializer(serializers.ModelSerializer):
             )
         attrs['target_level_definition'] = target_level
         return attrs
-
-    def update(self, instance, validated_data):
-        if self._target_changed:
-            instance._refresh_target_snapshot = True
-        return super().update(instance, validated_data)
 
     def create(self, validated_data):
         learner = self.context['learner']
