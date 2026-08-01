@@ -199,15 +199,19 @@ class SchoolGradeVerificationView(APIView):
             )
             changed = should_verify != is_verified or verifier_changed
             if changed:
+                update_fields = ['verified_by', 'verified_at', 'updated_at']
                 if should_verify:
                     grade.verified_by = request.user
                     grade.verified_at = timezone.now()
+                    if grade.verified_school_id is None:
+                        grade.verified_school = school
+                        update_fields.append('verified_school')
                     action = 'grade_verified'
                 else:
                     grade.verified_by = None
                     grade.verified_at = None
                     action = 'grade_verification_removed'
-                grade.save(update_fields=['verified_by', 'verified_at', 'updated_at'])
+                grade.save(update_fields=update_fields)
 
                 forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
                 ip_address = (

@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from accounts.models import StudentProfile
@@ -23,6 +26,94 @@ GRADE_LEVEL_POINTS = {
     'BE1': 2,
     'BE2': 1,
 }
+
+
+class AssessmentFramework(models.Model):
+    STATUS_DRAFT = 'draft'
+    STATUS_ACTIVE = 'active'
+    STATUS_RETIRED = 'retired'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, 'Draft'),
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_RETIRED, 'Retired'),
+    ]
+
+    code = models.CharField(max_length=80)
+    version = models.CharField(max_length=40)
+    title = models.CharField(max_length=200)
+    scope = models.CharField(max_length=40)
+    source_url = models.URLField(max_length=500)
+    effective_date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['scope', '-effective_date', 'code', 'version']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['code', 'version'],
+                name='students_framework_code_version_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['scope'],
+                condition=models.Q(status='active'),
+                name='students_active_framework_scope_uniq',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.code} {self.version} — {self.title}'
+
+
+class PerformanceLevelDefinition(models.Model):
+    framework = models.ForeignKey(
+        AssessmentFramework,
+        on_delete=models.CASCADE,
+        related_name='level_definitions',
+    )
+    code = models.CharField(max_length=10)
+    label = models.CharField(max_length=120)
+    description = models.TextField()
+    rank = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+    official_min_score = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    official_max_score = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    official_points = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ['-rank', 'code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['framework', 'code'],
+                name='students_level_framework_code_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['framework', 'rank'],
+                name='students_level_framework_rank_uniq',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.framework.code} {self.framework.version} — {self.code}'
 
 
 class Subject(models.Model):
@@ -64,9 +155,30 @@ class CBCGrade(models.Model):
     student_subject = models.ForeignKey(
         StudentSubject, on_delete=models.CASCADE, related_name='grades'
     )
+    framework = models.ForeignKey(
+        AssessmentFramework,
+        on_delete=models.PROTECT,
+        related_name='grades',
+    )
+    academic_grade = models.IntegerField(
+        choices=[
+            (9, 'Grade 9'),
+            (10, 'Grade 10'),
+            (11, 'Grade 11'),
+            (12, 'Grade 12'),
+        ],
+        validators=[MinValueValidator(9), MaxValueValidator(12)],
+    )
     term = models.IntegerField(choices=TERM_CHOICES)
     year = models.IntegerField()
     level = models.CharField(max_length=10, choices=GRADE_LEVEL_CHOICES)
+    raw_score = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
+    )
     source = models.CharField(
         max_length=10,
         choices=SOURCE_CHOICES,
@@ -75,6 +187,13 @@ class CBCGrade(models.Model):
     verified_by = models.ForeignKey(
         'accounts.User',
         on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_cbc_grades',
+    )
+    verified_school = models.ForeignKey(
+        'accounts.School',
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name='verified_cbc_grades',
@@ -101,3 +220,52 @@ class CBCGrade(models.Model):
 
     def __str__(self):
         return f"{self.student_subject} — T{self.term} {self.year}: {self.level}"
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            if self.academic_grade is None:
+                self.academic_grade = self.student_subject.subject.grade
+            if self.framework_id is None:
+                framework_scope = (
+                    'junior_school'
+                    if self.academic_grade == 9
+                    else 'senior_school'
+                )
+                try:
+                    self.framework = AssessmentFramework.objects.get(
+                        scope=framework_scope,
+                        status=AssessmentFramework.STATUS_ACTIVE,
+                    )
+                except AssessmentFramework.DoesNotExist as exc:
+                    raise ValidationError(
+                        {
+                            'framework': (
+                                f'No active {framework_scope.replace("_", " ").title()} '
+                                'assessment framework is configured.'
+                            )
+                        }
+                    ) from exc
+                except AssessmentFramework.MultipleObjectsReturned as exc:
+                    raise ValidationError(
+                        {
+                            'framework': (
+                                f'Multiple active {framework_scope.replace("_", " ").title()} '
+                                'assessment frameworks are configured.'
+                            )
+                        }
+                    ) from exc
+        else:
+            original = (
+                type(self).objects.filter(pk=self.pk)
+                .values_list('verified_school_id')
+                .first()
+            )
+            if (
+                original is not None
+                and original[0] is not None
+                and original[0] != self.verified_school_id
+            ):
+                raise ValidationError(
+                    {'verified_school': 'Verifying school provenance is immutable.'}
+                )
+        return super().save(*args, **kwargs)

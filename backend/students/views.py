@@ -746,7 +746,10 @@ class CBCGradeListView(APIView):
             year=serializer.validated_data['year'],
         ).exists():
             return _error('A grade for this subject, term, and year already exists.')
-        grade = serializer.save(student_subject=ss)
+        grade = serializer.save(
+            student_subject=ss,
+            academic_grade=ss.subject.grade,
+        )
         return _success(
             data=CBCGradeSerializer(grade).data,
             message='Grade added.',

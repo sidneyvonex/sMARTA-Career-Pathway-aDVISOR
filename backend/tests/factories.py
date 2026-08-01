@@ -3,7 +3,13 @@ from datetime import date
 import factory
 from django.contrib.auth import get_user_model
 from accounts.models import School, StudentProfile
-from students.models import Subject, StudentSubject, CBCGrade
+from students.models import (
+    AssessmentFramework,
+    CBCGrade,
+    PerformanceLevelDefinition,
+    StudentSubject,
+    Subject,
+)
 from riasec.models import RIASECAssessment, RIASECScore, Pathway, Recommendation
 from notifications.models import Notification
 from parents.models import ParentStudentLink
@@ -105,11 +111,42 @@ class StudentSubjectFactory(factory.django.DjangoModelFactory):
     subject = factory.SubFactory(SubjectFactory, grade=9)
 
 
+class AssessmentFrameworkFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AssessmentFramework
+
+    code = factory.Sequence(lambda n: f'CBC-TEST-{n:04d}')
+    version = 'v1'
+    title = factory.Sequence(lambda n: f'Test Assessment Framework {n}')
+    scope = factory.Sequence(lambda n: f'test_scope_{n}')
+    source_url = 'https://kicd.ac.ke/curriculum-reform/'
+    effective_date = date(2026, 1, 1)
+    status = AssessmentFramework.STATUS_DRAFT
+
+
+class PerformanceLevelDefinitionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PerformanceLevelDefinition
+
+    framework = factory.SubFactory(AssessmentFrameworkFactory)
+    code = factory.Sequence(lambda n: f'L{n}')
+    label = factory.Sequence(lambda n: f'Level {n}')
+    description = factory.Sequence(lambda n: f'Performance level {n}.')
+    rank = factory.Sequence(lambda n: n + 1)
+
+
 class CBCGradeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CBCGrade
 
     student_subject = factory.SubFactory(StudentSubjectFactory)
+    framework = factory.SubFactory(AssessmentFrameworkFactory)
+    academic_grade = factory.LazyAttribute(
+        lambda grade: grade.student_subject.subject.grade
+    )
+    verified_school = factory.LazyAttribute(
+        lambda grade: getattr(getattr(grade, 'verified_by', None), 'school', None)
+    )
     term = 1
     year = 2026
     level = 'ME1'
