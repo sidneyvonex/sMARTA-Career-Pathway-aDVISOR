@@ -143,7 +143,7 @@ export default function SystemAdminDashboard() {
       </section>
 
       <div className="pilot-admin__workspace">
-        <section className="db-panel" aria-labelledby="framework-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="framework-title">
           <SectionHeader
             eyebrow="Catalogue freshness"
             title="Current guidance framework"
@@ -169,7 +169,7 @@ export default function SystemAdminDashboard() {
           )}
         </section>
 
-        <section className="db-panel" aria-labelledby="recent-activity-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="recent-activity-title">
           <SectionHeader
             eyebrow="Important events"
             title="Recent Activity"

@@ -186,8 +186,8 @@ describe('CounselorManagementPage', () => {
 
   it('shows add counselor form with email input', async () => {
     renderPage()
-    expect(await screen.findByPlaceholderText('Counselor email address')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add Counselor' })).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText('Counsellor email address')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add counsellor' })).toBeInTheDocument()
   })
 
   it('opens workload details from the visible primary action', async () => {

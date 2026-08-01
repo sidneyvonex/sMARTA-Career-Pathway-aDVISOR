@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
@@ -9,6 +9,8 @@ import {
 import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import SectionHeader from '../../components/common/dashboard/SectionHeader'
+import Pagination from '../../components/common/management/Pagination'
+import type { PaginationState } from '../../components/common/management/types'
 import '../../styles/dashboard.css'
 import '../../styles/system-admin.css'
 
@@ -22,6 +24,8 @@ export default function SystemAdminCataloguePage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<PaginationState['pageSize']>(25)
 
   const catalogueQ = useQuery({
     queryKey: ['system-admin', 'catalogue'],
@@ -73,8 +77,19 @@ export default function SystemAdminCataloguePage() {
     })
   }, [combinations, search, statusFilter])
 
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter, pageSize])
+
+  const pageCount = Math.max(1, Math.ceil(filteredCombinations.length / pageSize))
+  const safePage = Math.min(page, pageCount)
+  const pagedCombinations = useMemo(
+    () => filteredCombinations.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filteredCombinations, safePage, pageSize],
+  )
+
   const groupedCombinations = useMemo(() => {
-    return filteredCombinations.reduce<Record<string, CatalogueCombination[]>>(
+    return pagedCombinations.reduce<Record<string, CatalogueCombination[]>>(
       (groups, combination) => {
         const label = combination.track.pathway.name
         groups[label] = [...(groups[label] ?? []), combination]
@@ -82,7 +97,7 @@ export default function SystemAdminCataloguePage() {
       },
       {},
     )
-  }, [filteredCombinations])
+  }, [pagedCombinations])
 
   if (catalogueQ.isLoading) {
     return (
@@ -180,6 +195,9 @@ export default function SystemAdminCataloguePage() {
               <option value="inactive">Inactive only</option>
             </select>
           </label>
+          <span className="catalogue-toolbar__count" aria-live="polite">
+            {countLabel(filteredCombinations.length, 'combination', 'combinations')}
+          </span>
         </div>
 
         {filteredCombinations.length === 0 ? (
@@ -188,6 +206,7 @@ export default function SystemAdminCataloguePage() {
             description="Clear the search or choose another status filter."
           />
         ) : (
+          <>
           <div className="catalogue-groups">
             {Object.entries(groupedCombinations).map(([pathway, pathwayCombinations]) => (
               <section key={pathway} aria-labelledby={`pathway-${pathway.replace(/\s+/g, '-').toLowerCase()}`}>
@@ -243,6 +262,12 @@ export default function SystemAdminCataloguePage() {
               </section>
             ))}
           </div>
+          <Pagination
+            state={{ page: safePage, pageSize, total: filteredCombinations.length }}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+          </>
         )}
       </section>
     </div>

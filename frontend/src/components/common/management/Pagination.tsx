@@ -1,4 +1,5 @@
 import type { PaginationState } from './types'
+import '../../../styles/management.css'
 
 interface PaginationProps {
   state: PaginationState

@@ -109,7 +109,7 @@ export default function SchoolAdminDashboard() {
       </section>
 
       <div className="school-operations__workspace">
-        <section className="db-panel" aria-labelledby="school-workload-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="school-workload-title">
           <SectionHeader
             eyebrow="Assignments"
             title="Counsellor workload"
@@ -132,7 +132,7 @@ export default function SchoolAdminDashboard() {
           )}
         </section>
 
-        <section className="db-panel" aria-labelledby="school-offerings-title">
+        <section className="db-panel db-panel--compact" aria-labelledby="school-offerings-title">
           <SectionHeader
             eyebrow="Curriculum readiness"
             title="School offerings"

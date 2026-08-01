@@ -627,9 +627,18 @@
 
 .catalogue-toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  align-items: center;
   gap: var(--space-3);
   margin: var(--space-5) 0;
+}
+
+.catalogue-toolbar__count {
+  justify-self: end;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
 }
 
 .catalogue-toolbar input,

@@ -105,11 +105,11 @@ export default function CounselorManagementPage() {
         type="email"
         value={email}
         onChange={event => setEmail(event.target.value)}
-        placeholder="Counselor email address"
+        placeholder="Counsellor email address"
         required
       />
       <button type="submit" className="btn-primary" disabled={addMutation.isPending}>
-        {addMutation.isPending ? 'Adding…' : 'Add Counselor'}
+        {addMutation.isPending ? 'Adding…' : 'Add counsellor'}
       </button>
     </form>
   )
@@ -129,6 +129,7 @@ export default function CounselorManagementPage() {
           />
         </label>
       )}
+      pageAction={inviteForm}
     />
   )
 
@@ -138,7 +139,6 @@ export default function CounselorManagementPage() {
         eyebrow="School team"
         title="Counsellors"
         description="Invite counsellors and keep learner workloads visible before making assignments."
-        pageAction={inviteForm}
         toolbar={toolbar}
         loading={isLoading}
         error={isError ? {
