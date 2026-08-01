@@ -154,7 +154,7 @@ class StudentSubject(models.Model):
     student_profile = models.ForeignKey(
         StudentProfile, on_delete=models.CASCADE, related_name='enrolled_subjects'
     )
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='enrollments')
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='enrollments')
     continuity_code = models.CharField(max_length=80)
     academic_grade = models.IntegerField(
         choices=[
@@ -166,6 +166,12 @@ class StudentSubject(models.Model):
         validators=[MinValueValidator(9), MaxValueValidator(12)],
     )
     academic_year = models.PositiveSmallIntegerField()
+    active_identity = models.CharField(
+        max_length=96,
+        null=True,
+        blank=True,
+        editable=False,
+    )
     is_active = models.BooleanField(default=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -175,11 +181,9 @@ class StudentSubject(models.Model):
             models.UniqueConstraint(
                 fields=[
                     'student_profile',
-                    'continuity_code',
-                    'academic_grade',
+                    'active_identity',
                 ],
-                condition=models.Q(is_active=True),
-                name='students_active_enroll_uniq',
+                name='students_active_identity_uniq',
             ),
             models.CheckConstraint(
                 check=(
@@ -217,6 +221,15 @@ class StudentSubject(models.Model):
                 raise ValidationError(
                     'Enrollment subject identity snapshots are immutable.'
                 )
+        self.active_identity = (
+            f'{self.continuity_code}:{self.academic_grade}'
+            if self.is_active
+            else None
+        )
+        if kwargs.get('update_fields') is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {
+                'active_identity'
+            }
         return super().save(*args, **kwargs)
 
     def archive(self):
@@ -224,7 +237,14 @@ class StudentSubject(models.Model):
             return
         self.is_active = False
         self.ended_at = timezone.now()
-        self.save(update_fields=['is_active', 'ended_at'])
+        self.save(update_fields=['is_active', 'ended_at', 'active_identity'])
+
+    def activate(self):
+        if self.is_active:
+            return
+        self.is_active = True
+        self.ended_at = None
+        self.save(update_fields=['is_active', 'ended_at', 'active_identity'])
 
 
 class CBCGrade(models.Model):
@@ -232,7 +252,7 @@ class CBCGrade(models.Model):
     SOURCE_CHOICES = [('learner', 'Learner'), ('school', 'School')]
 
     student_subject = models.ForeignKey(
-        StudentSubject, on_delete=models.CASCADE, related_name='grades'
+        StudentSubject, on_delete=models.PROTECT, related_name='grades'
     )
     framework = models.ForeignKey(
         AssessmentFramework,

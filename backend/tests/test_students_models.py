@@ -1,6 +1,7 @@
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models.deletion import ProtectedError
 from django.utils import timezone
 from students.models import GRADE_LEVEL_CHOICES, GRADE_LEVEL_POINTS
 
@@ -98,7 +99,21 @@ class TestStudentSubjectConstraints:
         assert enrollment.academic_grade == 10
         assert enrollment.academic_year == timezone.now().year
         assert enrollment.is_active is True
+        assert enrollment.active_identity == 'ENG:10'
         assert enrollment.ended_at is None
+
+    def test_active_identity_unique_constraint_is_unconditional_for_mysql(self):
+        from students.models import StudentSubject
+
+        constraint = next(
+            constraint
+            for constraint in StudentSubject._meta.constraints
+            if constraint.name == 'students_active_identity_uniq'
+        )
+
+        assert constraint.condition is None
+        assert constraint.fields == ('student_profile', 'active_identity')
+        assert StudentSubject._meta.get_field('active_identity').null is True
 
     def test_cross_grade_enrollments_share_continuity_without_conflicting(self):
         from students.models import Subject, StudentSubject
@@ -152,8 +167,90 @@ class TestStudentSubjectConstraints:
 
         archived.refresh_from_db()
         assert archived.is_active is False
+        assert archived.active_identity is None
         assert archived.ended_at is not None
         assert replacement.is_active is True
+        assert replacement.active_identity == 'AGR:9'
+
+    def test_multiple_archived_enrollments_can_coexist_for_one_identity(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='Agriculture archive history',
+            code='AGR9-MULTI-HISTORY',
+            continuity_code='AGR',
+            grade=9,
+            category='Core',
+        )
+        first = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+        first.archive()
+        second = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+        second.archive()
+
+        assert list(
+            StudentSubject.objects.filter(
+                student_profile=profile,
+                continuity_code='AGR',
+                academic_grade=9,
+                is_active=False,
+            ).values_list('active_identity', flat=True)
+        ) == [None, None]
+
+    def test_reactivation_restores_derived_active_identity(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='Reactivated English',
+            code='ENG9-REACTIVATE',
+            continuity_code='ENG',
+            grade=9,
+            category='Core',
+        )
+        enrollment = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+        enrollment.archive()
+
+        enrollment.activate()
+
+        enrollment.refresh_from_db()
+        assert enrollment.is_active is True
+        assert enrollment.ended_at is None
+        assert enrollment.active_identity == 'ENG:9'
+
+    def test_active_identity_cannot_be_forged(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='Derived English',
+            code='ENG9-DERIVED',
+            continuity_code='ENG',
+            grade=9,
+            category='Core',
+        )
+        enrollment = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+        enrollment.active_identity = 'FORGED:12'
+
+        enrollment.save(update_fields=['active_identity'])
+
+        enrollment.refresh_from_db()
+        assert enrollment.active_identity == 'ENG:9'
 
     def test_identity_snapshots_cannot_be_changed_after_creation(self):
         from students.models import Subject, StudentSubject
@@ -214,16 +311,46 @@ class TestStudentSubjectConstraints:
                 ended_at=None,
             )
 
-    def test_delete_student_subject_cascades_grades(self):
+    def test_delete_student_subject_with_evidence_is_protected(self):
         from students.models import Subject, StudentSubject, CBCGrade
         from tests.factories import StudentProfileFactory
         profile = StudentProfileFactory(grade=9)
         subject = Subject.objects.create(name='Eng', code='ENG9T', grade=9, category='Core')
         ss = StudentSubject.objects.create(student_profile=profile, subject=subject)
-        CBCGrade.objects.create(student_subject=ss, term=1, year=2026, level='ME1')
-        ss_id = ss.pk
-        ss.delete()
-        assert CBCGrade.objects.filter(student_subject_id=ss_id).count() == 0
+        grade = CBCGrade.objects.create(
+            student_subject=ss,
+            term=1,
+            year=2026,
+            level='ME1',
+        )
+
+        with pytest.raises(ProtectedError):
+            ss.delete()
+
+        assert StudentSubject.objects.filter(pk=ss.pk).exists()
+        assert CBCGrade.objects.filter(pk=grade.pk).exists()
+
+    def test_delete_catalogue_subject_with_enrollment_is_protected(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='Protected English',
+            code='ENG9-PROTECTED',
+            grade=9,
+            category='Core',
+        )
+        enrollment = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+
+        with pytest.raises(ProtectedError):
+            subject.delete()
+
+        assert Subject.objects.filter(pk=subject.pk).exists()
+        assert StudentSubject.objects.filter(pk=enrollment.pk).exists()
 
     def test_duplicate_grade_per_term_year_raises_integrity_error(self):
         from students.models import Subject, StudentSubject, CBCGrade

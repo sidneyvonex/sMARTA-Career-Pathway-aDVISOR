@@ -12,6 +12,7 @@ from tests.factories import (
 )
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from students.models import StudentSubject, Subject
 
 
@@ -307,6 +308,31 @@ class TestMySubjectListView:
         response = make_auth_client(verified_profile.user).post(
             '/api/v1/students/my-subjects/',
             {'subject_id': duplicate.id},
+            format='json',
+        )
+
+        assert response.status_code == 400
+        assert response.data == {
+            'data': None,
+            'error': True,
+            'message': 'You are already enrolled in this subject for Grade 9.',
+        }
+
+    def test_enrollment_integrity_race_returns_standard_error(
+        self,
+        monkeypatch,
+        verified_profile,
+    ):
+        subject = Subject.objects.get(code='ENG9')
+
+        def raise_integrity_error(*args, **kwargs):
+            raise IntegrityError('concurrent active enrollment')
+
+        monkeypatch.setattr(StudentSubject, 'save', raise_integrity_error)
+
+        response = make_auth_client(verified_profile.user).post(
+            '/api/v1/students/my-subjects/',
+            {'subject_id': subject.id},
             format='json',
         )
 
