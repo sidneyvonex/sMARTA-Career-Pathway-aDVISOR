@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { authApi, type User } from '../../api/auth'
+import { dashboardApi } from '../../api/dashboard'
 import { clearUserScopedStorage } from '../../lib/sessionCleanup'
 import Avatar from '../common/Avatar'
 
@@ -107,9 +108,24 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  const parentChildrenQ = useQuery({
+    queryKey: ['parent-children'],
+    queryFn: () => dashboardApi.getParentChildren().then((response) => response.data.data),
+    enabled: user?.role === 'parent',
+  })
+
   if (!user) return <aside className="sidebar" aria-label="Main navigation" />
 
   const navItems = getNavItems(user.role)
+  const learnerNav: NavItem[] = user.role === 'parent'
+    ? (parentChildrenQ.data ?? []).map((child) => ({
+        to: `/parent/child/${child.id}`,
+        label: `${child.first_name} ${child.last_name}`,
+        icon: ICONS.person,
+        badge: `Grade ${child.grade}`,
+      }))
+    : []
+  const allNavItems = [...navItems, ...learnerNav]
   const collapsed = sidebarCollapsed
   const roleLabel = user.role.replace('_', ' ')
 
@@ -164,7 +180,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/' || navItems.some((other) => other.to.startsWith(`${item.to}/`))}
+            end={item.to === '/' || allNavItems.some((other) => other.to.startsWith(`${item.to}/`))}
             className={({ isActive }) =>
               `sidebar__nav-item${isActive ? ' active' : ''}`
             }
@@ -175,6 +191,26 @@ export default function Sidebar() {
             {item.badge && <span className="sidebar__badge">{item.badge}</span>}
           </NavLink>
         ))}
+
+        {learnerNav.length > 0 && (
+          <>
+            <p className="sidebar__section-label">Your learners</p>
+            {learnerNav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `sidebar__nav-item${isActive ? ' active' : ''}`
+                }
+                onClick={() => setMobileSidebarOpen(false)}
+              >
+                <span className="sidebar__nav-icon">{item.icon}</span>
+                <span className="sidebar__nav-label">{item.label}</span>
+                {item.badge && <span className="sidebar__badge sidebar__badge--soft">{item.badge}</span>}
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Footer */}

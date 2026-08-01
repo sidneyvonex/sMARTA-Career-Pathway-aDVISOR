@@ -258,6 +258,17 @@
   opacity: 0;
 }
 
+.sidebar__badge--soft {
+  background: color-mix(in srgb, var(--color-text-on-primary) 14%, transparent);
+  color: color-mix(in srgb, var(--color-text-on-primary) 85%, transparent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar__nav-item.active .sidebar__badge--soft {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: var(--color-text);
+}
+
 .sidebar__footer {
   margin: var(--space-3);
   padding: var(--space-3);

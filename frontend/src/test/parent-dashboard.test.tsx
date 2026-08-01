@@ -52,7 +52,7 @@ describe('ParentDashboard', () => {
 
     fireEvent.change(switcher, { target: { value: '11' } })
 
-    expect(screen.getByText('No provisional combination yet')).toBeInTheDocument()
+    expect(screen.getByText('Still exploring options')).toBeInTheDocument()
     expect(screen.getByText('Complete your interest assessment')).toBeInTheDocument()
   })
 

@@ -119,19 +119,18 @@ export default function ParentDashboard() {
 
             <div className="parent-support__grid">
               <section className="parent-support__card">
-                <span>Provisional direction</span>
+                <span>Subjects they're considering</span>
                 {child.provisional_combination ? (
                   <>
                     <h3>{child.provisional_combination.title}</h3>
                     <p>
                       {child.provisional_combination.pathway} · {child.provisional_combination.track}
                     </p>
-                    <small>{child.provisional_combination.code}</small>
                   </>
                 ) : (
                   <>
-                    <h3>No provisional combination yet</h3>
-                    <p>Encourage comparison without choosing on the learner's behalf.</p>
+                    <h3>Still exploring options</h3>
+                    <p>{child.first_name} hasn't settled on a direction yet — that's okay at this stage.</p>
                   </>
                 )}
               </section>
@@ -157,7 +156,7 @@ export default function ParentDashboard() {
               </section>
 
               <section className="parent-support__card parent-support__card--prompt">
-                <span>Conversation prompt</span>
+                <span>Talk together</span>
                 <h3>Ask, then listen</h3>
                 <blockquote>“{child.conversation_prompt}”</blockquote>
               </section>

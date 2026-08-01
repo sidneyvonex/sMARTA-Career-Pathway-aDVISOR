@@ -21,12 +21,13 @@ export default function ChildHeader({ child }: Props) {
         <div className="greeting-strip__chips">
           <span className="greeting-chip">Grade {child.grade}</span>
           {child.county && <span className="greeting-chip child-header-card__county">{child.county}</span>}
-          <span className="greeting-chip greeting-chip--gold">Access: Learner approved</span>
           <span className={`greeting-chip${child.quiz_status === 'done' ? ' greeting-chip--gold' : ''}`}>
-            Quiz: {child.quiz_status === 'done' ? 'Done' : 'Pending'}
+            {child.quiz_status === 'done' ? 'Interest quiz done' : 'Interest quiz still to do'}
           </span>
-          <span className="greeting-chip">{child.subject_count} subjects</span>
-          <span className="greeting-chip">Counselor: {child.counselor_assigned ? 'Assigned' : 'None'}</span>
+          <span className="greeting-chip">Tracking {child.subject_count} subjects</span>
+          <span className="greeting-chip">
+            {child.counselor_assigned ? 'Has a school counsellor' : 'No counsellor yet'}
+          </span>
         </div>
         <div className="child-header-card__active">
           Last active: {formatDate(child.last_active)}
