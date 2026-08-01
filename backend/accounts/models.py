@@ -236,11 +236,37 @@ class StudentSchoolMembership(models.Model):
             ),
             models.CheckConstraint(
                 check=(
-                    models.Q(decided_at__isnull=True)
-                    | ~models.Q(status='active')
-                    | models.Q(started_at__isnull=False)
+                    models.Q(record_source='legacy_backfill')
+                    | models.Q(
+                        record_source='learner_request',
+                        status='pending',
+                        decided_at__isnull=True,
+                        started_at__isnull=True,
+                        ended_at__isnull=True,
+                    )
+                    | models.Q(
+                        record_source='learner_request',
+                        status='active',
+                        decided_at__isnull=False,
+                        started_at__isnull=False,
+                        ended_at__isnull=True,
+                    )
+                    | models.Q(
+                        record_source='learner_request',
+                        status='rejected',
+                        decided_at__isnull=False,
+                        started_at__isnull=True,
+                        ended_at__isnull=True,
+                    )
+                    | models.Q(
+                        record_source='learner_request',
+                        status='ended',
+                        decided_at__isnull=False,
+                        started_at__isnull=False,
+                        ended_at__isnull=False,
+                    )
                 ),
-                name='accounts_membership_approval_time_ck',
+                name='accounts_membership_lifecycle_time_ck',
             ),
         ]
 

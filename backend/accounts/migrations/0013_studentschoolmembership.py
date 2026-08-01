@@ -134,12 +134,38 @@ class Migration(migrations.Migration):
             model_name='studentschoolmembership',
             constraint=models.CheckConstraint(
                 check=models.Q(
-                    ('decided_at__isnull', True),
-                    models.Q(('status', 'active'), _negated=True),
-                    ('started_at__isnull', False),
+                    ('record_source', 'legacy_backfill'),
+                    models.Q(
+                        ('decided_at__isnull', True),
+                        ('ended_at__isnull', True),
+                        ('record_source', 'learner_request'),
+                        ('started_at__isnull', True),
+                        ('status', 'pending'),
+                    ),
+                    models.Q(
+                        ('decided_at__isnull', False),
+                        ('ended_at__isnull', True),
+                        ('record_source', 'learner_request'),
+                        ('started_at__isnull', False),
+                        ('status', 'active'),
+                    ),
+                    models.Q(
+                        ('decided_at__isnull', False),
+                        ('ended_at__isnull', True),
+                        ('record_source', 'learner_request'),
+                        ('started_at__isnull', True),
+                        ('status', 'rejected'),
+                    ),
+                    models.Q(
+                        ('decided_at__isnull', False),
+                        ('ended_at__isnull', False),
+                        ('record_source', 'learner_request'),
+                        ('started_at__isnull', False),
+                        ('status', 'ended'),
+                    ),
                     _connector='OR',
                 ),
-                name='accounts_membership_approval_time_ck',
+                name='accounts_membership_lifecycle_time_ck',
             ),
         ),
     ]

@@ -2,6 +2,7 @@ from datetime import date
 
 import factory
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from accounts.models import School, StudentProfile, StudentSchoolMembership
 from students.models import (
     AssessmentFramework,
@@ -98,6 +99,27 @@ class StudentSchoolMembershipFactory(factory.django.DjangoModelFactory):
     student_profile = factory.SubFactory(StudentProfileFactory)
     school = factory.SubFactory(SchoolFactory)
     status = StudentSchoolMembership.STATUS_PENDING
+    record_source = StudentSchoolMembership.SOURCE_LEARNER_REQUEST
+    requested_at = factory.LazyFunction(timezone.now)
+    decided_at = factory.LazyAttribute(
+        lambda membership: (
+            timezone.now()
+            if membership.status in {'active', 'rejected', 'ended'}
+            else None
+        )
+    )
+    started_at = factory.LazyAttribute(
+        lambda membership: (
+            timezone.now()
+            if membership.status in {'active', 'ended'}
+            else None
+        )
+    )
+    ended_at = factory.LazyAttribute(
+        lambda membership: (
+            timezone.now() if membership.status == 'ended' else None
+        )
+    )
 
 
 class SubjectFactory(factory.django.DjangoModelFactory):

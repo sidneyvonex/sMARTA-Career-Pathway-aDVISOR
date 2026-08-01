@@ -7,6 +7,7 @@ from django.db import (
     close_old_connections,
     transaction,
 )
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 import accounts.models as account_models
@@ -101,6 +102,85 @@ def test_historical_memberships_remain_repeatable():
 
     assert len(ended) == 2
     assert len(rejected) == 2
+
+
+@pytest.mark.parametrize(
+    ('membership_status', 'invalid_field', 'invalid_value'),
+    [
+        ('pending', 'decided_at', 'now'),
+        ('pending', 'started_at', 'now'),
+        ('pending', 'ended_at', 'now'),
+        ('active', 'decided_at', None),
+        ('active', 'started_at', None),
+        ('active', 'ended_at', 'now'),
+        ('rejected', 'decided_at', None),
+        ('rejected', 'started_at', 'now'),
+        ('rejected', 'ended_at', 'now'),
+        ('ended', 'decided_at', None),
+        ('ended', 'started_at', None),
+        ('ended', 'ended_at', None),
+    ],
+)
+def test_learner_request_membership_rejects_incoherent_lifecycle_timestamps(
+    membership_status,
+    invalid_field,
+    invalid_value,
+):
+    """Catches learner-request lifecycle states with incomplete provenance."""
+    now = timezone.now()
+    valid_timestamps = {
+        'pending': {
+            'decided_at': None,
+            'started_at': None,
+            'ended_at': None,
+        },
+        'active': {
+            'decided_at': now,
+            'started_at': now,
+            'ended_at': None,
+        },
+        'rejected': {
+            'decided_at': now,
+            'started_at': None,
+            'ended_at': None,
+        },
+        'ended': {
+            'decided_at': now,
+            'started_at': now,
+            'ended_at': now,
+        },
+    }
+    membership = StudentSchoolMembershipFactory(
+        status=membership_status,
+        record_source='learner_request',
+        requested_at=now,
+        **valid_timestamps[membership_status],
+    )
+
+    value = now if invalid_value == 'now' else invalid_value
+    with pytest.raises(IntegrityError), transaction.atomic():
+        account_models.StudentSchoolMembership.objects.filter(
+            pk=membership.pk,
+        ).update(**{invalid_field: value})
+
+
+@pytest.mark.parametrize('membership_status', ['pending', 'active', 'rejected'])
+def test_legacy_backfill_membership_accepts_unknown_lifecycle_timestamps(
+    membership_status,
+):
+    """Catches constraints inventing provenance for migrated legacy rows."""
+    membership = StudentSchoolMembershipFactory(
+        status=membership_status,
+        record_source='legacy_backfill',
+        requested_at=None,
+        decided_at=None,
+        started_at=None,
+        ended_at=None,
+    )
+
+    assert membership.requested_at is None
+    assert membership.decided_at is None
+    assert membership.started_at is None
 
 
 class TestLearnerMembershipRequests:
