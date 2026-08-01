@@ -9,6 +9,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/**'],
+      // Serve the `virtual:pwa-register` module in dev so it resolves reliably
+      // across HMR cycles (otherwise the dev server intermittently 500s).
+      devOptions: { enabled: true, type: 'module' },
       manifest: {
         name: 'Smarta Shauri',
         short_name: 'Shauri',
@@ -52,6 +55,7 @@ export default defineConfig({
     },
   },
   test: {
+    css: { include: /school-admin\.css$/ },
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

@@ -164,7 +164,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            end={item.to === '/'}
+            end={item.to === '/' || navItems.some((other) => other.to.startsWith(`${item.to}/`))}
             className={({ isActive }) =>
               `sidebar__nav-item${isActive ? ' active' : ''}`
             }
