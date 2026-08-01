@@ -13,37 +13,28 @@ def backfill_legacy_memberships(apps, schema_editor):
     )
 
     memberships = []
-    requested_at_by_profile = {}
     for profile in StudentProfile.objects.filter(
         school__isnull=False,
         school_membership_status__in=['active', 'pending', 'rejected'],
     ).iterator():
         status = profile.school_membership_status
-        requested_at_by_profile[profile.pk] = profile.created_at
         memberships.append(
             StudentSchoolMembership(
                 student_profile_id=profile.pk,
                 school_id=profile.school_id,
                 status=status,
+                record_source='legacy_backfill',
                 active_identity_key=(
                     profile.pk if status == 'active' else None
                 ),
                 pending_identity_key=(
                     profile.pk if status == 'pending' else None
                 ),
-                requested_at=profile.created_at,
-                started_at=(
-                    profile.created_at if status == 'active' else None
-                ),
+                requested_at=None,
+                started_at=None,
             )
         )
     StudentSchoolMembership.objects.bulk_create(memberships)
-    for membership in memberships:
-        StudentSchoolMembership.objects.filter(
-            student_profile_id=membership.student_profile_id,
-        ).update(
-            requested_at=requested_at_by_profile[membership.student_profile_id]
-        )
 
 
 class Migration(migrations.Migration):
@@ -58,9 +49,10 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('status', models.CharField(choices=[('pending', 'Pending Approval'), ('active', 'Active'), ('rejected', 'Rejected'), ('ended', 'Ended')], max_length=20)),
+                ('record_source', models.CharField(choices=[('legacy_backfill', 'Legacy Backfill'), ('learner_request', 'Learner Request')], default='learner_request', max_length=20)),
                 ('active_identity_key', models.PositiveBigIntegerField(blank=True, editable=False, null=True)),
                 ('pending_identity_key', models.PositiveBigIntegerField(blank=True, editable=False, null=True)),
-                ('requested_at', models.DateTimeField(auto_now_add=True)),
+                ('requested_at', models.DateTimeField(blank=True, null=True)),
                 ('decided_at', models.DateTimeField(blank=True, null=True)),
                 ('started_at', models.DateTimeField(blank=True, null=True)),
                 ('ended_at', models.DateTimeField(blank=True, null=True)),
@@ -120,6 +112,34 @@ class Migration(migrations.Migration):
                     )
                 ),
                 name='accounts_membership_pending_key_ck',
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name='studentschoolmembership',
+            constraint=models.CheckConstraint(
+                check=(
+                    models.Q(
+                        ('record_source', 'legacy_backfill'),
+                        ('requested_at__isnull', True),
+                    )
+                    | models.Q(
+                        ('record_source', 'learner_request'),
+                        ('requested_at__isnull', False),
+                    )
+                ),
+                name='accounts_membership_request_time_ck',
+            ),
+        ),
+        migrations.AddConstraint(
+            model_name='studentschoolmembership',
+            constraint=models.CheckConstraint(
+                check=models.Q(
+                    ('decided_at__isnull', True),
+                    models.Q(('status', 'active'), _negated=True),
+                    ('started_at__isnull', False),
+                    _connector='OR',
+                ),
+                name='accounts_membership_approval_time_ck',
             ),
         ),
     ]

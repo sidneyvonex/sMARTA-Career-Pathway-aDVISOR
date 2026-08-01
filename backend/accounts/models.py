@@ -128,6 +128,13 @@ class StudentProfile(models.Model):
 
 
 class StudentSchoolMembership(models.Model):
+    SOURCE_LEGACY_BACKFILL = 'legacy_backfill'
+    SOURCE_LEARNER_REQUEST = 'learner_request'
+    SOURCE_CHOICES = [
+        (SOURCE_LEGACY_BACKFILL, 'Legacy Backfill'),
+        (SOURCE_LEARNER_REQUEST, 'Learner Request'),
+    ]
+
     STATUS_PENDING = 'pending'
     STATUS_ACTIVE = 'active'
     STATUS_REJECTED = 'rejected'
@@ -150,6 +157,11 @@ class StudentSchoolMembership(models.Model):
         related_name='student_memberships',
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    record_source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default=SOURCE_LEARNER_REQUEST,
+    )
     active_identity_key = models.PositiveBigIntegerField(
         null=True,
         blank=True,
@@ -160,7 +172,7 @@ class StudentSchoolMembership(models.Model):
         blank=True,
         editable=False,
     )
-    requested_at = models.DateTimeField(auto_now_add=True)
+    requested_at = models.DateTimeField(null=True, blank=True)
     decided_at = models.DateTimeField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -209,6 +221,27 @@ class StudentSchoolMembership(models.Model):
                 ),
                 name='accounts_membership_pending_key_ck',
             ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        record_source='legacy_backfill',
+                        requested_at__isnull=True,
+                    )
+                    | models.Q(
+                        record_source='learner_request',
+                        requested_at__isnull=False,
+                    )
+                ),
+                name='accounts_membership_request_time_ck',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(decided_at__isnull=True)
+                    | ~models.Q(status='active')
+                    | models.Q(started_at__isnull=False)
+                ),
+                name='accounts_membership_approval_time_ck',
+            ),
         ]
 
     def __str__(self):
@@ -218,6 +251,12 @@ class StudentSchoolMembership(models.Model):
         )
 
     def save(self, *args, **kwargs):
+        if (
+            self._state.adding
+            and self.record_source == self.SOURCE_LEARNER_REQUEST
+            and self.requested_at is None
+        ):
+            self.requested_at = timezone.now()
         self.active_identity_key = (
             self.student_profile_id
             if self.status == self.STATUS_ACTIVE
@@ -233,6 +272,8 @@ class StudentSchoolMembership(models.Model):
                 'active_identity_key',
                 'pending_identity_key',
             }
+            if self._state.adding:
+                kwargs['update_fields'].add('requested_at')
         return super().save(*args, **kwargs)
 
     def activate(self, *, decided_by):

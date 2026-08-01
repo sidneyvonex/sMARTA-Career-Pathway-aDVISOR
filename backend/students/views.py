@@ -371,7 +371,11 @@ class StudentSchoolMembershipListCreateView(APIView):
                     student_profile=profile,
                     school_id=legacy_active_school_id,
                     status=StudentSchoolMembership.STATUS_ACTIVE,
-                    started_at=profile.created_at,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEGACY_BACKFILL
+                    ),
+                    requested_at=None,
+                    started_at=None,
                 )
 
             try:
@@ -379,6 +383,10 @@ class StudentSchoolMembershipListCreateView(APIView):
                     student_profile=profile,
                     school=target_school,
                     status=StudentSchoolMembership.STATUS_PENDING,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEARNER_REQUEST
+                    ),
+                    requested_at=timezone.now(),
                 )
             except IntegrityError:
                 return _error(
@@ -892,51 +900,71 @@ class CBCGradeDetailView(APIView):
 
     def _get_grade(self, subject_pk, grade_pk, user):
         profile = StudentProfile.objects.get(user=user)
-        ss = StudentSubject.objects.get(pk=subject_pk, student_profile=profile)
-        return CBCGrade.objects.get(pk=grade_pk, student_subject=ss)
+        ss = StudentSubject.objects.select_for_update().get(
+            pk=subject_pk,
+            student_profile=profile,
+        )
+        return CBCGrade.objects.select_for_update().get(
+            pk=grade_pk,
+            student_subject=ss,
+        )
 
     def put(self, request, subject_pk, grade_pk):
-        try:
-            grade = self._get_grade(subject_pk, grade_pk, request.user)
-        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
-            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
-        if not grade.student_subject.is_active:
-            return _error(
-                'Grades cannot be changed on an archived subject enrollment.'
-            )
-        if grade.verified_at is not None:
-            return _error(
-                'School-verified evidence cannot be edited by a learner.',
-                status.HTTP_403_FORBIDDEN,
-            )
-        serializer = CBCGradeSerializer(grade, data=request.data)
-        if not serializer.is_valid():
-            return _error(serializer.errors)
-        new_term = serializer.validated_data.get('term', grade.term)
-        new_year = serializer.validated_data.get('year', grade.year)
-        if CBCGrade.objects.filter(
-            student_subject=grade.student_subject, term=new_term, year=new_year
-        ).exclude(pk=grade.pk).exists():
-            return _error('A grade for this subject, term, and year already exists.')
-        serializer.save()
-        return _success(data=serializer.data, message='Grade updated.')
+        with transaction.atomic():
+            try:
+                grade = self._get_grade(subject_pk, grade_pk, request.user)
+            except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+                return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+            if not grade.student_subject.is_active:
+                return _error(
+                    'Grades cannot be changed on an archived subject enrollment.'
+                )
+            if any((
+                grade.verified_school_id,
+                grade.verified_by_id,
+                grade.verified_at,
+            )):
+                return _error(
+                    'School-verified evidence cannot be edited by a learner.',
+                    status.HTTP_403_FORBIDDEN,
+                )
+            serializer = CBCGradeSerializer(grade, data=request.data)
+            if not serializer.is_valid():
+                return _error(serializer.errors)
+            new_term = serializer.validated_data.get('term', grade.term)
+            new_year = serializer.validated_data.get('year', grade.year)
+            if CBCGrade.objects.filter(
+                student_subject=grade.student_subject,
+                term=new_term,
+                year=new_year,
+            ).exclude(pk=grade.pk).exists():
+                return _error(
+                    'A grade for this subject, term, and year already exists.'
+                )
+            serializer.save()
+            return _success(data=serializer.data, message='Grade updated.')
 
     def delete(self, request, subject_pk, grade_pk):
-        try:
-            grade = self._get_grade(subject_pk, grade_pk, request.user)
-        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
-            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
-        if not grade.student_subject.is_active:
-            return _error(
-                'Grades cannot be changed on an archived subject enrollment.'
-            )
-        if grade.verified_at is not None:
-            return _error(
-                'School-verified evidence cannot be deleted by a learner.',
-                status.HTTP_403_FORBIDDEN,
-            )
-        grade.delete()
-        return _success(message='Grade deleted.')
+        with transaction.atomic():
+            try:
+                grade = self._get_grade(subject_pk, grade_pk, request.user)
+            except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+                return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+            if not grade.student_subject.is_active:
+                return _error(
+                    'Grades cannot be changed on an archived subject enrollment.'
+                )
+            if any((
+                grade.verified_school_id,
+                grade.verified_by_id,
+                grade.verified_at,
+            )):
+                return _error(
+                    'School-verified evidence cannot be deleted by a learner.',
+                    status.HTTP_403_FORBIDDEN,
+                )
+            grade.delete()
+            return _success(message='Grade deleted.')
 
 
 class StudentCounselorView(APIView):

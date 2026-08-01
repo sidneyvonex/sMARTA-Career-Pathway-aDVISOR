@@ -600,7 +600,11 @@ class SchoolMembershipRequestsView(APIView):
                 'last_name': membership.student_profile.user.last_name,
                 'email': membership.student_profile.user.email,
                 'grade': membership.student_profile.grade,
-                'requested_at': membership.requested_at.isoformat(),
+                'requested_at': (
+                    membership.requested_at.isoformat()
+                    if membership.requested_at is not None
+                    else None
+                ),
             }
             for membership in memberships
         ]
@@ -698,6 +702,10 @@ class SchoolMembershipDecisionView(APIView):
                     student_profile=profile,
                     school=school,
                     status=StudentSchoolMembership.STATUS_PENDING,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEGACY_BACKFILL
+                    ),
+                    requested_at=None,
                 )
 
             active_membership = (

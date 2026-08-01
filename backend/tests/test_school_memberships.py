@@ -1,11 +1,20 @@
 import pytest
-from django.db import IntegrityError, transaction
+from threading import Event, Thread
+
+from django.db import (
+    IntegrityError,
+    OperationalError,
+    close_old_connections,
+    transaction,
+)
 from rest_framework.test import APIClient
 
 import accounts.models as account_models
 from accounts.serializers import StudentRegistrationSerializer
 from notifications.models import Notification
 from system_admin.models import AuditLog
+from students.models import CBCGrade
+from students.views import CBCGradeDetailView
 from tests.factories import (
     CBCGradeFactory,
     CounselorAssignmentFactory,
@@ -132,6 +141,8 @@ class TestLearnerMembershipRequests:
         assert self.profile.school_membership_status == 'active'
         pending = self.profile.school_memberships.get(status='pending')
         assert pending.school == target_school
+        assert pending.record_source == 'learner_request'
+        assert pending.requested_at is not None
         assert response.data['data']['id'] == pending.id
         assert response.data['data']['status'] == 'pending'
 
@@ -182,6 +193,10 @@ class TestLearnerMembershipRequests:
         self.profile.refresh_from_db()
         assert self.profile.school == current_school
         assert self.profile.school_membership_status == 'active'
+        legacy_active = self.profile.school_memberships.get(status='active')
+        assert legacy_active.record_source == 'legacy_backfill'
+        assert legacy_active.requested_at is None
+        assert legacy_active.started_at is None
 
     @pytest.mark.parametrize(
         ('school_setup', 'payload', 'expected_status'),
@@ -450,6 +465,8 @@ def test_school_linked_registration_creates_pending_membership_history():
     membership = user.student_profile.school_memberships.get()
     assert membership.school == school
     assert membership.status == 'pending'
+    assert membership.record_source == 'learner_request'
+    assert membership.requested_at is not None
 
 
 class TestMembershipVerificationSafety:
@@ -519,3 +536,159 @@ class TestMembershipVerificationSafety:
         assert response.status_code == 404
         grade.refresh_from_db()
         assert grade.verified_at is not None
+
+    @pytest.mark.parametrize('method', ['put', 'delete'])
+    def test_learner_cannot_mutate_evidence_after_verification_is_removed(
+        self,
+        method,
+    ):
+        """Catches unverification making historical school evidence mutable."""
+        school = SchoolFactory()
+        admin = SchoolAdminFactory(school=school)
+        profile = StudentProfileFactory(
+            user=VerifiedUserFactory(role='student'),
+            mode='school_linked',
+            school=school,
+            school_membership_status='active',
+        )
+        membership = StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=school,
+            status='active',
+        )
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        grade = CBCGradeFactory(student_subject=enrollment)
+        admin_client = APIClient()
+        admin_client.force_authenticate(admin)
+        verification_url = (
+            '/api/v1/school-admin/students/'
+            f'{profile.user_id}/grades/{grade.id}/verification/'
+        )
+        assert admin_client.put(
+            verification_url,
+            {'verified': True},
+            format='json',
+        ).status_code == 200
+        assert admin_client.put(
+            verification_url,
+            {'verified': False},
+            format='json',
+        ).status_code == 200
+        grade.refresh_from_db()
+        assert grade.verified_school == school
+        assert grade.verified_at is None
+
+        learner_client = APIClient()
+        learner_client.force_authenticate(profile.user)
+        grade_url = (
+            f'/api/v1/students/my-subjects/{enrollment.id}/grades/{grade.id}/'
+        )
+        if method == 'put':
+            response = learner_client.put(
+                grade_url,
+                {'term': grade.term, 'year': grade.year, 'level': 'EE1'},
+                format='json',
+            )
+        else:
+            response = learner_client.delete(grade_url)
+
+        assert response.status_code == 403
+        grade.refresh_from_db()
+        assert grade.verified_school == school
+        assert grade.level == 'ME1'
+        assert membership.status == 'active'
+
+    @pytest.mark.django_db(transaction=True)
+    def test_concurrent_school_verification_cannot_be_lost_to_learner_delete(
+        self,
+        monkeypatch,
+    ):
+        """Catches learner deletion committing from a stale pre-verification read."""
+        school = SchoolFactory()
+        admin = SchoolAdminFactory(school=school)
+        profile = StudentProfileFactory(
+            user=VerifiedUserFactory(role='student'),
+            mode='school_linked',
+            school=school,
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=school,
+            status='active',
+        )
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        grade = CBCGradeFactory(student_subject=enrollment)
+        learner_read = Event()
+        verification_finished = Event()
+        results = {}
+        original_get_grade = CBCGradeDetailView._get_grade
+
+        def pause_after_learner_read(view, *args, **kwargs):
+            locked_grade = original_get_grade(view, *args, **kwargs)
+            learner_read.set()
+            if not verification_finished.wait(timeout=5):
+                raise AssertionError('verification request did not finish')
+            return locked_grade
+
+        monkeypatch.setattr(
+            CBCGradeDetailView,
+            '_get_grade',
+            pause_after_learner_read,
+        )
+
+        def delete_as_learner():
+            close_old_connections()
+            client = APIClient()
+            client.force_authenticate(profile.user)
+            try:
+                response = client.delete(
+                    '/api/v1/students/my-subjects/'
+                    f'{enrollment.id}/grades/{grade.id}/'
+                )
+                results['learner_status'] = response.status_code
+            except OperationalError:
+                results['learner_status'] = 'database_locked'
+            except Exception as exc:  # surfaced in the main test thread
+                results['learner_error'] = exc
+            finally:
+                close_old_connections()
+
+        def verify_as_school():
+            close_old_connections()
+            try:
+                if not learner_read.wait(timeout=5):
+                    raise AssertionError('learner request did not reach grade read')
+                client = APIClient()
+                client.force_authenticate(admin)
+                response = client.put(
+                    '/api/v1/school-admin/students/'
+                    f'{profile.user_id}/grades/{grade.id}/verification/',
+                    {'verified': True},
+                    format='json',
+                )
+                results['school_status'] = response.status_code
+            except OperationalError:
+                # SQLite reports the row-lock conflict as a table lock. MySQL
+                # waits and then observes the serialized result instead.
+                results['school_status'] = 'database_locked'
+            except Exception as exc:  # surfaced in the main test thread
+                results['school_error'] = exc
+            finally:
+                verification_finished.set()
+                close_old_connections()
+
+        learner_thread = Thread(target=delete_as_learner)
+        school_thread = Thread(target=verify_as_school)
+        learner_thread.start()
+        school_thread.start()
+        learner_thread.join(timeout=10)
+        school_thread.join(timeout=10)
+
+        assert not learner_thread.is_alive()
+        assert not school_thread.is_alive()
+        assert 'learner_error' not in results
+        assert 'school_error' not in results
+        verification_succeeded = results.get('school_status') == 200
+        grade_exists = CBCGrade.objects.filter(pk=grade.pk).exists()
+        assert not (verification_succeeded and not grade_exists)

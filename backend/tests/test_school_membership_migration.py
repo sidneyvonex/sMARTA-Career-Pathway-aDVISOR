@@ -63,7 +63,17 @@ def test_membership_backfill_preserves_profile_state_and_academic_evidence():
         active_identity='MEM:10',
         is_active=True,
     )
-    framework = Framework.objects.get(scope='senior_school', status='active')
+    framework, _created = Framework.objects.get_or_create(
+        code='CBC-SENIOR-SCHOOL',
+        version='pilot-2026',
+        defaults={
+            'title': 'Senior School CBC Pilot Assessment Framework',
+            'scope': 'senior_school',
+            'source_url': 'https://kicd.ac.ke/curriculum-reform/',
+            'effective_date': '2026-01-01',
+            'status': 'active',
+        },
+    )
     grade = CBCGrade.objects.create(
         student_subject=enrollment,
         framework=framework,
@@ -90,12 +100,17 @@ def test_membership_backfill_preserves_profile_state_and_academic_evidence():
     }
     assert set(rows) == {'active', 'pending', 'rejected'}
     assert rows['active'].active_identity_key == profiles['active'].pk
-    assert rows['active'].requested_at == profiles['active'].created_at
-    assert rows['active'].started_at == profiles['active'].created_at
+    assert rows['active'].record_source == 'legacy_backfill'
+    assert rows['active'].requested_at is None
+    assert rows['active'].started_at is None
     assert rows['pending'].pending_identity_key == profiles['pending'].pk
-    assert rows['pending'].requested_at == profiles['pending'].created_at
+    assert rows['pending'].record_source == 'legacy_backfill'
+    assert rows['pending'].requested_at is None
+    assert rows['pending'].started_at is None
     assert rows['rejected'].active_identity_key is None
     assert rows['rejected'].pending_identity_key is None
+    assert rows['rejected'].record_source == 'legacy_backfill'
+    assert rows['rejected'].requested_at is None
     assert MigratedGrade.objects.filter(pk=grade.pk, level='ME1').exists()
 
     constraints = {
@@ -106,3 +121,5 @@ def test_membership_backfill_preserves_profile_state_and_academic_evidence():
     }
     assert constraints['accounts_membership_active_uniq'].condition is None
     assert constraints['accounts_membership_pending_uniq'].condition is None
+    assert 'accounts_membership_request_time_ck' in constraints
+    assert Membership._meta.get_field('requested_at').null is True

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     School,
@@ -74,6 +75,10 @@ class StudentRegistrationSerializer(serializers.Serializer):
                     student_profile=profile,
                     school=school,
                     status=StudentSchoolMembership.STATUS_PENDING,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEARNER_REQUEST
+                    ),
+                    requested_at=timezone.now(),
                 )
         return user
 
