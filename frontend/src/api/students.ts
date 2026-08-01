@@ -5,13 +5,15 @@ import type { CounselorInfo } from './dashboard'
 import type { LearnerCombinationChoice } from './guidance'
 import type { Notification } from './notifications'
 
+export type AcademicGrade = 9 | 10 | 11 | 12
+
 export interface StudentProfile {
   id: number
   email: string
   first_name: string
   last_name: string
   county: string | null
-  grade: 9 | 10
+  grade: AcademicGrade
   mode: 'self_guided' | 'school_linked'
   school_membership_status: 'not_applicable' | 'pending' | 'active' | 'rejected'
   bio: string
@@ -24,7 +26,8 @@ export interface Subject {
   id: number
   name: string
   code: string
-  grade: 9 | 10
+  continuity_code: string
+  grade: AcademicGrade
   category: 'Core' | 'Elective' | 'Optional' | 'Required'
   is_selectable_in_combination?: boolean
   is_active: boolean
@@ -33,6 +36,11 @@ export interface Subject {
 export interface StudentSubject {
   id: number
   subject: Subject
+  continuity_code: string
+  academic_grade: AcademicGrade
+  academic_year: number
+  is_active: boolean
+  ended_at: string | null
   created_at: string
 }
 
@@ -185,7 +193,7 @@ export const studentsApi = {
 
   removePhoto: () => api.delete('/students/profile/photo/'),
 
-  getSubjects: (grade: 9 | 10) =>
+  getSubjects: (grade: AcademicGrade) =>
     api.get<{ data: Subject[] }>(`/students/subjects/?grade=${grade}`),
 
   getMySubjects: () =>

@@ -7,7 +7,7 @@ export interface ChildProfile {
   last_name: string
   email: string
   county: string | null
-  grade: 9 | 10
+  grade: 9 | 10 | 11 | 12
   mode: 'self_guided' | 'school_linked'
   bio: string
   date_of_birth: string | null

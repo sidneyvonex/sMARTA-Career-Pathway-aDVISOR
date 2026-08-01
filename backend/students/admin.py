@@ -32,14 +32,23 @@ class PerformanceLevelDefinitionAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'grade', 'category', 'is_active')
+    list_display = ('code', 'continuity_code', 'name', 'grade', 'category', 'is_active')
     list_filter = ('grade', 'category', 'is_active')
     search_fields = ('code', 'name')
 
 
 @admin.register(StudentSubject)
 class StudentSubjectAdmin(admin.ModelAdmin):
-    list_display = ('student_profile', 'subject', 'created_at')
+    list_display = (
+        'student_profile',
+        'subject',
+        'continuity_code',
+        'academic_grade',
+        'academic_year',
+        'is_active',
+        'ended_at',
+        'created_at',
+    )
     search_fields = ('student_profile__user__email', 'subject__code', 'subject__name')
 
 

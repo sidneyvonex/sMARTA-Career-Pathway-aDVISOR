@@ -1,0 +1,94 @@
+from datetime import datetime, timezone
+
+import pytest
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+
+
+pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def test_longitudinal_subject_backfill_preserves_identity_and_earliest_evidence_year():
+    executor = MigrationExecutor(connection)
+    old_targets = [
+        ('accounts', '0011_school_official_identity'),
+        ('students', '0009_version_assessment_evidence'),
+    ]
+    executor.migrate(old_targets)
+    old_apps = executor.loader.project_state(old_targets).apps
+
+    User = old_apps.get_model('accounts', 'User')
+    StudentProfile = old_apps.get_model('accounts', 'StudentProfile')
+    Subject = old_apps.get_model('students', 'Subject')
+    StudentSubject = old_apps.get_model('students', 'StudentSubject')
+    CBCGrade = old_apps.get_model('students', 'CBCGrade')
+    AssessmentFramework = old_apps.get_model('students', 'AssessmentFramework')
+
+    learner = User.objects.create(
+        email='longitudinal-migration@example.com',
+        first_name='Longitudinal',
+        last_name='Learner',
+        role='student',
+        county='kiambu',
+        is_email_verified=True,
+    )
+    profile = StudentProfile.objects.create(
+        user=learner,
+        mode='self_guided',
+        school_membership_status='not_applicable',
+        grade=10,
+    )
+    english_nine = Subject.objects.get(code='ENG9')
+    english_ten = Subject.objects.get(code='ENG10')
+    evidenced = StudentSubject.objects.create(
+        student_profile=profile,
+        subject=english_nine,
+    )
+    no_evidence = StudentSubject.objects.create(
+        student_profile=profile,
+        subject=english_ten,
+    )
+    StudentSubject.objects.filter(pk=no_evidence.pk).update(
+        created_at=datetime(2024, 2, 3, tzinfo=timezone.utc)
+    )
+    junior_framework = AssessmentFramework.objects.get(scope='junior_school', status='active')
+    CBCGrade.objects.create(
+        student_subject=evidenced,
+        framework=junior_framework,
+        academic_grade=9,
+        term=2,
+        year=2025,
+        level='ME2',
+    )
+    CBCGrade.objects.create(
+        student_subject=evidenced,
+        framework=junior_framework,
+        academic_grade=9,
+        term=1,
+        year=2024,
+        level='AE1',
+    )
+
+    executor = MigrationExecutor(connection)
+    new_targets = [
+        ('accounts', '0012_expand_student_profile_grades'),
+        ('students', '0010_preserve_longitudinal_subject_history'),
+    ]
+    executor.migrate(new_targets)
+    new_apps = executor.loader.project_state(new_targets).apps
+
+    MigratedSubject = new_apps.get_model('students', 'Subject')
+    MigratedEnrollment = new_apps.get_model('students', 'StudentSubject')
+    migrated_evidenced = MigratedEnrollment.objects.get(pk=evidenced.pk)
+    migrated_without_evidence = MigratedEnrollment.objects.get(pk=no_evidence.pk)
+
+    assert MigratedSubject.objects.get(code='ENG9').continuity_code == 'ENG'
+    assert MigratedSubject.objects.get(code='ENG10').continuity_code == 'ENG'
+    assert (
+        migrated_evidenced.continuity_code,
+        migrated_evidenced.academic_grade,
+        migrated_evidenced.academic_year,
+        migrated_evidenced.is_active,
+        migrated_evidenced.ended_at,
+    ) == ('ENG', 9, 2024, True, None)
+    assert migrated_without_evidence.academic_year == 2024

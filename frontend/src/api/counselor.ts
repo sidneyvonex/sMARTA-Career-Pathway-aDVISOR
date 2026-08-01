@@ -7,7 +7,7 @@ export interface StudentDetail {
     email: string
     first_name: string
     last_name: string
-    grade: 9 | 10
+    grade: 9 | 10 | 11 | 12
     county: string | null
     school: string | null
     photo_url: string | null

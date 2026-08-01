@@ -80,9 +80,9 @@ export const handlers = [
     return HttpResponse.json({
       data: [
         grade === 10
-          ? { id: 1, name: 'Core Mathematics', code: 'CMT10', grade, category: 'Elective', is_active: true }
-          : { id: 1, name: 'Mathematics', code: 'MTH9', grade, category: 'Core', is_active: true },
-        { id: 2, name: 'English', code: `ENG${grade}`, grade, category: 'Core', is_active: true },
+          ? { id: 1, name: 'Core Mathematics', code: 'CMT10', continuity_code: 'CMT', grade, category: 'Elective', is_active: true }
+          : { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade, category: 'Core', is_active: true },
+        { id: 2, name: 'English', code: `ENG${grade}`, continuity_code: 'ENG', grade, category: 'Core', is_active: true },
       ],
       error: null, message: '',
     })
@@ -91,7 +91,7 @@ export const handlers = [
   http.get('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
       data: [
-        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
+        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade: 9, category: 'Core', is_active: true }, continuity_code: 'MTH', academic_grade: 9, academic_year: 2026, is_active: true, ended_at: null, created_at: '2026-06-14T10:00:00Z' },
       ],
       error: null, message: '',
     })
@@ -252,13 +252,13 @@ export const handlers = [
 
   http.post('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
-      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
+      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', continuity_code: 'ENG', grade: 9, category: 'Core', is_active: true }, continuity_code: 'ENG', academic_grade: 9, academic_year: 2026, is_active: true, ended_at: null, created_at: '2026-06-14T10:00:00Z' },
       error: null, message: 'Subject added.',
     }, { status: 201 })
   }),
 
   http.post('/api/v1/students/my-subjects/:id/remove/', () => {
-    return HttpResponse.json({ data: null, error: null, message: 'Subject and all grades removed.' })
+    return HttpResponse.json({ data: null, error: null, message: 'Subject removed.' })
   }),
 
   http.get('/api/v1/students/my-subjects/:id/grades/', () => {

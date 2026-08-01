@@ -98,6 +98,9 @@ class SubjectFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f'Subject {n}')
     code = factory.Sequence(lambda n: f'TST{n:04d}9')
+    continuity_code = factory.LazyAttribute(
+        lambda subject: subject.code.removesuffix(str(subject.grade))
+    )
     grade = 9
     category = 'Core'
     is_selectable_in_combination = False
@@ -141,7 +144,7 @@ class CBCGradeFactory(factory.django.DjangoModelFactory):
 
     student_subject = factory.SubFactory(StudentSubjectFactory)
     academic_grade = factory.LazyAttribute(
-        lambda grade: grade.student_subject.subject.grade
+        lambda grade: grade.student_subject.academic_grade
     )
     framework = factory.LazyAttribute(
         lambda grade: AssessmentFramework.objects.get(

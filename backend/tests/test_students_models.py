@@ -1,5 +1,7 @@
 import pytest
-from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from students.models import GRADE_LEVEL_CHOICES, GRADE_LEVEL_POINTS
 
 
@@ -74,6 +76,144 @@ class TestStudentSubjectConstraints:
         with pytest.raises(IntegrityError):
             StudentSubject.objects.create(student_profile=profile, subject=subject)
 
+    def test_enrollment_snapshots_subject_identity_and_academic_year(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=10)
+        subject = Subject.objects.create(
+            name='English',
+            code='ENGLISH-10-TEST',
+            continuity_code='ENG',
+            grade=10,
+            category='Core',
+        )
+
+        enrollment = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+
+        assert enrollment.continuity_code == 'ENG'
+        assert enrollment.academic_grade == 10
+        assert enrollment.academic_year == timezone.now().year
+        assert enrollment.is_active is True
+        assert enrollment.ended_at is None
+
+    def test_cross_grade_enrollments_share_continuity_without_conflicting(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=10)
+        grade_nine = Subject.objects.create(
+            name='English', code='ENG9-CROSS', continuity_code='ENG', grade=9, category='Core'
+        )
+        grade_ten = Subject.objects.create(
+            name='English', code='ENG10-CROSS', continuity_code='ENG', grade=10, category='Core'
+        )
+
+        first = StudentSubject.objects.create(student_profile=profile, subject=grade_nine)
+        second = StudentSubject.objects.create(student_profile=profile, subject=grade_ten)
+
+        assert first.continuity_code == second.continuity_code == 'ENG'
+        assert (first.academic_grade, second.academic_grade) == (9, 10)
+
+    def test_duplicate_active_continuity_and_grade_raises_integrity_error(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=10)
+        first_subject = Subject.objects.create(
+            name='English A', code='ENG10-A', continuity_code='ENG', grade=10, category='Core'
+        )
+        duplicate_identity = Subject.objects.create(
+            name='English B', code='ENG10-B', continuity_code='ENG', grade=10, category='Core'
+        )
+        StudentSubject.objects.create(student_profile=profile, subject=first_subject)
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            StudentSubject.objects.create(
+                student_profile=profile,
+                subject=duplicate_identity,
+            )
+
+    def test_archived_enrollment_allows_active_reenrollment(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='Agriculture', code='AGR9-HISTORY', continuity_code='AGR', grade=9, category='Core'
+        )
+        archived = StudentSubject.objects.create(student_profile=profile, subject=subject)
+        archived.archive()
+
+        replacement = StudentSubject.objects.create(student_profile=profile, subject=subject)
+
+        archived.refresh_from_db()
+        assert archived.is_active is False
+        assert archived.ended_at is not None
+        assert replacement.is_active is True
+
+    def test_identity_snapshots_cannot_be_changed_after_creation(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='English', code='ENG9-IMMUTABLE', continuity_code='ENG', grade=9, category='Core'
+        )
+        enrollment = StudentSubject.objects.create(student_profile=profile, subject=subject)
+        enrollment.continuity_code = 'OTHER'
+
+        with pytest.raises(ValidationError, match='immutable'):
+            enrollment.save()
+
+    def test_new_grade_uses_enrollment_snapshot_after_catalogue_grade_changes(self):
+        from students.models import CBCGrade, Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=10)
+        subject = Subject.objects.create(
+            name='Biology',
+            code='BIO10-SNAPSHOT',
+            continuity_code='BIO',
+            grade=10,
+            category='Elective',
+        )
+        enrollment = StudentSubject.objects.create(
+            student_profile=profile,
+            subject=subject,
+        )
+        Subject.objects.filter(pk=subject.pk).update(grade=11)
+        subject.refresh_from_db()
+
+        grade = CBCGrade.objects.create(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            level='ME1',
+        )
+
+        assert grade.academic_grade == 10
+
+    def test_active_state_requires_coherent_end_timestamp(self):
+        from students.models import Subject, StudentSubject
+        from tests.factories import StudentProfileFactory
+
+        profile = StudentProfileFactory(grade=9)
+        subject = Subject.objects.create(
+            name='English', code='ENG9-STATE', continuity_code='ENG', grade=9, category='Core'
+        )
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            StudentSubject.objects.create(
+                student_profile=profile,
+                subject=subject,
+                is_active=False,
+                ended_at=None,
+            )
+
     def test_delete_student_subject_cascades_grades(self):
         from students.models import Subject, StudentSubject, CBCGrade
         from tests.factories import StudentProfileFactory
@@ -98,6 +238,41 @@ class TestStudentSubjectConstraints:
 
 @pytest.mark.django_db
 class TestSubjectSeed:
+    def test_subject_derives_continuity_code_from_grade_suffixed_code(self):
+        from students.models import Subject
+
+        subject = Subject.objects.create(
+            name='Future Learning Area',
+            code='FLA11',
+            grade=11,
+            category='Elective',
+            is_active=False,
+        )
+
+        assert subject.continuity_code == 'FLA'
+
+    def test_subject_and_student_profile_models_accept_grades_eleven_and_twelve(self):
+        from accounts.models import StudentProfile
+        from students.models import Subject
+        from tests.factories import VerifiedUserFactory
+
+        grade_eleven = Subject(
+            name='Future Subject',
+            code='FUT11',
+            continuity_code='FUT',
+            grade=11,
+            category='Elective',
+            is_active=False,
+        )
+        grade_eleven.full_clean()
+        profile = StudentProfile(
+            user=VerifiedUserFactory(role='student'),
+            mode='self_guided',
+            school_membership_status='not_applicable',
+            grade=12,
+        )
+        profile.full_clean()
+
     def test_grade9_subjects_seeded(self):
         from students.models import Subject
         assert Subject.objects.filter(grade=9).count() == 14

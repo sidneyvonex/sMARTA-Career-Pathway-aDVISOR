@@ -1,5 +1,5 @@
 from io import BytesIO
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -680,6 +680,8 @@ class MySubjectListView(APIView):
     def get(self, request):
         profile = StudentProfile.objects.get(user=request.user)
         qs = StudentSubject.objects.filter(student_profile=profile).select_related('subject')
+        if request.query_params.get('include_history') != 'true':
+            qs = qs.filter(is_active=True)
         return _success(data=StudentSubjectSerializer(qs, many=True).data)
 
     def post(self, request):
@@ -692,9 +694,24 @@ class MySubjectListView(APIView):
             return _error(
                 f'Subject is for Grade {subject.grade}, but you are in Grade {profile.grade}.'
             )
-        if StudentSubject.objects.filter(student_profile=profile, subject=subject).exists():
-            return _error('You are already enrolled in this subject.')
-        ss = StudentSubject.objects.create(student_profile=profile, subject=subject)
+        duplicate_message = (
+            f'You are already enrolled in this subject for Grade {subject.grade}.'
+        )
+        if StudentSubject.objects.filter(
+            student_profile=profile,
+            continuity_code=subject.continuity_code,
+            academic_grade=subject.grade,
+            is_active=True,
+        ).exists():
+            return _error(duplicate_message)
+        try:
+            with transaction.atomic():
+                ss = StudentSubject.objects.create(
+                    student_profile=profile,
+                    subject=subject,
+                )
+        except IntegrityError:
+            return _error(duplicate_message)
         return _success(
             data=StudentSubjectSerializer(ss).data,
             message='Subject added.',
@@ -707,14 +724,18 @@ class MySubjectRemoveView(APIView):
 
     def post(self, request, pk):
         if not request.data.get('confirm'):
-            return _error('Set confirm=true to remove this subject and all its grades.')
+            return _error('Set confirm=true to remove this subject.')
         try:
             profile = StudentProfile.objects.get(user=request.user)
-            ss = StudentSubject.objects.get(pk=pk, student_profile=profile)
+            ss = StudentSubject.objects.get(
+                pk=pk,
+                student_profile=profile,
+                is_active=True,
+            )
         except StudentSubject.DoesNotExist:
             return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
-        ss.delete()
-        return _success(message='Subject and all grades removed.')
+        ss.archive()
+        return _success(message='Subject removed.')
 
 
 class CBCGradeListView(APIView):
@@ -737,6 +758,10 @@ class CBCGradeListView(APIView):
             ss = self._get_student_subject(subject_pk, request.user)
         except StudentSubject.DoesNotExist:
             return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
+        if not ss.is_active:
+            return _error(
+                'Grades cannot be changed on an archived subject enrollment.'
+            )
         serializer = CBCGradeSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
@@ -748,7 +773,7 @@ class CBCGradeListView(APIView):
             return _error('A grade for this subject, term, and year already exists.')
         grade = serializer.save(
             student_subject=ss,
-            academic_grade=ss.subject.grade,
+            academic_grade=ss.academic_grade,
         )
         return _success(
             data=CBCGradeSerializer(grade).data,
@@ -770,6 +795,10 @@ class CBCGradeDetailView(APIView):
             grade = self._get_grade(subject_pk, grade_pk, request.user)
         except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
             return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+        if not grade.student_subject.is_active:
+            return _error(
+                'Grades cannot be changed on an archived subject enrollment.'
+            )
         serializer = CBCGradeSerializer(grade, data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
@@ -787,6 +816,10 @@ class CBCGradeDetailView(APIView):
             grade = self._get_grade(subject_pk, grade_pk, request.user)
         except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
             return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+        if not grade.student_subject.is_active:
+            return _error(
+                'Grades cannot be changed on an archived subject enrollment.'
+            )
         grade.delete()
         return _success(message='Grade deleted.')
 

@@ -40,6 +40,7 @@ class SubjectSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'code',
+            'continuity_code',
             'grade',
             'category',
             'is_active',
@@ -55,8 +56,27 @@ class StudentSubjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentSubject
-        fields = ('id', 'subject', 'subject_id', 'created_at')
-        read_only_fields = ('id', 'subject', 'created_at')
+        fields = (
+            'id',
+            'subject',
+            'subject_id',
+            'continuity_code',
+            'academic_grade',
+            'academic_year',
+            'is_active',
+            'ended_at',
+            'created_at',
+        )
+        read_only_fields = (
+            'id',
+            'subject',
+            'continuity_code',
+            'academic_grade',
+            'academic_year',
+            'is_active',
+            'ended_at',
+            'created_at',
+        )
 
 
 class CBCGradeSerializer(serializers.ModelSerializer):

@@ -94,7 +94,7 @@ describe('PhotoUpload', () => {
 describe('SubjectList', () => {
   it('renders a list of enrolled subjects', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade: 9 as const, category: 'Core' as const, is_active: true }, continuity_code: 'MTH', academic_grade: 9 as const, academic_year: 2026, is_active: true, ended_at: null, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
@@ -102,7 +102,7 @@ describe('SubjectList', () => {
 
   it('renders a remove button per subject', () => {
     const subjects = [
-      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9 as const, category: 'Core' as const, is_active: true }, created_at: '' },
+      { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade: 9 as const, category: 'Core' as const, is_active: true }, continuity_code: 'MTH', academic_grade: 9 as const, academic_year: 2026, is_active: true, ended_at: null, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
     expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
@@ -116,10 +116,16 @@ describe('SubjectList', () => {
           id: 4,
           name: 'Integrated Science',
           code: 'INT10',
+          continuity_code: 'INT',
           grade: 10 as const,
           category: 'Core' as const,
           is_active: false,
         },
+        continuity_code: 'INT',
+        academic_grade: 10 as const,
+        academic_year: 2026,
+        is_active: true,
+        ended_at: null,
         created_at: '',
       },
     ]

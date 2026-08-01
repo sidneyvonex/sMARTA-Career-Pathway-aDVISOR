@@ -15,7 +15,7 @@ export interface AssignedStudent {
   id: number
   first_name: string
   last_name: string
-  grade: 9 | 10
+  grade: 9 | 10 | 11 | 12
   county: string | null
   photo_url: string | null
   top_pathway: string | null
@@ -49,7 +49,7 @@ export interface LinkedChild {
   id: number
   first_name: string
   last_name: string
-  grade: 9 | 10
+  grade: 9 | 10 | 11 | 12
   county: string | null
   photo_url: string | null
   quiz_status: 'done' | 'pending'

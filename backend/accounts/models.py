@@ -94,7 +94,12 @@ class School(models.Model):
 
 class StudentProfile(models.Model):
     MODE_CHOICES = [('self_guided', 'Self-Guided'), ('school_linked', 'School-Linked')]
-    GRADE_CHOICES = [(9, 'Grade 9'), (10, 'Grade 10')]
+    GRADE_CHOICES = [
+        (9, 'Grade 9'),
+        (10, 'Grade 10'),
+        (11, 'Grade 11'),
+        (12, 'Grade 12'),
+    ]
     SCHOOL_MEMBERSHIP_STATUS_CHOICES = [
         ('not_applicable', 'Not Applicable'),
         ('pending', 'Pending Approval'),

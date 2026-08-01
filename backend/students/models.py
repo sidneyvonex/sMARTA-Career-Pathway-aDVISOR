@@ -1,8 +1,10 @@
 from decimal import Decimal
+import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 from accounts.models import StudentProfile
 
 GRADE_LEVEL_CHOICES = [
@@ -26,6 +28,9 @@ GRADE_LEVEL_POINTS = {
     'BE1': 2,
     'BE2': 1,
 }
+
+
+GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
 
 
 class AssessmentFramework(models.Model):
@@ -119,9 +124,15 @@ class PerformanceLevelDefinition(models.Model):
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
+    continuity_code = models.CharField(max_length=80)
     grade = models.IntegerField(
-        choices=[(9, 'Grade 9'), (10, 'Grade 10')],
-        validators=[MinValueValidator(9), MaxValueValidator(10)],
+        choices=[
+            (9, 'Grade 9'),
+            (10, 'Grade 10'),
+            (11, 'Grade 11'),
+            (12, 'Grade 12'),
+        ],
+        validators=[MinValueValidator(9), MaxValueValidator(12)],
     )
     category = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
@@ -133,19 +144,87 @@ class Subject(models.Model):
     def __str__(self):
         return f"{self.code} — {self.name}"
 
+    def save(self, *args, **kwargs):
+        if not self.continuity_code:
+            self.continuity_code = GRADE_SUFFIX.sub('', self.code)
+        return super().save(*args, **kwargs)
+
 
 class StudentSubject(models.Model):
     student_profile = models.ForeignKey(
         StudentProfile, on_delete=models.CASCADE, related_name='enrolled_subjects'
     )
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='enrollments')
+    continuity_code = models.CharField(max_length=80)
+    academic_grade = models.IntegerField(
+        choices=[
+            (9, 'Grade 9'),
+            (10, 'Grade 10'),
+            (11, 'Grade 11'),
+            (12, 'Grade 12'),
+        ],
+        validators=[MinValueValidator(9), MaxValueValidator(12)],
+    )
+    academic_year = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('student_profile', 'subject')
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'student_profile',
+                    'continuity_code',
+                    'academic_grade',
+                ],
+                condition=models.Q(is_active=True),
+                name='students_active_enroll_uniq',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(is_active=True, ended_at__isnull=True)
+                    | models.Q(is_active=False, ended_at__isnull=False)
+                ),
+                name='students_enrollment_state_ck',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.student_profile} — {self.subject.code}"
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self.continuity_code = self.subject.continuity_code
+            self.academic_grade = self.subject.grade
+            if self.academic_year is None:
+                self.academic_year = timezone.now().year
+        else:
+            original = (
+                type(self).objects.filter(pk=self.pk)
+                .values_list(
+                    'subject_id',
+                    'continuity_code',
+                    'academic_grade',
+                )
+                .first()
+            )
+            if original is not None and original != (
+                self.subject_id,
+                self.continuity_code,
+                self.academic_grade,
+            ):
+                raise ValidationError(
+                    'Enrollment subject identity snapshots are immutable.'
+                )
+        return super().save(*args, **kwargs)
+
+    def archive(self):
+        if not self.is_active:
+            return
+        self.is_active = False
+        self.ended_at = timezone.now()
+        self.save(update_fields=['is_active', 'ended_at'])
 
 
 class CBCGrade(models.Model):
@@ -226,8 +305,8 @@ class CBCGrade(models.Model):
         if self.student_subject_id is None or self.academic_grade is None:
             return
 
-        subject_grade = self.student_subject.subject.grade
-        if self.academic_grade != subject_grade:
+        enrollment_grade = self.student_subject.academic_grade
+        if self.academic_grade != enrollment_grade:
             raise ValidationError(
                 {
                     'academic_grade': (
@@ -319,7 +398,7 @@ class CBCGrade(models.Model):
     def save(self, *args, **kwargs):
         if self._state.adding:
             if self.academic_grade is None:
-                self.academic_grade = self.student_subject.subject.grade
+                self.academic_grade = self.student_subject.academic_grade
             if self.framework_id is None:
                 framework_scope = (
                     'junior_school'

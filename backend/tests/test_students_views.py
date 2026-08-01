@@ -228,6 +228,48 @@ class TestMySubjectListView:
         assert response.status_code == 200
         assert len(response.data['data']) == 1
 
+    def test_list_enrolled_subjects_excludes_archived_by_default(self, verified_profile):
+        active = StudentSubjectFactory(
+            student_profile=verified_profile,
+            subject=Subject.objects.get(code='ENG9'),
+        )
+        archived = StudentSubjectFactory(
+            student_profile=verified_profile,
+            subject=Subject.objects.get(code='KIS9'),
+        )
+        archived.archive()
+
+        response = make_auth_client(verified_profile.user).get(
+            '/api/v1/students/my-subjects/'
+        )
+
+        assert response.status_code == 200
+        assert [item['id'] for item in response.data['data']] == [active.id]
+
+    def test_list_enrolled_subjects_includes_history_explicitly(self, verified_profile):
+        active = StudentSubjectFactory(
+            student_profile=verified_profile,
+            subject=Subject.objects.get(code='ENG9'),
+        )
+        archived = StudentSubjectFactory(
+            student_profile=verified_profile,
+            subject=Subject.objects.get(code='KIS9'),
+        )
+        archived.archive()
+
+        response = make_auth_client(verified_profile.user).get(
+            '/api/v1/students/my-subjects/?include_history=true'
+        )
+
+        assert response.status_code == 200
+        returned = {item['id']: item for item in response.data['data']}
+        assert set(returned) == {active.id, archived.id}
+        assert returned[active.id]['is_active'] is True
+        assert returned[archived.id]['is_active'] is False
+        assert returned[archived.id]['ended_at'] is not None
+        assert returned[archived.id]['continuity_code'] == 'KIS'
+        assert returned[archived.id]['academic_grade'] == 9
+
     def test_remove_subject_without_confirm_returns_400(self, verified_profile):
         from tests.factories import StudentSubjectFactory
         ss = StudentSubjectFactory(student_profile=verified_profile,
@@ -237,15 +279,43 @@ class TestMySubjectListView:
         assert response.status_code == 400
         assert StudentSubject.objects.filter(pk=ss.pk).exists()
 
-    def test_remove_subject_with_confirm_deletes_enrollment(self, verified_profile):
-        from tests.factories import StudentSubjectFactory
+    def test_remove_subject_with_confirm_archives_enrollment_and_preserves_grades(self, verified_profile):
         ss = StudentSubjectFactory(student_profile=verified_profile,
                                    subject=Subject.objects.get(code='AGR9'))
+        grade = CBCGradeFactory(student_subject=ss, term=1, year=2026, level='ME1')
         c = make_auth_client(verified_profile.user)
         response = c.post(
             f'/api/v1/students/my-subjects/{ss.pk}/remove/', {'confirm': True}, format='json')
         assert response.status_code == 200
-        assert not StudentSubject.objects.filter(pk=ss.pk).exists()
+        ss.refresh_from_db()
+        assert ss.is_active is False
+        assert ss.ended_at is not None
+        assert ss.grades.filter(pk=grade.pk).exists()
+        assert response.data['message'] == 'Subject removed.'
+
+    def test_duplicate_active_identity_returns_standard_error(self, verified_profile):
+        first = Subject.objects.get(code='ENG9')
+        duplicate = Subject.objects.create(
+            name='English duplicate',
+            code='ENG9-DUPLICATE',
+            continuity_code='ENG',
+            grade=9,
+            category='Core',
+        )
+        StudentSubjectFactory(student_profile=verified_profile, subject=first)
+
+        response = make_auth_client(verified_profile.user).post(
+            '/api/v1/students/my-subjects/',
+            {'subject_id': duplicate.id},
+            format='json',
+        )
+
+        assert response.status_code == 400
+        assert response.data == {
+            'data': None,
+            'error': True,
+            'message': 'You are already enrolled in this subject for Grade 9.',
+        }
 
 
 @pytest.fixture
@@ -319,6 +389,45 @@ class TestCBCGradeViews:
         c = make_auth_client(other_user)
         response = c.get(f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/')
         assert response.status_code == 404
+
+    @pytest.mark.parametrize('method', ['post', 'put', 'delete'])
+    def test_archived_enrollment_rejects_grade_mutations(
+        self, method, verified_profile, enrolled_subject
+    ):
+        grade = CBCGradeFactory(
+            student_subject=enrolled_subject,
+            term=1,
+            year=2026,
+            level='ME1',
+        )
+        enrolled_subject.archive()
+        client = make_auth_client(verified_profile.user)
+        list_url = f'/api/v1/students/my-subjects/{enrolled_subject.pk}/grades/'
+        detail_url = f'{list_url}{grade.pk}/'
+
+        if method == 'post':
+            response = client.post(
+                list_url,
+                {'term': 2, 'year': 2026, 'level': 'ME2'},
+                format='json',
+            )
+        elif method == 'put':
+            response = client.put(
+                detail_url,
+                {'term': 1, 'year': 2026, 'level': 'EE2'},
+                format='json',
+            )
+        else:
+            response = client.delete(detail_url)
+
+        assert response.status_code == 400
+        assert response.data == {
+            'data': None,
+            'error': True,
+            'message': 'Grades cannot be changed on an archived subject enrollment.',
+        }
+        grade.refresh_from_db()
+        assert grade.level == 'ME1'
 
 
 @pytest.mark.django_db
