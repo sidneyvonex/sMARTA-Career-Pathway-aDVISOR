@@ -957,6 +957,47 @@ def test_grade_level_change_recomputes_definition_snapshot_with_update_fields():
 
 
 @pytest.mark.django_db
+def test_grade_level_change_with_generator_update_fields_keeps_readiness_coherent():
+    """Catches one-shot update fields separating stored level from its definition."""
+    profile, enrollment, grade = learner_with_evidence(level='BE2', term=1)
+    client = APIClient()
+    client.force_authenticate(profile.user)
+    goal_id = client.post(GOALS_URL, create_payload(grade), format='json').data[
+        'data'
+    ]['id']
+    later = CBCGradeFactory(
+        student_subject=enrollment,
+        framework=grade.framework,
+        level='BE2',
+        term=2,
+        year=2026,
+    )
+    expected_definition = target_level(grade.framework, 'ME1')
+    later.level = 'ME1'
+
+    later.save(update_fields=(field for field in ['level']))
+
+    later.refresh_from_db()
+    readiness = client.get(f'{GOALS_URL}{goal_id}/').data['data']
+    assert later.level == 'ME1'
+    assert later.level_definition_id_snapshot == expected_definition.id
+    assert readiness['ready_for_achievement'] is True
+    assert readiness['readiness_evidence'] == later.id
+
+
+@pytest.mark.django_db
+def test_grade_ordinary_edit_with_generator_update_fields_persists():
+    """Catches one-shot update fields reaching Django after they are exhausted."""
+    _profile, _enrollment, grade = learner_with_evidence(level='ME2')
+    grade.raw_score = 74.5
+
+    grade.save(update_fields=(field for field in ['raw_score']))
+
+    grade.refresh_from_db()
+    assert grade.raw_score == 74.5
+
+
+@pytest.mark.django_db
 def test_cbc_grade_queryset_and_bulk_paths_reject_evidence_identity_rewrites():
     """Catches bulk persistence bypassing validated evidence-definition identity."""
     _profile, enrollment, grade = learner_with_evidence(level='ME2')

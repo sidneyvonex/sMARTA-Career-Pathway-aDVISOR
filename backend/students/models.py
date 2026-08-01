@@ -474,6 +474,11 @@ class CBCGrade(models.Model):
             )
 
     def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            kwargs['update_fields'] = update_fields
+
         if self._state.adding:
             if self.academic_grade is None:
                 self.academic_grade = self.student_subject.academic_grade
@@ -505,10 +510,7 @@ class CBCGrade(models.Model):
                         }
                     ) from exc
 
-        update_fields = kwargs.get('update_fields')
-        persisted_update_fields = (
-            None if update_fields is None else set(update_fields)
-        )
+        persisted_update_fields = update_fields
         original_identity = None
         definition_identity_changed = self._state.adding
         definition_framework_id = self.framework_id
@@ -585,9 +587,7 @@ class CBCGrade(models.Model):
                 self.level_definition_id_snapshot = None
         self.clean()
         if update_fields is not None and definition_identity_changed:
-            kwargs['update_fields'] = set(update_fields) | {
-                'level_definition_id_snapshot',
-            }
+            update_fields.add('level_definition_id_snapshot')
         return super().save(*args, **kwargs)
 
 
