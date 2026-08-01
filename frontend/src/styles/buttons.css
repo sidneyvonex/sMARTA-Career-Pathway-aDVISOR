@@ -1,0 +1,81 @@
+/*
+ * Canonical button system for Smarta Shauri.
+ *
+ * `.btn-primary` (solid brand green) and `.btn-ghost` (bordered secondary) are
+ * used across every authenticated surface. The auth pages keep their own
+ * full-width hero treatment via the higher-specificity `.auth-page` selectors
+ * in auth.css, so those overrides win inside login/register only and never
+ * leak onto the rest of the app.
+ */
+
+.btn-primary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--min-touch-target);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-primary {
+  color: var(--color-text-on-primary);
+  background: var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-ghost {
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-surface);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Size + width helpers. Height stays at the 44px touch target (WCAG 2.5.5);
+   `--sm` only tightens padding and type for denser layouts. */
+.btn-sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-danger {
+  color: var(--color-text-on-primary);
+  background: var(--color-error);
+  border-color: transparent;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error) 88%, #000);
+}

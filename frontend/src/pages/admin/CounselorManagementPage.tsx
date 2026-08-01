@@ -157,6 +157,7 @@ export default function CounselorManagementPage() {
           getPrimaryAction={counsellor => ({
             id: 'view-workload',
             label: `View workload for ${getCounsellorName(counsellor)}`,
+            shortLabel: 'View',
             onSelect: () => setDetailCounsellor(counsellor),
           })}
           getSecondaryActions={counsellor => [{

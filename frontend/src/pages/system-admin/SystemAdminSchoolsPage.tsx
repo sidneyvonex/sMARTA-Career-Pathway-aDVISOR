@@ -313,7 +313,7 @@ export default function SystemAdminSchoolsPage() {
           columns={columns}
           getKey={school => school.id}
           getRecordLabel={school => school.name}
-          getPrimaryAction={school => ({ id: 'view', label: `View ${school.name}`, onSelect: () => setDetailSchool(school) })}
+          getPrimaryAction={school => ({ id: 'view', label: `View ${school.name}`, shortLabel: 'View', onSelect: () => setDetailSchool(school) })}
           getSecondaryActions={school => [
             { id: 'edit', label: 'Edit', disabled: statusMutation.isPending, onSelect: () => { setShowCreateForm(false); startEdit(school) } },
             { id: 'status', label: school.is_active ? 'Deactivate' : 'Activate', tone: school.is_active ? 'danger' : 'default', disabled: statusMutation.isPending, onSelect: () => setStatusSchool(school) },

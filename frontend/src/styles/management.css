@@ -183,11 +183,21 @@
 }
 
 .management-table__primary-action {
-  padding: var(--space-2) var(--space-4);
+  min-height: var(--min-touch-target);
+  padding: var(--space-1) var(--space-4);
   color: var(--color-primary);
-  background: var(--color-primary-surface);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.management-table__primary-action:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-surface);
 }
 
 .management-row-menu {

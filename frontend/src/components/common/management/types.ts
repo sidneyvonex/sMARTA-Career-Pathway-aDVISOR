@@ -3,6 +3,12 @@ import type { ReactNode } from 'react'
 export interface ManagementAction {
   id: string
   label: string
+  /**
+   * Optional compact text for the row's primary action button. When set, the
+   * button shows this (e.g. "View") while `label` remains the accessible name,
+   * so long record names never overflow the action column.
+   */
+  shortLabel?: string
   onSelect: () => void
   tone?: 'default' | 'danger'
   disabled?: boolean

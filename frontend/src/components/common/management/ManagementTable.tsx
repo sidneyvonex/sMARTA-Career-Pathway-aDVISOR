@@ -65,10 +65,11 @@ export default function ManagementTable<T>({
                     <button
                       type="button"
                       className="management-table__primary-action"
+                      aria-label={primaryAction.label}
                       disabled={primaryAction.disabled}
                       onClick={primaryAction.onSelect}
                     >
-                      {primaryAction.label}
+                      {primaryAction.shortLabel ?? primaryAction.label}
                     </button>
                     {secondaryActions.length > 0 && (
                       <RowActionMenu

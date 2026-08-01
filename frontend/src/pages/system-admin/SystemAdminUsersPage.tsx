@@ -219,7 +219,7 @@ export default function SystemAdminUsersPage() {
           columns={columns}
           getKey={user => user.id}
           getRecordLabel={userName}
-          getPrimaryAction={user => ({ id: 'view', label: `View ${userName(user)}`, onSelect: () => setDetailUser(user) })}
+          getPrimaryAction={user => ({ id: 'view', label: `View ${userName(user)}`, shortLabel: 'View', onSelect: () => setDetailUser(user) })}
           getSecondaryActions={user => [
             ...(user.role === 'student' ? [{
               id: 'download',

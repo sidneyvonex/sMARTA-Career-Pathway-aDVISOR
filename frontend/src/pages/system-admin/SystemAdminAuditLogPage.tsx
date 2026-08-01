@@ -196,6 +196,7 @@ export default function SystemAdminAuditLogPage() {
           getPrimaryAction={entry => ({
             id: 'view-details',
             label: `View details for ${actionLabel(entry)}`,
+            shortLabel: 'Details',
             onSelect: () => setDetailEntry(entry),
           })}
           getSecondaryActions={() => []}
