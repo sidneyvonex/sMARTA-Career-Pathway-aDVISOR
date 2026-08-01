@@ -1,6 +1,7 @@
 from io import BytesIO
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
@@ -39,8 +40,10 @@ from notifications.serializers import NotificationSerializer
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment
-from .models import Subject, StudentSubject, CBCGrade
+from .models import AcademicGoal, Subject, StudentSubject, CBCGrade
 from .serializers import (
+    AcademicGoalSerializer,
+    AcademicGoalWriteSerializer,
     StudentProfileSerializer, SubjectSerializer,
     StudentSubjectSerializer, CBCGradeSerializer, ProgressAssessmentSerializer,
 )
@@ -884,6 +887,191 @@ class ProgressAssessmentView(APIView):
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         return _success(data=ProgressAssessmentSerializer(assessment).data)
+
+
+def _academic_goal_queryset():
+    return AcademicGoal.objects.select_related(
+        'learner__user',
+        'current_evidence__student_subject',
+        'current_level_definition__framework',
+        'target_level_definition__framework',
+        'created_by',
+    )
+
+
+def _assigned_goal_profile(request):
+    try:
+        student_id = int(request.query_params.get('student_id', ''))
+    except (TypeError, ValueError):
+        return None
+    return StudentProfile.objects.filter(
+        user_id=student_id,
+        counselor_assignments__counselor=request.user,
+        counselor_assignments__is_active=True,
+    ).first()
+
+
+class AcademicGoalListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified]
+
+    def get(self, request):
+        if request.user.role == 'student':
+            try:
+                learner = StudentProfile.objects.get(user=request.user)
+            except StudentProfile.DoesNotExist:
+                return _error('Learner profile not found.', status.HTTP_404_NOT_FOUND)
+        elif request.user.role == 'counselor':
+            learner = _assigned_goal_profile(request)
+            if learner is None:
+                return _error('Assigned learner not found.', status.HTTP_404_NOT_FOUND)
+        else:
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        goals = _academic_goal_queryset().filter(learner=learner)
+        return _success(data=AcademicGoalSerializer(goals, many=True).data)
+
+    def post(self, request):
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            learner = StudentProfile.objects.get(user=request.user)
+        except StudentProfile.DoesNotExist:
+            return _error('Learner profile not found.', status.HTTP_404_NOT_FOUND)
+        serializer = AcademicGoalWriteSerializer(
+            data=request.data,
+            context={'learner': learner},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        continuity_code = serializer.validated_data['continuity_code']
+        duplicate_message = (
+            'An active academic goal already exists for this subject.'
+        )
+        if AcademicGoal.objects.filter(
+            learner=learner,
+            active_identity=continuity_code,
+        ).exists():
+            return _error(duplicate_message)
+        try:
+            with transaction.atomic():
+                goal = serializer.save()
+        except IntegrityError:
+            return _error(duplicate_message)
+        except ValidationError as exc:
+            return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
+        return _success(
+            data=AcademicGoalSerializer(goal).data,
+            message='Academic goal created.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class AcademicGoalDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified]
+
+    def _get_goal(self, request, goal_id, *, mutation=False):
+        goals = _academic_goal_queryset().filter(pk=goal_id)
+        if request.user.role == 'student':
+            return goals.filter(learner__user=request.user).first(), None
+        if request.user.role == 'counselor' and not mutation:
+            return goals.filter(
+                learner__counselor_assignments__counselor=request.user,
+                learner__counselor_assignments__is_active=True,
+            ).first(), None
+        return None, _error(
+            "You don't have permission to do that.",
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def get(self, request, goal_id):
+        goal, denied = self._get_goal(request, goal_id)
+        if denied:
+            return denied
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        return _success(data=AcademicGoalSerializer(goal).data)
+
+    def patch(self, request, goal_id):
+        goal, denied = self._get_goal(request, goal_id, mutation=True)
+        if denied:
+            return denied
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        if goal.status != AcademicGoal.STATUS_ACTIVE:
+            return _error(
+                'Only an active academic goal can be updated.',
+                status.HTTP_409_CONFLICT,
+            )
+        serializer = AcademicGoalWriteSerializer(
+            goal,
+            data=request.data,
+            partial=True,
+            context={'learner': goal.learner},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        try:
+            serializer.save()
+        except ValidationError as exc:
+            return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
+        return _success(
+            data=AcademicGoalSerializer(goal).data,
+            message='Academic goal updated.',
+        )
+
+    put = patch
+
+    def delete(self, request, goal_id):
+        goal, denied = self._get_goal(request, goal_id, mutation=True)
+        if denied:
+            return denied
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        if goal.status != AcademicGoal.STATUS_ACTIVE:
+            return _error(
+                'Only an active academic goal can be closed.',
+                status.HTTP_409_CONFLICT,
+            )
+        goal.close()
+        return _success(
+            data=AcademicGoalSerializer(goal).data,
+            message='Academic goal closed.',
+        )
+
+
+class AcademicGoalConfirmAchievementView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    @transaction.atomic
+    def post(self, request, goal_id):
+        goal = _academic_goal_queryset().select_for_update().filter(
+            pk=goal_id,
+            learner__user=request.user,
+        ).first()
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        if request.data.get('confirm') is not True:
+            return _error('Set confirm=true to mark this goal achieved.')
+        if goal.status != AcademicGoal.STATUS_ACTIVE:
+            return _error(
+                'Only an active academic goal can be marked achieved.',
+                status.HTTP_409_CONFLICT,
+            )
+        if goal.readiness_evidence() is None:
+            return _error(
+                'Later evidence has not reached this academic goal yet.',
+                status.HTTP_409_CONFLICT,
+            )
+        goal.mark_achieved()
+        return _success(
+            data=AcademicGoalSerializer(goal).data,
+            message='Academic goal achieved.',
+        )
 
 
 class CBCGradeListView(APIView):

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    AcademicGoal,
     AssessmentFramework,
     CBCGrade,
     PerformanceLevelDefinition,
@@ -73,6 +74,40 @@ class CBCGradeAdmin(admin.ModelAdmin):
         'verified_by',
         'verified_at',
         'verified_school',
+        'created_at',
+        'updated_at',
+    )
+
+
+@admin.register(AcademicGoal)
+class AcademicGoalAdmin(admin.ModelAdmin):
+    list_display = (
+        'learner',
+        'continuity_code',
+        'current_level_code',
+        'target_level_code',
+        'target_term',
+        'target_year',
+        'status',
+        'updated_at',
+    )
+    list_filter = ('status', 'target_academic_grade', 'target_year', 'target_term')
+    search_fields = ('learner__user__email', 'continuity_code')
+    readonly_fields = (
+        'active_identity',
+        'current_evidence',
+        'current_level_definition',
+        'current_level_code',
+        'current_level_rank',
+        'current_framework_code',
+        'current_framework_version',
+        'target_level_code',
+        'target_level_rank',
+        'target_framework_code',
+        'target_framework_version',
+        'created_by',
+        'achieved_at',
+        'closed_at',
         'created_at',
         'updated_at',
     )

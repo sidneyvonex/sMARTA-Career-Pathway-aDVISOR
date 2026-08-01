@@ -378,7 +378,6 @@ class CBCGrade(models.Model):
             )
             if is_unchanged_legacy_verification:
                 return
-
         has_verifier = self.verified_by_id is not None
         has_verified_at = self.verified_at is not None
         has_verified_school = self.verified_school_id is not None
@@ -450,3 +449,251 @@ class CBCGrade(models.Model):
                     ) from exc
         self.clean()
         return super().save(*args, **kwargs)
+
+
+class AcademicGoal(models.Model):
+    STATUS_ACTIVE = 'active'
+    STATUS_ACHIEVED = 'achieved'
+    STATUS_CLOSED = 'closed'
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_ACHIEVED, 'Achieved'),
+        (STATUS_CLOSED, 'Closed'),
+    ]
+
+    learner = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name='academic_goals',
+    )
+    continuity_code = models.CharField(max_length=80)
+    active_identity = models.CharField(
+        max_length=80,
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    current_evidence = models.ForeignKey(
+        CBCGrade,
+        on_delete=models.PROTECT,
+        related_name='goals_created_from_evidence',
+    )
+    current_level_definition = models.ForeignKey(
+        PerformanceLevelDefinition,
+        on_delete=models.PROTECT,
+        related_name='goals_with_current_level',
+    )
+    target_level_definition = models.ForeignKey(
+        PerformanceLevelDefinition,
+        on_delete=models.PROTECT,
+        related_name='goals_with_target_level',
+    )
+    current_level_code = models.CharField(max_length=10, editable=False)
+    current_level_rank = models.PositiveSmallIntegerField(editable=False)
+    current_framework_code = models.CharField(max_length=80, editable=False)
+    current_framework_version = models.CharField(max_length=40, editable=False)
+    target_level_code = models.CharField(max_length=10, editable=False)
+    target_level_rank = models.PositiveSmallIntegerField(editable=False)
+    target_framework_code = models.CharField(max_length=80, editable=False)
+    target_framework_version = models.CharField(max_length=40, editable=False)
+    target_term = models.PositiveSmallIntegerField(choices=CBCGrade.TERM_CHOICES)
+    target_year = models.PositiveSmallIntegerField()
+    target_academic_grade = models.PositiveSmallIntegerField(
+        choices=[
+            (9, 'Grade 9'),
+            (10, 'Grade 10'),
+            (11, 'Grade 11'),
+            (12, 'Grade 12'),
+        ],
+        validators=[MinValueValidator(9), MaxValueValidator(12)],
+    )
+    action_plan = models.TextField(max_length=2000)
+    status = models.CharField(
+        max_length=12,
+        choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE,
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.PROTECT,
+        related_name='academic_goals_created',
+    )
+    achieved_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['learner', 'active_identity'],
+                name='students_active_goal_identity_uniq',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(status='active', active_identity__isnull=False)
+                    | models.Q(
+                        status__in=['achieved', 'closed'],
+                        active_identity__isnull=True,
+                    )
+                ),
+                name='students_goal_status_identity_ck',
+            ),
+        ]
+
+    @staticmethod
+    def _evidence_order(evidence):
+        return (
+            evidence.academic_grade,
+            evidence.year,
+            evidence.term,
+            evidence.created_at,
+            evidence.pk,
+        )
+
+    def clean(self):
+        super().clean()
+        if not all((
+            self.learner_id,
+            self.current_evidence_id,
+            self.current_level_definition_id,
+            self.target_level_definition_id,
+        )):
+            return
+        evidence = self.current_evidence
+        if evidence.student_subject.student_profile_id != self.learner_id:
+            raise ValidationError(
+                {'current_evidence': 'Current evidence must belong to the learner.'}
+            )
+        if evidence.student_subject.continuity_code != self.continuity_code:
+            raise ValidationError(
+                {'continuity_code': 'Current evidence must match the goal subject.'}
+            )
+        current_level = self.current_level_definition
+        target_level = self.target_level_definition
+        if (
+            current_level.framework_id != evidence.framework_id
+            or current_level.code != evidence.level
+        ):
+            raise ValidationError(
+                {'current_level_definition': 'Current level must match the evidence snapshot.'}
+            )
+        if target_level.framework_id != current_level.framework_id:
+            raise ValidationError(
+                {'target_level_definition': 'Target level must use the current assessment framework.'}
+            )
+        if target_level.rank < current_level.rank:
+            raise ValidationError(
+                {'target_level_definition': 'Target level cannot be lower than the current level.'}
+            )
+        target_period = (
+            self.target_academic_grade,
+            self.target_year,
+            self.target_term,
+        )
+        current_period = (evidence.academic_grade, evidence.year, evidence.term)
+        if target_period <= current_period:
+            raise ValidationError(
+                {'target_term': 'Target period must be later than the current evidence period.'}
+            )
+        if self.created_by_id != self.learner.user_id:
+            raise ValidationError(
+                {'created_by': 'Academic goals must be created by the learner.'}
+            )
+
+        if not self._state.adding:
+            original = type(self).objects.filter(pk=self.pk).values(
+                'learner_id',
+                'continuity_code',
+                'current_evidence_id',
+                'current_level_definition_id',
+                'current_level_code',
+                'current_level_rank',
+                'current_framework_code',
+                'current_framework_version',
+                'created_by_id',
+            ).first()
+            current_snapshot = {
+                'learner_id': self.learner_id,
+                'continuity_code': self.continuity_code,
+                'current_evidence_id': self.current_evidence_id,
+                'current_level_definition_id': self.current_level_definition_id,
+                'current_level_code': self.current_level_code,
+                'current_level_rank': self.current_level_rank,
+                'current_framework_code': self.current_framework_code,
+                'current_framework_version': self.current_framework_version,
+                'created_by_id': self.created_by_id,
+            }
+            if original is not None and original != current_snapshot:
+                raise ValidationError('Academic goal creation snapshots are immutable.')
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            current = self.current_level_definition
+            self.current_level_code = current.code
+            self.current_level_rank = current.rank
+            self.current_framework_code = current.framework.code
+            self.current_framework_version = current.framework.version
+        target = self.target_level_definition
+        self.target_level_code = target.code
+        self.target_level_rank = target.rank
+        self.target_framework_code = target.framework.code
+        self.target_framework_version = target.framework.version
+        self.active_identity = (
+            self.continuity_code if self.status == self.STATUS_ACTIVE else None
+        )
+        self.clean()
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            kwargs['update_fields'] = set(update_fields) | {
+                'active_identity',
+                'target_level_code',
+                'target_level_rank',
+                'target_framework_code',
+                'target_framework_version',
+            }
+        return super().save(*args, **kwargs)
+
+    def close(self):
+        if self.status != self.STATUS_ACTIVE:
+            return
+        self.status = self.STATUS_CLOSED
+        self.closed_at = timezone.now()
+        self.save(update_fields=['status', 'closed_at'])
+
+    def mark_achieved(self):
+        if self.status != self.STATUS_ACTIVE:
+            return
+        self.status = self.STATUS_ACHIEVED
+        self.achieved_at = timezone.now()
+        self.save(update_fields=['status', 'achieved_at'])
+
+    def readiness_evidence(self):
+        if self.status != self.STATUS_ACTIVE:
+            return None
+        current_order = self._evidence_order(self.current_evidence)
+        later = [
+            evidence
+            for evidence in CBCGrade.objects.filter(
+                student_subject__student_profile=self.learner,
+                student_subject__continuity_code=self.continuity_code,
+                framework=self.current_level_definition.framework,
+            ).select_related('student_subject', 'framework').order_by(
+                'academic_grade', 'year', 'term', 'created_at', 'pk'
+            )
+            if self._evidence_order(evidence) > current_order
+        ]
+        if not later:
+            return None
+        latest = later[-1]
+        level = PerformanceLevelDefinition.objects.filter(
+            framework=latest.framework,
+            code=latest.level,
+        ).first()
+        if level is None or level.rank < self.target_level_rank:
+            return None
+        return latest
+
+    def __str__(self):
+        return f'{self.learner} — {self.continuity_code}: {self.status}'

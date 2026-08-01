@@ -158,6 +158,104 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/academic-goals/', () => {
+    return HttpResponse.json({
+      data: [{
+        id: 7,
+        continuity_code: 'MTH',
+        current_evidence: 20,
+        current_level: {
+          code: 'ME2', rank: 5,
+          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+        },
+        target_level: {
+          id: 3, code: 'ME1', rank: 6,
+          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+        },
+        target_term: 3,
+        target_year: 2026,
+        target_academic_grade: 10,
+        action_plan: 'Practise twice each week.',
+        status: 'active',
+        ready_for_achievement: false,
+        readiness_evidence: null,
+        created_by: 1,
+        achieved_at: null,
+        closed_at: null,
+        created_at: '2026-08-01T10:00:00Z',
+        updated_at: '2026-08-01T10:00:00Z',
+      }],
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.post('/api/v1/students/academic-goals/', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({
+      data: {
+        id: 7,
+        continuity_code: body.continuity_code,
+        current_evidence: 20,
+        current_level: {
+          code: 'ME2', rank: 5,
+          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+        },
+        target_level: {
+          id: 3, code: body.target_level, rank: 6,
+          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+        },
+        target_term: body.target_term,
+        target_year: body.target_year,
+        target_academic_grade: body.target_academic_grade,
+        action_plan: body.action_plan,
+        status: 'active',
+        ready_for_achievement: false,
+        readiness_evidence: null,
+        created_by: 1,
+        achieved_at: null,
+        closed_at: null,
+        created_at: '2026-08-01T10:00:00Z',
+        updated_at: '2026-08-01T10:00:00Z',
+      },
+      error: null,
+      message: 'Academic goal created.',
+    }, { status: 201 })
+  }),
+
+  http.get('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
+    return HttpResponse.json({
+      data: { id: Number(params.goalId), status: 'active' },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch('/api/v1/students/academic-goals/:goalId/', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({
+      data: { id: Number(params.goalId), status: 'active', ...body },
+      error: null,
+      message: 'Academic goal updated.',
+    })
+  }),
+
+  http.delete('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
+    return HttpResponse.json({
+      data: { id: Number(params.goalId), status: 'closed' },
+      error: null,
+      message: 'Academic goal closed.',
+    })
+  }),
+
+  http.post('/api/v1/students/academic-goals/:goalId/confirm-achievement/', ({ params }) => {
+    return HttpResponse.json({
+      data: { id: Number(params.goalId), status: 'achieved' },
+      error: null,
+      message: 'Academic goal achieved.',
+    })
+  }),
+
   http.get('/api/v1/students/dashboard/', () => {
     return HttpResponse.json({
       data: {

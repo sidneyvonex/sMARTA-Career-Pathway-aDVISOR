@@ -142,6 +142,50 @@ export interface ProgressAssessment {
   advisory_disclaimer: string
 }
 
+export type AcademicGoalStatus = 'active' | 'achieved' | 'closed'
+
+export interface AcademicGoalLevelSnapshot {
+  id?: number
+  code: GradeLevel
+  rank: number
+  framework: { code: string; version: string }
+}
+
+export interface AcademicGoal {
+  id: number
+  continuity_code: string
+  current_evidence: number
+  current_level: AcademicGoalLevelSnapshot
+  target_level: AcademicGoalLevelSnapshot & { id: number }
+  target_term: 1 | 2 | 3
+  target_year: number
+  target_academic_grade: AcademicGrade
+  action_plan: string
+  status: AcademicGoalStatus
+  ready_for_achievement: boolean
+  readiness_evidence: number | null
+  created_by: number
+  achieved_at: string | null
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AcademicGoalCreate {
+  continuity_code: string
+  target_level: GradeLevel
+  target_term: 1 | 2 | 3
+  target_year: number
+  target_academic_grade: AcademicGrade
+  action_plan: string
+}
+
+export type AcademicGoalUpdate = Partial<Pick<
+  AcademicGoalCreate,
+  'target_level' | 'target_term' | 'target_year' |
+  'target_academic_grade' | 'action_plan'
+>>
+
 export interface EvidenceSummary {
   profile_completion: {
     status: 'complete' | 'incomplete'
@@ -219,6 +263,39 @@ export const studentsApi = {
 
   getProgress: () =>
     api.get<{ data: ProgressAssessment }>('/students/progress/'),
+
+  getAcademicGoals: (studentId?: number) =>
+    api.get<{ data: AcademicGoal[] }>(
+      studentId === undefined
+        ? '/students/academic-goals/'
+        : `/students/academic-goals/?student_id=${studentId}`,
+    ),
+
+  getAcademicGoal: (goalId: number) =>
+    api.get<{ data: AcademicGoal }>(`/students/academic-goals/${goalId}/`),
+
+  createAcademicGoal: (data: AcademicGoalCreate) =>
+    api.post<{ data: AcademicGoal; message: string }>(
+      '/students/academic-goals/',
+      data,
+    ),
+
+  updateAcademicGoal: (goalId: number, data: AcademicGoalUpdate) =>
+    api.patch<{ data: AcademicGoal; message: string }>(
+      `/students/academic-goals/${goalId}/`,
+      data,
+    ),
+
+  closeAcademicGoal: (goalId: number) =>
+    api.delete<{ data: AcademicGoal; message: string }>(
+      `/students/academic-goals/${goalId}/`,
+    ),
+
+  confirmAcademicGoalAchievement: (goalId: number) =>
+    api.post<{ data: AcademicGoal; message: string }>(
+      `/students/academic-goals/${goalId}/confirm-achievement/`,
+      { confirm: true },
+    ),
 
   getInterventions: () =>
     api.get<{ data: CounselorIntervention[] }>('/students/interventions/'),

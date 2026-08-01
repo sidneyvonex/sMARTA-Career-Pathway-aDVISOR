@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from accounts.models import School, StudentProfile, StudentSchoolMembership
 from students.models import (
+    AcademicGoal,
     AssessmentFramework,
     CBCGrade,
     PerformanceLevelDefinition,
@@ -193,6 +194,32 @@ class CBCGradeFactory(factory.django.DjangoModelFactory):
     term = 1
     year = 2026
     level = 'ME1'
+
+
+class AcademicGoalFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AcademicGoal
+
+    learner = factory.SubFactory(StudentProfileFactory, grade=10)
+    continuity_code = factory.Sequence(lambda n: f'GOAL{n:04d}')
+    current_evidence = factory.SubFactory(CBCGradeFactory)
+    current_level_definition = factory.LazyAttribute(
+        lambda goal: PerformanceLevelDefinition.objects.get(
+            framework=goal.current_evidence.framework,
+            code=goal.current_evidence.level,
+        )
+    )
+    target_level_definition = factory.LazyAttribute(
+        lambda goal: PerformanceLevelDefinition.objects.get(
+            framework=goal.current_evidence.framework,
+            code='ME1',
+        )
+    )
+    target_term = 3
+    target_year = 2026
+    target_academic_grade = 10
+    action_plan = 'Practise twice each week and review feedback.'
+    created_by = factory.LazyAttribute(lambda goal: goal.learner.user)
 
 
 class RIASECAssessmentFactory(factory.django.DjangoModelFactory):

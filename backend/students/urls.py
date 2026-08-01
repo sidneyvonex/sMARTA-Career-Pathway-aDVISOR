@@ -1,5 +1,8 @@
 from django.urls import path
 from .views import (
+    AcademicGoalConfirmAchievementView,
+    AcademicGoalDetailView,
+    AcademicGoalListCreateView,
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
     CBCGradeListView, CBCGradeDetailView, ProgressAssessmentView,
@@ -49,6 +52,21 @@ urlpatterns = [
     ),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
     path('progress/', ProgressAssessmentView.as_view(), name='student-progress'),
+    path(
+        'academic-goals/',
+        AcademicGoalListCreateView.as_view(),
+        name='academic-goal-list',
+    ),
+    path(
+        'academic-goals/<int:goal_id>/',
+        AcademicGoalDetailView.as_view(),
+        name='academic-goal-detail',
+    ),
+    path(
+        'academic-goals/<int:goal_id>/confirm-achievement/',
+        AcademicGoalConfirmAchievementView.as_view(),
+        name='academic-goal-confirm-achievement',
+    ),
     path(
         'combination-choices/',
         LearnerCombinationChoiceListCreateView.as_view(),
