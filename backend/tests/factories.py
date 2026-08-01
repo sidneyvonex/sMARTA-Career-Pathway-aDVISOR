@@ -140,9 +140,18 @@ class CBCGradeFactory(factory.django.DjangoModelFactory):
         model = CBCGrade
 
     student_subject = factory.SubFactory(StudentSubjectFactory)
-    framework = factory.SubFactory(AssessmentFrameworkFactory)
     academic_grade = factory.LazyAttribute(
         lambda grade: grade.student_subject.subject.grade
+    )
+    framework = factory.LazyAttribute(
+        lambda grade: AssessmentFramework.objects.get(
+            scope=(
+                'junior_school'
+                if grade.academic_grade == 9
+                else 'senior_school'
+            ),
+            status=AssessmentFramework.STATUS_ACTIVE,
+        )
     )
     verified_school = factory.LazyAttribute(
         lambda grade: getattr(getattr(grade, 'verified_by', None), 'school', None)

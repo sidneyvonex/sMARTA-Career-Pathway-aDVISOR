@@ -1,5 +1,6 @@
 import pytest
 from django.apps import apps
+from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from rest_framework.test import APIClient
@@ -15,6 +16,18 @@ from tests.factories import (
     SubjectFactory,
     VerifiedUserFactory,
 )
+
+
+def test_grade_admin_makes_all_verification_provenance_read_only():
+    """Catches admin edits bypassing the school verification workflow."""
+    from students.admin import CBCGradeAdmin
+
+    grade_model = apps.get_model('students', 'CBCGrade')
+    grade_admin = CBCGradeAdmin(grade_model, AdminSite())
+
+    assert {'verified_by', 'verified_at', 'verified_school'} <= set(
+        grade_admin.get_readonly_fields(request=None)
+    )
 
 
 def test_assessment_framework_rejects_unknown_status():
@@ -185,7 +198,13 @@ def test_grade_api_snapshots_active_framework_and_subject_academic_grade():
 @pytest.mark.parametrize('academic_grade', [9, 10, 11, 12])
 def test_grade_model_supports_academic_grades_nine_through_twelve(academic_grade):
     """Catches rejecting evidence from a supported academic grade."""
-    grade = CBCGradeFactory(academic_grade=academic_grade)
+    grade = CBCGradeFactory(
+        student_subject=StudentSubjectFactory(
+            student_profile=StudentProfileFactory(grade=academic_grade),
+            subject=SubjectFactory(grade=academic_grade),
+        ),
+        academic_grade=academic_grade,
+    )
 
     grade.full_clean()
 
@@ -196,9 +215,79 @@ def test_grade_model_rejects_academic_grades_outside_nine_through_twelve(
     academic_grade,
 ):
     """Catches evidence being assigned outside the supported model range."""
-    grade = CBCGradeFactory(academic_grade=academic_grade)
+    grade = CBCGradeFactory.build(academic_grade=academic_grade)
 
     with pytest.raises(ValidationError, match='academic_grade'):
+        grade.full_clean()
+
+
+@pytest.mark.django_db
+def test_new_verified_grade_requires_verifying_school():
+    """Catches creating verification without immutable school provenance."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory.build(
+        student_subject=StudentSubjectFactory(),
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+        verified_school=None,
+    )
+
+    with pytest.raises(ValidationError, match='verified_school'):
+        grade.full_clean()
+
+
+@pytest.mark.django_db
+def test_new_verified_grade_rejects_verifier_school_mismatch():
+    """Catches claiming one school while the verifier belongs to another."""
+    verifier = SchoolAdminFactory()
+
+    grade = CBCGradeFactory.build(
+        student_subject=StudentSubjectFactory(),
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+        verified_school=SchoolFactory(),
+    )
+
+    with pytest.raises(ValidationError, match='verified_school'):
+        grade.full_clean()
+
+
+@pytest.mark.django_db
+def test_explicit_academic_grade_must_match_enrollment_subject():
+    """Catches callers assigning evidence to a different academic grade."""
+    enrollment = StudentSubjectFactory(
+        student_profile=StudentProfileFactory(grade=10),
+        subject=SubjectFactory(grade=10),
+    )
+
+    grade = CBCGradeFactory.build(
+        student_subject=enrollment,
+        academic_grade=11,
+    )
+
+    with pytest.raises(ValidationError, match='academic_grade'):
+        grade.full_clean()
+
+
+@pytest.mark.django_db
+def test_explicit_framework_scope_must_match_academic_grade():
+    """Catches assigning Grade 9 evidence to a Senior School framework."""
+    senior_framework = apps.get_model('students', 'AssessmentFramework').objects.get(
+        code='CBC-SENIOR-SCHOOL',
+        version='pilot-2026',
+    )
+    enrollment = StudentSubjectFactory(
+        student_profile=StudentProfileFactory(grade=9),
+        subject=SubjectFactory(grade=9),
+    )
+
+    grade = CBCGradeFactory.build(
+        student_subject=enrollment,
+        academic_grade=9,
+        framework=senior_framework,
+    )
+
+    with pytest.raises(ValidationError, match='framework'):
         grade.full_clean()
 
 
@@ -237,7 +326,12 @@ def test_school_verification_snapshots_the_verifying_school():
 def test_verifying_school_is_immutable_once_recorded(replacement):
     """Catches changing or erasing the school provenance of historical evidence."""
     original_school = SchoolFactory()
-    grade = CBCGradeFactory(verified_school=original_school)
+    verifier = SchoolAdminFactory(school=original_school)
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+        verified_school=original_school,
+    )
     grade.verified_school = (
         SchoolFactory() if replacement == 'another_school' else None
     )

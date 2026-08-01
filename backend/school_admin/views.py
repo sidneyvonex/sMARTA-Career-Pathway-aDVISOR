@@ -191,6 +191,18 @@ class SchoolGradeVerificationView(APIView):
                     status.HTTP_404_NOT_FOUND,
                 )
 
+            if (
+                grade.verified_school_id is not None
+                and grade.verified_school_id != school.id
+            ) or (
+                grade.verified_at is not None
+                and grade.verified_school_id is None
+            ):
+                return _error(
+                    "You don't have permission to change this verification.",
+                    status.HTTP_403_FORBIDDEN,
+                )
+
             is_verified = grade.verified_at is not None
             verifier_changed = (
                 should_verify

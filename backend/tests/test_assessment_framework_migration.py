@@ -28,13 +28,17 @@ def test_pilot_framework_seed_and_existing_grade_backfill_preserve_evidence():
     CBCGrade = old_apps.get_model('students', 'CBCGrade')
 
     school = School.objects.create(name='Migration School', county='kiambu')
+    verifier_current_school = School.objects.create(
+        name='Verifier Current School',
+        county='kiambu',
+    )
     verifier = User.objects.create(
         email='migration-admin@example.com',
         first_name='Migration',
         last_name='Admin',
         role='school_admin',
         county='kiambu',
-        school=school,
+        school=verifier_current_school,
         is_email_verified=True,
     )
     learner = User.objects.create(
@@ -181,7 +185,7 @@ def test_pilot_framework_seed_and_existing_grade_backfill_preserve_evidence():
     assert migrated_verified.framework_id == framework.pk
     assert migrated_verified.academic_grade == 10
     assert migrated_verified.raw_score is None
-    assert migrated_verified.verified_school_id == school.pk
+    assert migrated_verified.verified_school_id is None
 
     migrated_unverified = MigratedGrade.objects.get(pk=unverified_grade.pk)
     assert migrated_unverified.level == 'EE1'

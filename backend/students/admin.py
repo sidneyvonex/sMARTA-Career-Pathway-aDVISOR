@@ -60,4 +60,10 @@ class CBCGradeAdmin(admin.ModelAdmin):
         'student_subject__student_profile__user__email',
         'student_subject__subject__code',
     )
-    readonly_fields = ('verified_school', 'created_at', 'updated_at')
+    readonly_fields = (
+        'verified_by',
+        'verified_at',
+        'verified_school',
+        'created_at',
+        'updated_at',
+    )

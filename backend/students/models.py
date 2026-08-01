@@ -221,6 +221,101 @@ class CBCGrade(models.Model):
     def __str__(self):
         return f"{self.student_subject} — T{self.term} {self.year}: {self.level}"
 
+    def clean(self):
+        super().clean()
+        if self.student_subject_id is None or self.academic_grade is None:
+            return
+
+        subject_grade = self.student_subject.subject.grade
+        if self.academic_grade != subject_grade:
+            raise ValidationError(
+                {
+                    'academic_grade': (
+                        'Academic grade must match the enrollment subject grade.'
+                    )
+                }
+            )
+
+        framework_scope = (
+            'junior_school' if self.academic_grade == 9 else 'senior_school'
+        )
+        if self.framework_id is not None and self.framework.scope != framework_scope:
+            raise ValidationError(
+                {
+                    'framework': (
+                        'Assessment framework scope must match the academic grade.'
+                    )
+                }
+            )
+
+        original = None
+        if not self._state.adding:
+            original = (
+                type(self).objects.filter(pk=self.pk)
+                .values_list(
+                    'verified_by_id',
+                    'verified_at',
+                    'verified_school_id',
+                )
+                .first()
+            )
+            if (
+                original is not None
+                and original[2] is not None
+                and original[2] != self.verified_school_id
+            ):
+                raise ValidationError(
+                    {'verified_school': 'Verifying school provenance is immutable.'}
+                )
+
+            is_unchanged_legacy_verification = (
+                original is not None
+                and original[0] is not None
+                and original[1] is not None
+                and original[2] is None
+                and self.verified_by_id == original[0]
+                and self.verified_at == original[1]
+                and self.verified_school_id is None
+            )
+            if is_unchanged_legacy_verification:
+                return
+
+        has_verifier = self.verified_by_id is not None
+        has_verified_at = self.verified_at is not None
+        has_verified_school = self.verified_school_id is not None
+        if has_verifier != has_verified_at:
+            raise ValidationError(
+                {
+                    'verified_by': (
+                        'Verification actor and timestamp must be recorded together.'
+                    )
+                }
+            )
+        if has_verifier:
+            if not has_verified_school:
+                raise ValidationError(
+                    {
+                        'verified_school': (
+                            'Verified evidence must record the verifying school.'
+                        )
+                    }
+                )
+            if self.verified_by.school_id != self.verified_school_id:
+                raise ValidationError(
+                    {
+                        'verified_school': (
+                            'Verifying school must match the verifier account.'
+                        )
+                    }
+                )
+        elif self._state.adding and has_verified_school:
+            raise ValidationError(
+                {
+                    'verified_school': (
+                        'Verifying school requires a verification actor and timestamp.'
+                    )
+                }
+            )
     def save(self, *args, **kwargs):
         if self._state.adding:
             if self.academic_grade is None:
@@ -254,18 +349,5 @@ class CBCGrade(models.Model):
                             )
                         }
                     ) from exc
-        else:
-            original = (
-                type(self).objects.filter(pk=self.pk)
-                .values_list('verified_school_id')
-                .first()
-            )
-            if (
-                original is not None
-                and original[0] is not None
-                and original[0] != self.verified_school_id
-            ):
-                raise ValidationError(
-                    {'verified_school': 'Verifying school provenance is immutable.'}
-                )
+        self.clean()
         return super().save(*args, **kwargs)

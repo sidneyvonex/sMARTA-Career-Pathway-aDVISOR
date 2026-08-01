@@ -65,17 +65,14 @@ def seed_pilot_framework_and_backfill_grades(apps, schema_editor):
                 },
             )
 
-    grades = CBCGrade.objects.select_related(
-        'student_subject__subject',
-        'verified_by',
-    )
+    grades = CBCGrade.objects.select_related('student_subject__subject')
     for grade in grades.iterator():
         grade.academic_grade = grade.student_subject.subject.grade
         scope = 'junior_school' if grade.academic_grade == 9 else 'senior_school'
         grade.framework_id = frameworks[scope].pk
-        grade.verified_school_id = (
-            grade.verified_by.school_id if grade.verified_by_id else None
-        )
+        # Historical verifier membership is mutable and does not establish
+        # which school verified this grade. Preserve unknown provenance as null.
+        grade.verified_school_id = None
         grade.save(
             update_fields=['framework', 'academic_grade', 'verified_school']
         )
