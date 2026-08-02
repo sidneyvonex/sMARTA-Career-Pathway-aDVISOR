@@ -10,6 +10,7 @@ from tests.factories import (
     FrameworkVersionFactory,
     InstitutionFactory,
     ProgrammeFactory,
+    PerformanceLevelDefinitionFactory,
     SchoolAdminFactory,
     SchoolFactory,
     StudentProfileFactory,
@@ -337,6 +338,15 @@ class TestAcademicSourceMetadataView:
         framework = AssessmentFrameworkFactory(
             status=AssessmentFramework.STATUS_RETIRED,
         )
+        for code, rank in (
+            ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+            ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+        ):
+            PerformanceLevelDefinitionFactory(
+                framework=framework,
+                code=code,
+                rank=rank,
+            )
 
         response = self.client.patch(
             f'/api/v1/system-admin/source-metadata/assessment_framework/{framework.id}/',
@@ -353,6 +363,27 @@ class TestAcademicSourceMetadataView:
         )
         assert entry.details['previous_status'] == 'retired'
         assert entry.details['status'] == 'active'
+
+    def test_rejects_activation_until_all_cbe_levels_and_ranks_exist(self):
+        framework = AssessmentFrameworkFactory(
+            status=AssessmentFramework.STATUS_DRAFT,
+        )
+        PerformanceLevelDefinitionFactory(
+            framework=framework,
+            code='EE1',
+            rank=8,
+        )
+
+        response = self.client.patch(
+            f'/api/v1/system-admin/source-metadata/assessment_framework/{framework.id}/',
+            {'status': 'active'},
+            format='json',
+        )
+
+        assert response.status_code == 400
+        assert 'EE1–BE2' in str(response.data['message'])
+        framework.refresh_from_db()
+        assert framework.status == AssessmentFramework.STATUS_DRAFT
 
     def test_metadata_queries_stay_bounded_as_source_records_grow(self):
         for _index in range(5):

@@ -1,4 +1,5 @@
 import pytest
+from django.db import connection
 from rest_framework.test import APIClient
 
 from students.models import CBCGrade
@@ -135,12 +136,11 @@ class TestSchoolGradeVerification:
         assert self.school.name in notification.message
 
     def test_school_admin_can_remove_verification(self):
-        self.grade.verified_by = self.admin
-        self.grade.verified_at = '2026-07-30T10:00:00Z'
-        self.grade.verified_school = self.school
-        self.grade.save(
-            update_fields=['verified_by', 'verified_at', 'verified_school']
-        )
+        assert self.client.put(
+            self.url,
+            {'verified': True},
+            format='json',
+        ).status_code == 200
 
         response = self.client.put(
             self.url,
@@ -188,11 +188,13 @@ class TestSchoolGradeVerification:
         should_verify,
     ):
         """Catches guessing ownership for legacy verified evidence."""
-        CBCGrade.objects.filter(pk=self.grade.pk).update(
-            verified_by=self.admin,
-            verified_at='2026-07-30T10:00:00Z',
-            verified_school=None,
-        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'UPDATE students_cbcgrade '
+                'SET verified_by_id = %s, verified_at = %s, '
+                'verified_school_id = NULL WHERE id = %s',
+                [self.admin.id, '2026-07-30T10:00:00Z', self.grade.pk],
+            )
 
         response = self.client.put(
             self.url,
@@ -265,6 +267,19 @@ class TestSchoolGradeVerification:
         )
 
         assert response.status_code == 404
+
+    def test_archived_enrolment_grade_is_not_verifiable(self):
+        self.grade.student_subject.archive()
+
+        response = self.client.put(
+            self.url,
+            {'verified': True},
+            format='json',
+        )
+
+        assert response.status_code == 404
+        self.grade.refresh_from_db()
+        assert self.grade.verified_at is None
 
     def test_inactive_school_cannot_verify(self):
         self.school.is_active = False

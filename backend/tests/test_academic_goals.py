@@ -746,10 +746,6 @@ def test_target_snapshot_and_readiness_do_not_drift_with_live_definition_edits()
     client.force_authenticate(profile.user)
     created = client.post(GOALS_URL, create_payload(grade), format='json')
     goal_id = created.data['data']['id']
-    target = target_level(grade.framework, 'ME1')
-    target.code = 'MEX'
-    target.rank = 9
-    target.save(update_fields=['code', 'rank'])
     later = CBCGradeFactory(
         student_subject=enrollment,
         framework=grade.framework,
@@ -757,6 +753,10 @@ def test_target_snapshot_and_readiness_do_not_drift_with_live_definition_edits()
         term=2,
         year=2026,
     )
+    target = target_level(grade.framework, 'ME1')
+    target.code = 'MEX'
+    target.rank = 9
+    target.save(update_fields=['code', 'rank'])
 
     updated = client.patch(
         f"{GOALS_URL}{goal_id}/",

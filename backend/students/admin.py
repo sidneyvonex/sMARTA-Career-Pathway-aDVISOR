@@ -78,6 +78,24 @@ class CBCGradeAdmin(admin.ModelAdmin):
         'updated_at',
     )
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj is not None and any((
+            obj.verified_by_id,
+            obj.verified_at,
+            obj.verified_school_id,
+        )):
+            return tuple(field.name for field in self.model._meta.fields)
+        return super().get_readonly_fields(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and any((
+            obj.verified_by_id,
+            obj.verified_at,
+            obj.verified_school_id,
+        )):
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 @admin.register(AcademicGoal)
 class AcademicGoalAdmin(admin.ModelAdmin):

@@ -30,6 +30,78 @@ def test_grade_admin_makes_all_verification_provenance_read_only():
     )
 
 
+@pytest.mark.django_db
+def test_grade_admin_makes_verified_evidence_view_only_and_non_deletable():
+    """Catches admin edits or deletes bypassing verified evidence locks."""
+    from students.admin import CBCGradeAdmin
+
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+    grade_admin = CBCGradeAdmin(type(grade), AdminSite())
+
+    readonly = set(grade_admin.get_readonly_fields(request=None, obj=grade))
+
+    assert {'level', 'raw_score', 'source', 'term', 'year'} <= readonly
+    assert grade_admin.has_delete_permission(request=None, obj=grade) is False
+
+
+@pytest.mark.django_db
+def test_verified_evidence_rejects_instance_identity_edits():
+    """Catches direct ORM saves mutating a school-verified evidence row."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+    grade.level = 'EE1'
+
+    with pytest.raises(ValidationError, match='verified evidence'):
+        grade.save(update_fields=['level'])
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('operation', 'message'),
+    [
+        ('verification_update', 'bulk persistence'),
+        ('verified_delete', 'verified evidence'),
+    ],
+)
+def test_verified_evidence_rejects_queryset_bypasses(operation, message):
+    """Catches bulk verification changes and deletion bypassing the service."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+
+    with pytest.raises(ValidationError, match=message):
+        if operation == 'verification_update':
+            type(grade).objects.filter(pk=grade.pk).update(verified_at=None)
+        else:
+            type(grade).objects.filter(pk=grade.pk).delete()
+
+    assert type(grade).objects.filter(pk=grade.pk).exists()
+
+
+@pytest.mark.django_db
+def test_direct_instance_verification_transition_is_rejected():
+    """Catches verification changes outside the guarded transition service."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+    grade.verified_by = None
+    grade.verified_at = None
+
+    with pytest.raises(ValidationError, match='transition service'):
+        grade.save(update_fields=['verified_by', 'verified_at'])
+
+
 def test_assessment_framework_rejects_unknown_status():
     """Catches accepting framework states outside draft/active/retired."""
     try:
@@ -336,7 +408,7 @@ def test_verifying_school_is_immutable_once_recorded(replacement):
         SchoolFactory() if replacement == 'another_school' else None
     )
 
-    with pytest.raises(ValidationError, match='verified_school'):
+    with pytest.raises(ValidationError, match='verification changes'):
         grade.save(update_fields=['verified_school'])
 
 
@@ -417,3 +489,21 @@ def test_legacy_model_create_derives_grade_appropriate_framework(
 
     assert grade.academic_grade == academic_grade
     assert grade.framework.code == framework_code
+
+
+@pytest.mark.django_db
+def test_grade_rejects_framework_without_selected_level_definition():
+    """Catches evidence rows with a null, unusable definition snapshot."""
+    framework = AssessmentFrameworkFactory(
+        scope='senior_school',
+    )
+    enrollment = StudentSubjectFactory(
+        student_profile=StudentProfileFactory(grade=10),
+        subject=SubjectFactory(grade=10),
+    )
+    with pytest.raises(ValidationError, match='performance level definition'):
+        CBCGradeFactory(
+            student_subject=enrollment,
+            framework=framework,
+            level='ME1',
+        )

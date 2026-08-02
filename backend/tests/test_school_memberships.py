@@ -21,6 +21,7 @@ from tests.factories import (
     CBCGradeFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
+    PerformanceLevelDefinitionFactory,
     SchoolAdminFactory,
     SchoolFactory,
     StudentProfileFactory,
@@ -689,10 +690,19 @@ class TestMembershipVerificationSafety:
             scope='junior_school',
             status='active',
         ).exists():
-            AssessmentFrameworkFactory(
+            framework = AssessmentFrameworkFactory(
                 scope='junior_school',
                 status='active',
             )
+            for code, rank in (
+                ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+                ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+            ):
+                PerformanceLevelDefinitionFactory(
+                    framework=framework,
+                    code=code,
+                    rank=rank,
+                )
         school = SchoolFactory()
         admin = SchoolAdminFactory(school=school)
         profile = StudentProfileFactory(

@@ -24,6 +24,7 @@ from riasec.models import RIASECAssessment
 from counselors.models import CounselorAssignment
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from notifications.models import Notification
+from students.evidence import transition_grade_verification
 from system_admin.models import AuditLog
 
 pytestmark = pytest.mark.django_db
@@ -379,6 +380,29 @@ class TestSchoolStudentsView:
         assert evidence['can_verify'] is True
         assert evidence['can_remove_verification'] is False
 
+    def test_archived_enrolment_evidence_exposes_no_verification_controls(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        grade = CBCGradeFactory(student_subject=enrollment)
+        enrollment.archive()
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['id'] == grade.id
+        assert evidence['can_verify'] is False
+        assert evidence['can_remove_verification'] is False
+
     def test_ended_membership_overrides_stale_active_profile(self):
         profile = StudentProfileFactory(
             school=self.school,
@@ -440,9 +464,12 @@ class TestSchoolStudentsView:
             verified_school=previous_school,
             verified_at=timezone.now(),
         )
-        grade.verified_by = None
-        grade.verified_at = None
-        grade.save(update_fields=['verified_by', 'verified_at'])
+        transition_grade_verification(
+            grade,
+            actor=previous_admin,
+            school=previous_school,
+            should_verify=False,
+        )
 
         response = self.client.get('/api/v1/school-admin/students/')
 

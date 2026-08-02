@@ -27,6 +27,7 @@ from guidance.serializers import (
     SchoolSummarySerializer,
     SubjectCombinationSerializer,
 )
+from students.evidence import transition_grade_verification
 from students.models import CBCGrade, StudentSubject
 from students.serializers import CBCGradeSerializer
 from system_admin.models import AuditLog
@@ -223,6 +224,7 @@ class SchoolGradeVerificationView(APIView):
                     .get(
                         pk=grade_id,
                         student_subject__student_profile=profile,
+                        student_subject__is_active=True,
                     )
                 )
             except CBCGrade.DoesNotExist:
@@ -251,19 +253,16 @@ class SchoolGradeVerificationView(APIView):
             )
             changed = should_verify != is_verified or verifier_changed
             if changed:
-                update_fields = ['verified_by', 'verified_at', 'updated_at']
                 if should_verify:
-                    grade.verified_by = request.user
-                    grade.verified_at = timezone.now()
-                    if grade.verified_school_id is None:
-                        grade.verified_school = school
-                        update_fields.append('verified_school')
                     action = 'grade_verified'
                 else:
-                    grade.verified_by = None
-                    grade.verified_at = None
                     action = 'grade_verification_removed'
-                grade.save(update_fields=update_fields)
+                transition_grade_verification(
+                    grade,
+                    actor=request.user,
+                    school=school,
+                    should_verify=should_verify,
+                )
 
                 forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
                 ip_address = (
@@ -665,14 +664,17 @@ class SchoolStudentsView(APIView):
                                 else None
                             ),
                             'can_verify': (
-                                not verified
+                                enrollment.is_active
+                                and not verified
                                 and (
                                     grade.verified_school_id is None
                                     or grade.verified_school_id == school.id
                                 )
                             ),
                             'can_remove_verification': (
-                                verified and grade.verified_school_id == school.id
+                                enrollment.is_active
+                                and verified
+                                and grade.verified_school_id == school.id
                             ),
                         })
 

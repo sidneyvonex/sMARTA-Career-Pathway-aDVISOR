@@ -32,6 +32,7 @@ GRADE_LEVEL_POINTS = {
 
 GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
 _ACADEMIC_GOAL_LIFECYCLE_TRANSITION = object()
+_CBC_GRADE_VERIFICATION_TRANSITION = object()
 
 
 class AcademicGoalHistoryDeletionError(ValidationError):
@@ -88,6 +89,15 @@ class AssessmentFramework(models.Model):
 
     def __str__(self):
         return f"{self.code} {self.version} — {self.title}"
+
+    def validate_activation_readiness(self):
+        expected = GRADE_LEVEL_POINTS
+        actual = dict(self.level_definitions.values_list('code', 'rank'))
+        if actual != expected:
+            raise ValidationError(
+                'Assessment framework activation requires the complete '
+                'EE1–BE2 definition set with ranks 8–1.'
+            )
 
 
 class PerformanceLevelDefinition(models.Model):
@@ -272,6 +282,13 @@ class CBCGradeQuerySet(models.QuerySet):
         'year',
         'level',
         'level_definition_id_snapshot',
+        'raw_score',
+        'source',
+        'verified_by',
+        'verified_by_id',
+        'verified_school',
+        'verified_school_id',
+        'verified_at',
     })
 
     @staticmethod
@@ -292,6 +309,18 @@ class CBCGradeQuerySet(models.QuerySet):
 
     def bulk_create(self, objs, **kwargs):
         raise self._bulk_persistence_error()
+
+    def delete(self):
+        if self.filter(
+            models.Q(verified_by__isnull=False)
+            | models.Q(verified_at__isnull=False)
+            | models.Q(verified_school__isnull=False)
+        ).exists():
+            raise ValidationError('School-verified evidence cannot be deleted.')
+        raise ValidationError(
+            'CBC grade bulk deletion is disabled; delete individual unverified '
+            'evidence through the guarded learner endpoint.'
+        )
 
 
 class CBCGradeManager(models.Manager.from_queryset(CBCGradeQuerySet)):
@@ -479,6 +508,98 @@ class CBCGrade(models.Model):
             update_fields = set(update_fields)
             kwargs['update_fields'] = update_fields
 
+        original_persistence = None
+        if not self._state.adding:
+            original_persistence = type(self).objects.filter(pk=self.pk).values(
+                'student_subject_id',
+                'academic_grade',
+                'framework_id',
+                'term',
+                'year',
+                'level',
+                'level_definition_id_snapshot',
+                'raw_score',
+                'source',
+                'verified_by_id',
+                'verified_at',
+                'verified_school_id',
+            ).first()
+
+        if original_persistence is not None:
+            verification_fields = {
+                'verified_by_id': (
+                    {'verified_by', 'verified_by_id'},
+                    self.verified_by_id,
+                ),
+                'verified_at': ({'verified_at'}, self.verified_at),
+                'verified_school_id': (
+                    {'verified_school', 'verified_school_id'},
+                    self.verified_school_id,
+                ),
+            }
+            persisted_verification = {
+                field: (
+                    current
+                    if update_fields is None or update_fields & aliases
+                    else original_persistence[field]
+                )
+                for field, (aliases, current) in verification_fields.items()
+            }
+            verification_changed = any(
+                original_persistence[field] != value
+                for field, value in persisted_verification.items()
+            )
+            if verification_changed and getattr(
+                self,
+                '_verification_transition_token',
+                None,
+            ) is not _CBC_GRADE_VERIFICATION_TRANSITION:
+                raise ValidationError(
+                    'Grade verification changes must use the evidence transition service.'
+                )
+
+            has_verification_provenance = any(
+                original_persistence[field] is not None
+                for field in (
+                    'verified_by_id',
+                    'verified_at',
+                    'verified_school_id',
+                )
+            )
+            if has_verification_provenance:
+                protected_fields = {
+                    'student_subject_id': (
+                        {'student_subject', 'student_subject_id'},
+                        self.student_subject_id,
+                    ),
+                    'academic_grade': ({'academic_grade'}, self.academic_grade),
+                    'framework_id': ({'framework', 'framework_id'}, self.framework_id),
+                    'term': ({'term'}, self.term),
+                    'year': ({'year'}, self.year),
+                    'level': ({'level'}, self.level),
+                    'level_definition_id_snapshot': (
+                        {'level_definition_id_snapshot'},
+                        self.level_definition_id_snapshot,
+                    ),
+                    'raw_score': ({'raw_score'}, self.raw_score),
+                    'source': ({'source'}, self.source),
+                }
+                persisted_evidence = {
+                    field: (
+                        current
+                        if update_fields is None or update_fields & aliases
+                        else original_persistence[field]
+                    )
+                    for field, (aliases, current) in protected_fields.items()
+                }
+                if any(
+                    original_persistence[field] != value
+                    for field, value in persisted_evidence.items()
+                ):
+                    raise ValidationError(
+                        'School-verified evidence cannot be edited.'
+                    )
+
         if self._state.adding:
             if self.academic_grade is None:
                 self.academic_grade = self.student_subject.academic_grade
@@ -516,13 +637,7 @@ class CBCGrade(models.Model):
         definition_framework_id = self.framework_id
         definition_level = self.level
         if not self._state.adding:
-            original_identity = type(self).objects.filter(pk=self.pk).values(
-                'student_subject_id',
-                'academic_grade',
-                'framework_id',
-                'level',
-                'level_definition_id_snapshot',
-            ).first()
+            original_identity = original_persistence
             if original_identity is None:
                 definition_identity_changed = True
             else:
@@ -584,11 +699,30 @@ class CBCGrade(models.Model):
                     ).pk
                 )
             except PerformanceLevelDefinition.DoesNotExist:
-                self.level_definition_id_snapshot = None
+                raise ValidationError(
+                    {
+                        'level': (
+                            'The selected framework has no matching performance '
+                            'level definition.'
+                        )
+                    }
+                )
         self.clean()
         if update_fields is not None and definition_identity_changed:
             update_fields.add('level_definition_id_snapshot')
         return super().save(*args, **kwargs)
+
+    def _persist_verification_transition(self, *, update_fields):
+        self._verification_transition_token = _CBC_GRADE_VERIFICATION_TRANSITION
+        try:
+            self.save(update_fields=update_fields)
+        finally:
+            del self._verification_transition_token
+
+    def delete(self, *args, **kwargs):
+        if any((self.verified_by_id, self.verified_at, self.verified_school_id)):
+            raise ValidationError('School-verified evidence cannot be deleted.')
+        return super().delete(*args, **kwargs)
 
 
 class AcademicGoalQuerySet(models.QuerySet):
