@@ -38,6 +38,194 @@ async function selectProgramme(user: ReturnType<typeof userEvent.setup>) {
 
 
 describe('education goals workspace', () => {
+  it('keeps goal creation unavailable while saved goals are loading', async () => {
+    server.use(http.get('/api/v1/students/education-goals/', async () => {
+      await delay('infinite')
+      return HttpResponse.json({ data: [], error: null, message: '' })
+    }))
+    const user = userEvent.setup()
+    renderPage()
+    await selectInstitution(user)
+
+    expect(screen.getByLabelText('Goal slot')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save education goal' })).toBeDisabled()
+  })
+
+  it('keeps goal creation unavailable when saved goals cannot load', async () => {
+    server.use(http.get('/api/v1/students/education-goals/', () => HttpResponse.json(
+      { data: null, error: true, message: 'Failed.' }, { status: 500 },
+    )))
+    const user = userEvent.setup()
+    renderPage()
+    await selectInstitution(user)
+    await screen.findByText('Saved education goals could not load')
+
+    expect(screen.getByLabelText('Goal slot')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save education goal' })).toBeDisabled()
+  })
+
+  it('prevents an existing goal from moving into an occupied sibling slot', async () => {
+    server.use(http.get('/api/v1/students/education-goals/', () => HttpResponse.json({
+      data: [{
+        id: 41,
+        institution: institutionFixture,
+        programme: null,
+        kind: 'primary',
+        priority: 1,
+        created_by: 1,
+        created_at: '2026-08-02T09:00:00Z',
+        updated_at: '2026-08-02T09:00:00Z',
+      }, {
+        id: 42,
+        institution: institutionFixture,
+        programme: programmeFixture,
+        kind: 'alternative',
+        priority: 1,
+        created_by: 1,
+        created_at: '2026-08-02T09:00:00Z',
+        updated_at: '2026-08-02T09:00:00Z',
+      }],
+      error: null,
+      message: '',
+    })))
+    const user = userEvent.setup()
+    renderPage()
+
+    const primary = await screen.findByRole('article', { name: 'Primary education goal' })
+    expect(within(primary).getByRole('option', { name: 'Primary' })).toBeEnabled()
+    expect(within(primary).getByRole('option', { name: 'Alternative 1 (already used)' })).toBeDisabled()
+    expect(within(primary).getByRole('option', { name: 'Alternative 2' })).toBeEnabled()
+
+    const alternative = screen.getByRole('article', { name: 'Alternative 1 education goal' })
+    expect(within(alternative).getByRole('option', { name: 'Primary (already used)' })).toBeDisabled()
+    expect(within(alternative).getByRole('option', { name: 'Alternative 1' })).toBeEnabled()
+
+    await selectInstitution(user)
+    const createForm = screen.getByRole('button', { name: 'Save education goal' }).closest('form')!
+    expect(within(createForm).getByRole('option', { name: 'Primary (already used)' })).toBeDisabled()
+    expect(within(createForm).getByRole('option', { name: 'Alternative 1 (already used)' })).toBeDisabled()
+    expect(within(createForm).getByRole('option', { name: 'Alternative 2' })).toBeEnabled()
+  })
+
+  it('builds filter facets from all returned catalogue values', async () => {
+    const secondInstitution = {
+      ...institutionFixture,
+      id: 2,
+      name: 'Lake Region Technical Institute',
+      county: 'Kisumu',
+      external_key: 'LRTI',
+      education_framework: 'CBE',
+      admission_cycle: '2027/2028',
+      verification_status: 'verified' as const,
+    }
+    server.use(http.get('/api/v1/tertiary/institutions/', ({ request }) => {
+      const query = new URL(request.url).searchParams
+      const institutions = [institutionFixture, secondInstitution]
+      const filtered = institutions.filter((institution) => (
+        (!query.get('county') || query.get('county') === institution.county)
+        && (!query.get('framework') || query.get('framework') === institution.education_framework)
+        && (!query.get('cycle') || query.get('cycle') === institution.admission_cycle)
+        && (!query.get('verification_status')
+          || query.get('verification_status') === institution.verification_status)
+      ))
+      return HttpResponse.json({ data: filtered, error: null, message: '' })
+    }))
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('option', { name: 'Kisumu' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'CBE' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '2027/2028' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Verified' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('County'), 'Kisumu')
+    expect(await screen.findByRole('button', { name: 'Explore Lake Region Technical Institute' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Explore University of Nairobi' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Nairobi' })).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('County'), '')
+    await user.selectOptions(screen.getByLabelText('Verification status'), 'verified')
+    expect(await screen.findByRole('button', { name: 'Explore Lake Region Technical Institute' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Explore University of Nairobi' })).not.toBeInTheDocument()
+  })
+
+  it('shows the relevant dated source and historical reference-only wording on every saved goal', async () => {
+    server.use(http.get('/api/v1/students/education-goals/', () => HttpResponse.json({
+      data: [{
+        id: 41,
+        institution: institutionFixture,
+        programme: null,
+        kind: 'primary',
+        priority: 1,
+        created_by: 1,
+        created_at: '2026-08-02T09:00:00Z',
+        updated_at: '2026-08-02T09:00:00Z',
+      }, {
+        id: 42,
+        institution: institutionFixture,
+        programme: {
+          ...programmeFixture,
+          effective_date: '2024-02-01',
+          source_url: 'https://catalogue.example/programmes/bsc-cs',
+        },
+        kind: 'alternative',
+        priority: 1,
+        created_by: 1,
+        created_at: '2026-08-02T09:00:00Z',
+        updated_at: '2026-08-02T09:00:00Z',
+      }],
+      error: null,
+      message: '',
+    })))
+    renderPage()
+
+    const primary = await screen.findByRole('article', { name: 'Primary education goal' })
+    expect(primary).toHaveTextContent(
+      'KCSE · 2025/2026 · Effective 1 March 2025 · Verification: Historical · Historical reference only',
+    )
+    expect(within(primary).getByRole('link', { name: 'Open institution source' })).toHaveAttribute(
+      'href', institutionFixture.source_url,
+    )
+    const alternative = screen.getByRole('article', { name: 'Alternative 1 education goal' })
+    expect(alternative).toHaveTextContent(
+      'KCSE · 2025/2026 · Effective 1 February 2024 · Verification: Historical · Historical reference only',
+    )
+    expect(within(alternative).getByRole('link', { name: 'Open programme source' })).toHaveAttribute(
+      'href', 'https://catalogue.example/programmes/bsc-cs',
+    )
+  })
+
+  it('clears an institution selection that no longer matches the catalogue filters', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await selectInstitution(user)
+
+    await user.type(screen.getByLabelText('Search institutions'), 'missing')
+    await screen.findByText('No institutions match these filters')
+
+    expect(screen.queryByRole('region', { name: 'Selected institution source' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Institution selection cleared because it no longer matches the catalogue filters.',
+    )
+    expect(screen.getByText('Select an institution to continue.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save education goal' })).not.toBeInTheDocument()
+  })
+
+  it('clears programme detail and save scope when programme search excludes the selection', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await selectProgramme(user)
+    await screen.findByRole('region', { name: 'BSc Computer Science details' })
+
+    await user.type(screen.getByLabelText('Search programmes'), 'missing')
+    await screen.findByText('No programmes match this search')
+
+    expect(screen.queryByRole('region', { name: 'BSc Computer Science details' })).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Programme selection cleared because it no longer matches the programme search.',
+    )
+    expect(screen.getByRole('option', { name: 'Selected programme' })).toBeDisabled()
+    expect(screen.getByLabelText('Goal scope')).toHaveValue('institution')
+  })
+
   it('shows sourced historical programme detail and the unavailable official-criteria explanation', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -120,8 +308,8 @@ describe('education goals workspace', () => {
     await user.type(screen.getByLabelText('Search institutions'), 'missing')
     expect(await screen.findByText('No institutions match these filters')).toBeInTheDocument()
     await user.clear(screen.getByLabelText('Search institutions'))
-    await user.selectOptions(screen.getByLabelText('County'), 'Mombasa')
-    expect(await screen.findByText('No institutions match these filters')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('County'), 'Nairobi')
+    expect(await screen.findByRole('button', { name: 'Explore University of Nairobi' })).toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('County'), '')
     await selectInstitution(user)
     await user.type(screen.getByLabelText('Search programmes'), 'missing')

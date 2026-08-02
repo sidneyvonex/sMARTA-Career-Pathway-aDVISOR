@@ -32,9 +32,11 @@ export default function EducationGoalsPage() {
   const [framework, setFramework] = useState('')
   const [cycle, setCycle] = useState('')
   const [verificationStatus, setVerificationStatus] = useState<CatalogueFilters['verification_status'] | ''>('')
+  const [catalogueInstitutions, setCatalogueInstitutions] = useState<Institution[]>([])
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null)
   const [programmeSearch, setProgrammeSearch] = useState('')
   const [selectedProgramme, setSelectedProgramme] = useState<Programme | null>(null)
+  const [selectionNotice, setSelectionNotice] = useState('')
   const [goalScope, setGoalScope] = useState<'institution' | 'programme'>('institution')
   const [goalSlot, setGoalSlot] = useState('primary')
 
@@ -70,6 +72,39 @@ export default function EducationGoalsPage() {
   const usedSlots = useMemo(() => new Set((goalsQ.data ?? []).map((goal) => (
     goal.kind === 'primary' ? 'primary' : `alternative-${goal.priority}`
   ))), [goalsQ.data])
+  const facetOptions = useMemo(() => ({
+    counties: [...new Set(catalogueInstitutions.map((institution) => institution.county))].sort(),
+    frameworks: [...new Set(catalogueInstitutions.map((institution) => institution.education_framework))].sort(),
+    cycles: [...new Set(catalogueInstitutions.map((institution) => institution.admission_cycle))].sort(),
+    verificationStatuses: [...new Set(catalogueInstitutions.map((institution) => institution.verification_status))].sort(),
+  }), [catalogueInstitutions])
+
+  useEffect(() => {
+    if (!institutionsQ.isSuccess) return
+    if (institutionsQ.data.length > 0) {
+      setCatalogueInstitutions((current) => {
+        const merged = new Map(current.map((institution) => [institution.id, institution]))
+        institutionsQ.data.forEach((institution) => merged.set(institution.id, institution))
+        return [...merged.values()]
+      })
+    }
+    if (selectedInstitution && !institutionsQ.data.some(({ id }) => id === selectedInstitution.id)) {
+      setSelectedInstitution(null)
+      setSelectedProgramme(null)
+      setProgrammeSearch('')
+      setGoalScope('institution')
+      setSelectionNotice('Institution selection cleared because it no longer matches the catalogue filters.')
+    }
+  }, [institutionsQ.data, institutionsQ.isSuccess, selectedInstitution])
+
+  useEffect(() => {
+    if (!programmesQ.isSuccess || !selectedProgramme) return
+    if (!programmesQ.data.some(({ id }) => id === selectedProgramme.id)) {
+      setSelectedProgramme(null)
+      setGoalScope('institution')
+      setSelectionNotice('Programme selection cleared because it no longer matches the programme search.')
+    }
+  }, [programmesQ.data, programmesQ.isSuccess, selectedProgramme])
 
   useEffect(() => {
     const firstOpen = ['primary', 'alternative-1', 'alternative-2'].find((slot) => !usedSlots.has(slot))
@@ -81,15 +116,17 @@ export default function EducationGoalsPage() {
     setSelectedProgramme(null)
     setProgrammeSearch('')
     setGoalScope('institution')
+    setSelectionNotice('')
   }
 
   const chooseProgramme = (programme: Programme) => {
     setSelectedProgramme(programme)
     setGoalScope('programme')
+    setSelectionNotice('')
   }
 
   const saveGoal = () => {
-    if (!selectedInstitution) return
+    if (!selectedInstitution || !goalsQ.isSuccess) return
     const kind: EducationGoalKind = goalSlot === 'primary' ? 'primary' : 'alternative'
     const priority: 1 | 2 = goalSlot === 'alternative-2' ? 2 : 1
     create.mutate({
@@ -100,7 +137,7 @@ export default function EducationGoalsPage() {
     })
   }
 
-  const noOpenSlots = usedSlots.size >= 3
+  const noOpenSlots = goalsQ.isSuccess && usedSlots.size >= 3
 
   return (
     <div className="student-page education-goals-page">
@@ -135,11 +172,12 @@ export default function EducationGoalsPage() {
             description="Choose an institution or programme below to begin your exploration routes."
           />
         ) : (
-          <EducationGoalList goals={goalsQ.data ?? []} />
+          <EducationGoalList goals={goalsQ.data ?? []} usedSlots={usedSlots} />
         )}
       </section>
 
       <div className="education-explorer-layout">
+        {selectionNotice && <p className="education-selection-notice" role="status">{selectionNotice}</p>}
         <section className="education-catalogue" aria-labelledby="institution-catalogue-title">
           <div className="education-section-heading">
             <div>
@@ -162,23 +200,21 @@ export default function EducationGoalsPage() {
               <label htmlFor="institution-county">County</label>
               <select id="institution-county" className="student-field__control" value={county} onChange={(event) => setCounty(event.target.value)}>
                 <option value="">All counties</option>
-                <option value="Nairobi">Nairobi</option>
-                <option value="Mombasa">Mombasa</option>
+                {facetOptions.counties.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
             <div className="student-field">
               <label htmlFor="institution-framework">Framework</label>
               <select id="institution-framework" className="student-field__control" value={framework} onChange={(event) => setFramework(event.target.value)}>
                 <option value="">All frameworks</option>
-                <option value="KCSE">KCSE</option>
-                <option value="CBE">CBE</option>
+                {facetOptions.frameworks.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
             <div className="student-field">
               <label htmlFor="institution-cycle">Admission cycle</label>
               <select id="institution-cycle" className="student-field__control" value={cycle} onChange={(event) => setCycle(event.target.value)}>
                 <option value="">All cycles</option>
-                <option value="2025/2026">2025/2026</option>
+                {facetOptions.cycles.map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
             <div className="student-field">
@@ -190,9 +226,11 @@ export default function EducationGoalsPage() {
                 onChange={(event) => setVerificationStatus(event.target.value as CatalogueFilters['verification_status'] | '')}
               >
                 <option value="">All statuses</option>
-                <option value="verified">Verified</option>
-                <option value="historical">Historical</option>
-                <option value="unavailable">Unavailable</option>
+                {facetOptions.verificationStatuses.map((value) => (
+                  <option key={value} value={value}>
+                    {value === 'historical' ? 'Historical' : value === 'verified' ? 'Verified' : 'Unavailable'}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -307,17 +345,18 @@ export default function EducationGoalsPage() {
               </div>
               <div className="student-field">
                 <label htmlFor="new-goal-slot">Goal slot</label>
-                <select id="new-goal-slot" className="student-field__control" value={goalSlot} onChange={(event) => setGoalSlot(event.target.value)} disabled={noOpenSlots}>
+                <select id="new-goal-slot" className="student-field__control" value={goalSlot} onChange={(event) => setGoalSlot(event.target.value)} disabled={!goalsQ.isSuccess || noOpenSlots}>
                   <option value="primary" disabled={usedSlots.has('primary')}>Primary{usedSlots.has('primary') ? ' (already used)' : ''}</option>
                   <option value="alternative-1" disabled={usedSlots.has('alternative-1')}>Alternative 1{usedSlots.has('alternative-1') ? ' (already used)' : ''}</option>
                   <option value="alternative-2" disabled={usedSlots.has('alternative-2')}>Alternative 2{usedSlots.has('alternative-2') ? ' (already used)' : ''}</option>
                 </select>
               </div>
+              {!goalsQ.isSuccess && <p className="education-slot-note">Saved goals must load before you can save another route.</p>}
               {noOpenSlots && <p className="education-slot-note">All three education-goal slots are filled. Update or remove a saved route first.</p>}
               <button
                 type="submit"
                 className="student-action"
-                disabled={create.isPending || noOpenSlots || (goalScope === 'programme' && !selectedProgramme)}
+                disabled={!goalsQ.isSuccess || create.isPending || noOpenSlots || (goalScope === 'programme' && !selectedProgramme)}
               >
                 {create.isPending ? 'Saving…' : 'Save education goal'}
               </button>
