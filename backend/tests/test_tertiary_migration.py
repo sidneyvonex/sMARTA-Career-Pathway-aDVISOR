@@ -5,26 +5,56 @@ from django.db.migrations.executor import MigrationExecutor
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+TERTIARY_MODEL_NAMES = (
+    'LearnerEducationGoal',
+    'ProgrammeSubjectReference',
+    'HistoricalAdmissionReference',
+    'Programme',
+    'Institution',
+)
+
+
+def _capture_tertiary_baseline_pks():
+    """Capture the leaf-schema rows that this migration test must preserve."""
+    executor = MigrationExecutor(connection)
+    apps = executor.loader.project_state(executor.loader.graph.leaf_nodes()).apps
+    return {
+        model_name: set(
+            apps.get_model('tertiary', model_name).objects.values_list('pk', flat=True)
+        )
+        for model_name in TERTIARY_MODEL_NAMES
+    }
+
+
+def _delete_tertiary_rows_created_after(baseline_pks):
+    """Delete only rows added by this test, using the currently applied model state."""
+    executor = MigrationExecutor(connection)
+    apps = executor.loader.project_state(
+        list(executor.loader.applied_migrations)
+    ).apps
+    for model_name in TERTIARY_MODEL_NAMES:
+        Model = apps.get_model('tertiary', model_name)
+        current_pks = set(Model.objects.values_list('pk', flat=True))
+        created_pks = current_pks - baseline_pks[model_name]
+        if created_pks:
+            Model.objects.filter(pk__in=created_pks).delete()
+
 
 @pytest.fixture(autouse=True)
 def restore_complete_migration_graph():
-    """Leave every migration test at the complete graph leaf, including failures."""
+    """Isolate added tertiary rows and restore every test to the graph leaf.
+
+    Task 7 migration tests create fresh rows only; they never update baseline
+    catalogue rows, so a primary-key snapshot is sufficient to preserve the
+    baseline state while migrations run backwards.
+    """
+    executor = MigrationExecutor(connection)
+    executor.migrate(executor.loader.graph.leaf_nodes())
+    baseline_pks = _capture_tertiary_baseline_pks()
     try:
         yield
     finally:
-        executor = MigrationExecutor(connection)
-        applied = executor.loader.applied_migrations
-        tertiary_target = (
-            [('tertiary', '0003_enforce_catalogue_integrity')]
-            if ('tertiary', '0003_enforce_catalogue_integrity') in applied
-            else [('tertiary', '0002_programmesubjectreference_tertiary_subj_mapping_kind_ck')]
-        )
-        apps = executor.loader.project_state(tertiary_target).apps
-        for model_name in (
-            'LearnerEducationGoal', 'ProgrammeSubjectReference',
-            'HistoricalAdmissionReference', 'Programme', 'Institution',
-        ):
-            apps.get_model('tertiary', model_name).objects.all().delete()
+        _delete_tertiary_rows_created_after(baseline_pks)
         executor = MigrationExecutor(connection)
         executor.migrate(executor.loader.graph.leaf_nodes())
 
@@ -34,6 +64,96 @@ def _old_models():
     old_targets = [('tertiary', '0002_programmesubjectreference_tertiary_subj_mapping_kind_ck')]
     executor.migrate(old_targets)
     return executor.loader.project_state(old_targets).apps
+
+
+def test_migration_cleanup_preserves_leaf_baseline_rows_after_rollback():
+    """Catches cleanup that erases catalogue data present before a migration test."""
+    executor = MigrationExecutor(connection)
+    leaf_targets = executor.loader.graph.leaf_nodes()
+    executor.migrate(leaf_targets)
+    apps = executor.loader.project_state(leaf_targets).apps
+    User = apps.get_model('accounts', 'User')
+    StudentProfile = apps.get_model('accounts', 'StudentProfile')
+    Institution = apps.get_model('tertiary', 'Institution')
+    Programme = apps.get_model('tertiary', 'Programme')
+    SubjectReference = apps.get_model('tertiary', 'ProgrammeSubjectReference')
+    HistoricalReference = apps.get_model('tertiary', 'HistoricalAdmissionReference')
+    Goal = apps.get_model('tertiary', 'LearnerEducationGoal')
+    user = User.objects.create(
+        email='baseline-cleanup@example.com', first_name='Baseline', last_name='Keeper',
+        role='student', county='kiambu', is_email_verified=True,
+    )
+    learner = StudentProfile.objects.create(
+        user=user, mode='self_guided', school_membership_status='not_applicable', grade=10,
+    )
+    common = {
+        'source_scope': 'baseline-source', 'source_url': 'https://example.ac.ke/baseline',
+        'education_framework': 'KCSE', 'admission_cycle': '2025/2026',
+        'effective_date': '2025-03-01', 'verification_status': 'historical',
+    }
+    institution = Institution.objects.create(
+        external_key='BASELINE-INST', name='Baseline University',
+        institution_type='university', county='Nairobi', website_url='', **common,
+    )
+    programme = Programme.objects.create(
+        institution=institution, external_key='BASELINE-PROG', code='BASE',
+        name='Baseline Programme', description='', **common,
+    )
+    subject_reference = SubjectReference.objects.create(
+        programme=programme, external_key='BASELINE-SUBJ', subject_code='ENG',
+        subject_name='English', mapping_kind='historical_requirement', notes='', **common,
+    )
+    historical_reference = HistoricalReference.objects.create(
+        programme=programme, external_key='BASELINE-HIST',
+        requirement_summary='Grade C', **common,
+    )
+    goal = Goal.objects.create(
+        learner=learner, institution=institution, programme=programme,
+        kind='primary', priority=1, created_by=user,
+    )
+    baseline_pks = _capture_tertiary_baseline_pks()
+
+    old_apps = _old_models()
+    OldInstitution = old_apps.get_model('tertiary', 'Institution')
+    OldProgramme = old_apps.get_model('tertiary', 'Programme')
+    OldSubjectReference = old_apps.get_model('tertiary', 'ProgrammeSubjectReference')
+    OldHistoricalReference = old_apps.get_model('tertiary', 'HistoricalAdmissionReference')
+    OldGoal = old_apps.get_model('tertiary', 'LearnerEducationGoal')
+    created_institution = OldInstitution.objects.create(
+        external_key='CREATED-INST', name='Created University',
+        institution_type='university', county='Nairobi', website_url='', **common,
+    )
+    created_programme = OldProgramme.objects.create(
+        institution=created_institution, external_key='CREATED-PROG', code='CREATED',
+        name='Created Programme', description='', **common,
+    )
+    created_subject_reference = OldSubjectReference.objects.create(
+        programme=created_programme, external_key='CREATED-SUBJ', subject_code='MAT',
+        subject_name='Mathematics', mapping_kind='historical_requirement', notes='', **common,
+    )
+    created_historical_reference = OldHistoricalReference.objects.create(
+        programme=created_programme, external_key='CREATED-HIST',
+        requirement_summary='Grade B', **common,
+    )
+    created_goal = OldGoal.objects.create(
+        learner_id=learner.pk, institution=created_institution,
+        programme=created_programme, kind='alternative', priority=2, created_by_id=user.pk,
+    )
+
+    _delete_tertiary_rows_created_after(baseline_pks)
+    MigrationExecutor(connection).migrate(leaf_targets)
+
+    restored_apps = MigrationExecutor(connection).loader.project_state(leaf_targets).apps
+    for model_name, baseline_pk, created_pk in (
+        ('Institution', institution.pk, created_institution.pk),
+        ('Programme', programme.pk, created_programme.pk),
+        ('ProgrammeSubjectReference', subject_reference.pk, created_subject_reference.pk),
+        ('HistoricalAdmissionReference', historical_reference.pk, created_historical_reference.pk),
+        ('LearnerEducationGoal', goal.pk, created_goal.pk),
+    ):
+        Model = restored_apps.get_model('tertiary', model_name)
+        assert Model.objects.filter(pk=baseline_pk).exists()
+        assert not Model.objects.filter(pk=created_pk).exists()
 
 
 def _create_old_goal_rows(apps, *, duplicate=False):
@@ -122,26 +242,36 @@ def test_0003_rejects_existing_cross_release_parent_links():
 
 
 @pytest.mark.parametrize(
-    'whitespace',
+    ('field', 'whitespace'),
     [
-        '\xa0', '\x85', '\u1680', '\u2000', '\u2007', '\u2028', '\u202f',
-        '\u205f', '\u3000',
+        ('source_scope', '\xa0'), ('external_key', '\xa0'),
+        ('source_url', '\xa0'), ('education_framework', '\xa0'),
+        ('admission_cycle', '\xa0'),
+        ('source_scope', '\x85'), ('source_scope', '\u1680'),
+        ('source_scope', '\u2000'), ('source_scope', '\u2007'),
+        ('source_scope', '\u2028'), ('source_scope', '\u202f'),
+        ('source_scope', '\u205f'), ('source_scope', '\u3000'),
     ],
     ids=[
-        'nbsp', 'next-line', 'ogham-space', 'en-quad', 'figure-space',
-        'line-separator', 'narrow-nbsp', 'medium-mathematical-space',
-        'ideographic-space',
+        'scope-nbsp', 'key-nbsp', 'url-nbsp', 'framework-nbsp', 'cycle-nbsp',
+        'scope-next-line', 'scope-ogham-space', 'scope-en-quad',
+        'scope-figure-space', 'scope-line-separator', 'scope-narrow-nbsp',
+        'scope-medium-mathematical-space', 'scope-ideographic-space',
     ],
 )
-def test_0003_rejects_whitespace_provenance_before_schema_changes(whitespace):
+def test_0003_rejects_whitespace_provenance_before_schema_changes(field, whitespace):
     """Catches preflight accepting blank provenance or running after additive DDL."""
     old_apps = _old_models()
     Institution = old_apps.get_model('tertiary', 'Institution')
+    provenance = {
+        'source_scope': 'migration-source', 'external_key': 'MIG-BLANK',
+        'source_url': 'https://example.ac.ke/source', 'education_framework': 'KCSE',
+        'admission_cycle': '2025/2026',
+    }
+    provenance[field] = whitespace
     institution = Institution.objects.create(
-        source_scope=whitespace, external_key='MIG-BLANK',
-        source_url='https://example.ac.ke/source', education_framework='KCSE',
-        admission_cycle='2025/2026', effective_date='2025-03-01',
-        verification_status='historical', name='Blank Source University',
+        **provenance, effective_date='2025-03-01', verification_status='historical',
+        name='Blank Source University',
         institution_type='university', county='Nairobi', website_url='',
     )
 
