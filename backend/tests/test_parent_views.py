@@ -1,6 +1,7 @@
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 from rest_framework.test import APIClient
 from tests.factories import (
     AcademicGoalFactory, LearnerEducationGoalFactory,
@@ -8,7 +9,7 @@ from tests.factories import (
     ParentStudentLinkFactory, CounselorAssignmentFactory,
     RIASECAssessmentFactory, StudentSubjectFactory,
     SubjectFactory, CBCGradeFactory, CounselorFactory,
-    CounselorNoteFactory,
+    CounselorNoteFactory, SchoolAdminFactory, SchoolFactory,
 )
 from riasec.models import RIASECScore, Recommendation, Pathway
 from notifications.models import Notification
@@ -340,7 +341,7 @@ class TestParentChildDetailView:
         data = resp.json()['data']
         assert data['counselor'] is None
 
-    def test_detail_includes_academic_readiness_provisional_choice_and_plan(self):
+    def test_detail_includes_evidence_completeness_provisional_choice_and_plan(self):
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student')
         profile = StudentProfileFactory(user=student, grade=9)
@@ -374,8 +375,9 @@ class TestParentChildDetailView:
         resp = self.client.get(self._url(student.id))
 
         data = resp.json()['data']
-        assert data['academic_readiness']['status'] == 'ready'
-        assert data['academic_readiness']['subjects_with_evidence'] == 3
+        assert data['evidence_completeness']['status'] == 'complete'
+        assert data['evidence_completeness']['subjects_with_evidence'] == 3
+        assert 'academic_readiness' not in data
         assert data['provisional_combination']['code'] == combination.code
         assert len(data['provisional_combination']['subjects']) == 3
         assert data['plan']['status'] == 'draft'
@@ -427,6 +429,40 @@ class TestParentChildDetailView:
         assert data['education_goals'][0]['id'] == education_goal.id
         assert data['parent_visible_notes'] == []
         assert 'Safeguarding note' not in str(data)
+
+    def test_parent_grade_history_preserves_allowed_provenance_without_staff_identity(self):
+        parent = ParentFactory()
+        school = SchoolFactory(name='Provenance School')
+        verifier = SchoolAdminFactory(school=school)
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        evidence = CBCGradeFactory(
+            student_subject=enrollment,
+            source='learner',
+            verified_by=verifier,
+            verified_school=school,
+            verified_at=timezone.now(),
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        response = self.client.get(self._url(student.id))
+
+        assert response.status_code == 200
+        grade = response.json()['data']['subjects'][0]['grades'][0]
+        assert grade['id'] == evidence.id
+        assert grade['source'] == 'learner'
+        assert grade['framework'] == {
+            'code': evidence.framework.code,
+            'version': evidence.framework.version,
+        }
+        assert grade['verified_school'] == {
+            'id': school.id,
+            'name': 'Provenance School',
+        }
+        assert grade['verified_at'] is not None
+        assert 'verified_by' not in grade
 
     def test_detail_queries_stay_bounded_with_representative_progress_context(self):
         parent = ParentFactory()

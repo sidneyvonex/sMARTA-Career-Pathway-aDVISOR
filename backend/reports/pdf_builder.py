@@ -105,6 +105,43 @@ def build_student_report(data):
             f"<b>Evidence:</b> {_text(str(subject.get('evidence_confidence') or '').replace('_', ' '))}",
             styles['SmallGrey'],
         ))
+        elements.append(Paragraph(
+            '<b>Evidence used for this status</b>',
+            styles['SmallGrey'],
+        ))
+        records_used = subject.get('records_used') or []
+        if not records_used:
+            elements.append(Paragraph(
+                'No academic evidence records were used.',
+                styles['SmallGrey'],
+            ))
+        for record in records_used:
+            record_framework = record.get('framework') or {}
+            origin = (
+                'School entered'
+                if record.get('source') == 'school'
+                else 'Learner entered'
+            )
+            if record.get('verified_at'):
+                verification = (
+                    f"School verified on {record.get('verified_at')}"
+                )
+            elif record.get('verified_school'):
+                verification = 'Verification removed; school provenance retained'
+            else:
+                verification = 'Not school verified'
+            elements.append(Paragraph(
+                f"Grade {_text(record.get('academic_grade'))} · "
+                f"Term {_text(record.get('term'))} {_text(record.get('year'))} · "
+                f"{_text(record.get('level'))} · "
+                f"{_text(record_framework.get('code'))} "
+                f"{_text(record_framework.get('version'))}",
+                styles['SmallGrey'],
+            ))
+            elements.append(Paragraph(
+                f"Origin: {_text(origin)}. Verification: {_text(verification)}.",
+                styles['SmallGrey'],
+            ))
     if progress.get('advisory_disclaimer'):
         elements.append(Paragraph(
             _text(progress['advisory_disclaimer']),
@@ -168,11 +205,11 @@ def build_student_report(data):
     ]))
     elements.append(evidence_table)
 
-    readiness = data.get('academic_readiness', {})
-    elements.append(Paragraph('Academic Readiness', styles['SectionTitle']))
+    completeness = data.get('evidence_completeness', {})
+    elements.append(Paragraph('Evidence Completeness', styles['SectionTitle']))
     elements.append(Paragraph(
-        f"<b>{_text(readiness.get('label') or 'Not started')}</b>. "
-        f"{_text(readiness.get('explanation') or 'No academic evidence has been recorded yet.')}",
+        f"<b>{_text(completeness.get('label') or 'Not started')}</b>. "
+        f"{_text(completeness.get('explanation') or 'No academic evidence has been recorded yet.')}",
         styles['BodyText2'],
     ))
     elements.append(Spacer(1, 4 * mm))
@@ -264,17 +301,19 @@ def build_student_report(data):
     for goal in education_goals:
         institution = goal.get('institution') or {}
         programme = goal.get('programme') or {}
+        provenance = programme or institution
         elements.append(Paragraph(
             f"<b>{_text(institution.get('name'))}</b>"
             f"{f' — {_text(programme.get("name"))}' if programme.get('name') else ''}",
             styles['BodyText2'],
         ))
         elements.append(Paragraph(
-            f"{_text(institution.get('education_framework'))} · "
-            f"{_text(institution.get('admission_cycle'))}; effective "
-            f"{_text(institution.get('effective_date'))}; "
-            f"{_text(institution.get('verification_status'))}. "
-            f"Source: {_text(institution.get('source_url'))}",
+            f"{_text(provenance.get('education_framework'))} · "
+            f"{_text(provenance.get('admission_cycle'))}; effective "
+            f"{_text(provenance.get('effective_date'))}; "
+            f"{_text(provenance.get('verification_status'))}. "
+            f"Source: {_text(provenance.get('source_url'))}. "
+            f"{('Historical reference only.' if provenance.get('verification_status') == 'historical' else '')}",
             styles['SmallGrey'],
         ))
     elements.append(Spacer(1, 4 * mm))

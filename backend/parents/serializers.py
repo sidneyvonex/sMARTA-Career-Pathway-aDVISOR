@@ -273,9 +273,36 @@ class ChildProfileSerializer(serializers.Serializer):
 
 
 class ChildGradeSerializer(serializers.ModelSerializer):
+    framework = serializers.SerializerMethodField()
+    verified_school = serializers.SerializerMethodField()
+
     class Meta:
         model = CBCGrade
-        fields = ('id', 'term', 'year', 'level')
+        fields = (
+            'id',
+            'academic_grade',
+            'term',
+            'year',
+            'level',
+            'framework',
+            'source',
+            'verified_school',
+            'verified_at',
+        )
+
+    def get_framework(self, grade):
+        return {
+            'code': grade.framework.code,
+            'version': grade.framework.version,
+        }
+
+    def get_verified_school(self, grade):
+        if grade.verified_school_id is None:
+            return None
+        return {
+            'id': grade.verified_school_id,
+            'name': grade.verified_school.name,
+        }
 
 
 class ChildSubjectSerializer(serializers.Serializer):
@@ -306,7 +333,7 @@ class ChildDetailSerializer(serializers.Serializer):
     profile = serializers.SerializerMethodField()
     subjects = serializers.SerializerMethodField()
     assessment = serializers.SerializerMethodField()
-    academic_readiness = serializers.SerializerMethodField()
+    evidence_completeness = serializers.SerializerMethodField()
     provisional_combination = serializers.SerializerMethodField()
     plan = serializers.SerializerMethodField()
     counselor = serializers.SerializerMethodField()
@@ -332,7 +359,7 @@ class ChildDetailSerializer(serializers.Serializer):
             return None
         return AssessmentResultSerializer(assessment).data
 
-    def get_academic_readiness(self, profile):
+    def get_evidence_completeness(self, profile):
         enrollments = list(getattr(
             profile,
             'support_enrolments',
@@ -343,13 +370,13 @@ class ChildDetailSerializer(serializers.Serializer):
         subjects_with_evidence = sum(count > 0 for count in grade_counts)
         total_grade_records = sum(grade_counts)
         if total_subjects >= 3 and subjects_with_evidence == total_subjects:
-            readiness_status = 'ready'
+            completeness_status = 'complete'
         elif total_subjects or total_grade_records:
-            readiness_status = 'in_progress'
+            completeness_status = 'in_progress'
         else:
-            readiness_status = 'not_started'
+            completeness_status = 'not_started'
         return {
-            'status': readiness_status,
+            'status': completeness_status,
             'total_subjects': total_subjects,
             'subjects_with_evidence': subjects_with_evidence,
             'total_grade_records': total_grade_records,

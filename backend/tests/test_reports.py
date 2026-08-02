@@ -86,7 +86,7 @@ class TestPDFBuilder:
                 'total_grade_records': 3,
                 'assessment_submitted_at': '20 June 2026',
             },
-            'academic_readiness': {
+            'evidence_completeness': {
                 'status': 'in_progress',
                 'label': 'In progress',
                 'explanation': '2 of 2 enrolled subjects have recorded academic evidence.',
@@ -132,7 +132,14 @@ class TestPDFBuilder:
                     'effective_date': '2025-03-01',
                     'verification_status': 'historical',
                 },
-                'programme': {'name': 'Bachelor of Science'},
+                'programme': {
+                    'name': 'Bachelor of Science',
+                    'source_url': 'https://students.kuccps.net/programmes/',
+                    'education_framework': 'KCSE',
+                    'admission_cycle': '2025/2026',
+                    'effective_date': '2025-03-01',
+                    'verification_status': 'historical',
+                },
             }],
             'provisional_choice': {
                 'code': 'STEM-PURE-01',
@@ -252,7 +259,7 @@ class TestPDFBuilder:
         assert '2 of 2 enrolled subjects' in normalized_text
         assert 'Interest Profile' in text
         assert 'Science & Technology aligns with Investigative interests' in normalized_text
-        assert 'Academic Readiness' in text
+        assert 'Evidence Completeness' in text
         assert 'In progress' in text
         assert 'Provisional Combination' in text
         assert 'STEM-PURE-01' in text
@@ -301,6 +308,63 @@ class TestPDFBuilder:
 
         assert 'Previously verified by Starehe Boys Centre; verification removed' in normalized
         assert 'Verified by Starehe Boys Centre' not in normalized
+
+    def test_pdf_renders_exact_evidence_used_for_each_progress_status(self):
+        data = self._make_data()
+        data['academic_progress']['subjects'][0]['records_used'] = [{
+            'id': 17,
+            'academic_grade': 9,
+            'term': 2,
+            'year': 2026,
+            'level': 'ME1',
+            'framework': {
+                'code': 'CBC-JUNIOR-SCHOOL',
+                'version': 'pilot-2026',
+            },
+            'source': 'learner',
+            'verified_school': 3,
+            'verified_at': '2026-06-20T08:00:00+03:00',
+        }]
+
+        normalized = ' '.join(_extract_pdf_text(build_student_report(data)).split())
+
+        assert 'Evidence used for this status' in normalized
+        assert 'Grade 9 · Term 2 2026 · ME1' in normalized
+        assert 'CBC-JUNIOR-SCHOOL pilot-2026' in normalized
+        assert 'Origin: Learner entered' in normalized
+        assert 'Verification: School verified on 2026-06-20T08:00:00+03:00' in normalized
+
+    def test_pdf_uses_programme_provenance_and_historical_reference_wording(self):
+        data = self._make_data()
+        data['education_goals'][0]['institution'].update({
+            'source_url': 'https://institution.example/source',
+            'admission_cycle': '2024/2025',
+            'effective_date': '2024-01-01',
+            'verification_status': 'verified',
+        })
+        data['education_goals'][0]['programme'].update({
+            'source_url': 'https://programme.example/source',
+            'education_framework': 'KCSE',
+            'admission_cycle': '2025/2026',
+            'effective_date': '2025-03-01',
+            'verification_status': 'historical',
+        })
+
+        normalized = ' '.join(_extract_pdf_text(build_student_report(data)).split())
+
+        assert 'https://programme.example/source' in normalized
+        assert '2025/2026' in normalized
+        assert '2025-03-01' in normalized
+        assert 'Historical reference only' in normalized
+        assert 'https://institution.example/source' not in normalized
+
+    def test_pdf_labels_subject_counts_as_evidence_completeness(self):
+        normalized = ' '.join(
+            _extract_pdf_text(build_student_report(self._make_data())).split()
+        )
+
+        assert 'Evidence Completeness' in normalized
+        assert 'Academic Readiness' not in normalized
 
 
 # ---------------------------------------------------------------------------
@@ -600,7 +664,8 @@ class TestStudentReportViewEdgeCases:
 
         assert response.status_code == 200
         assert captured['evidence_summary']['total_grade_records'] == 1
-        assert captured['academic_readiness']['status'] == 'in_progress'
+        assert captured['evidence_completeness']['status'] == 'in_progress'
+        assert 'academic_readiness' not in captured
         assert captured['provisional_choice']['code'] == 'PURE-REPORT-01'
         assert captured['plan']['milestones'][0]['title'] == 'Meet my counsellor'
         assert captured['framework']['code'] == 'CBC-REPORT-2026'

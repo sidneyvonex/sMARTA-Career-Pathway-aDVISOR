@@ -96,14 +96,14 @@ class StudentReportView(APIView):
         total_grade_records = sum(len(subject['grades']) for subject in subjects_data)
         total_subjects = len(subjects_data)
         if total_subjects >= 3 and subjects_with_evidence == total_subjects:
-            readiness_status = 'ready'
-            readiness_label = 'Ready for discussion'
+            completeness_status = 'complete'
+            completeness_label = 'Complete coverage'
         elif total_subjects or total_grade_records:
-            readiness_status = 'in_progress'
-            readiness_label = 'In progress'
+            completeness_status = 'in_progress'
+            completeness_label = 'In progress'
         else:
-            readiness_status = 'not_started'
-            readiness_label = 'Not started'
+            completeness_status = 'not_started'
+            completeness_label = 'Not started'
 
         generated_at = timezone.localtime()
         data = {
@@ -125,9 +125,9 @@ class StudentReportView(APIView):
                     riasec_data['submitted_at'] if riasec_data else None
                 ),
             },
-            'academic_readiness': {
-                'status': readiness_status,
-                'label': readiness_label,
+            'evidence_completeness': {
+                'status': completeness_status,
+                'label': completeness_label,
                 'explanation': (
                     f'{subjects_with_evidence} of {total_subjects} enrolled subjects '
                     'have recorded academic evidence.'
