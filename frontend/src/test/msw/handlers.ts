@@ -1408,8 +1408,17 @@ export const handlers = [
   http.get('/api/v1/school-admin/students/', () => {
     return HttpResponse.json({
       data: [
-        { id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', school_membership_status: 'active', counselor_id: 10, counselor_name: 'Alice Wanjiku' },
-        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', school_membership_status: 'active', counselor_id: null, counselor_name: null },
+        {
+          id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', school_membership_status: 'active', counselor_id: 10, counselor_name: 'Alice Wanjiku',
+          membership: { id: 51, status: 'active', record_source: 'learner_request', requested_at: '2026-01-10T08:00:00Z', started_at: '2026-01-11T08:00:00Z', ended_at: null },
+          transfer: { previous_membership_count: 1 },
+          academic_evidence: [{
+            id: 301, continuity_code: 'MTH', subject_name: 'Mathematics', academic_grade: 9, term: 1, year: 2026, level: 'ME1', framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, source: 'school', verified_school: { id: 9, name: 'Previous School' }, verified_at: '2026-04-01T08:00:00Z', can_verify: false, can_remove_verification: false,
+          }, {
+            id: 302, continuity_code: 'MTH', subject_name: 'Mathematics', academic_grade: 9, term: 2, year: 2026, level: 'ME2', framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, source: 'learner', verified_school: null, verified_at: null, can_verify: true, can_remove_verification: false,
+          }],
+        },
+        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', school_membership_status: 'active', counselor_id: null, counselor_name: null, membership: null, transfer: { previous_membership_count: 0 }, academic_evidence: [] },
       ],
       error: null, message: '',
     })
@@ -1440,6 +1449,15 @@ export const handlers = [
       },
       error: null,
       message: 'Learner school link approved.',
+    })
+  }),
+
+  http.put('/api/v1/school-admin/students/:studentId/grades/:gradeId/verification/', async ({ request }) => {
+    const body = await request.json() as { verified: boolean }
+    return HttpResponse.json({
+      data: { id: 302, verified_at: body.verified ? '2026-08-02T08:00:00Z' : null },
+      error: null,
+      message: body.verified ? 'Grade verified.' : 'Grade verification removed.',
     })
   }),
 

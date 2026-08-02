@@ -86,6 +86,25 @@ export default function SchoolStudentsPage() {
     },
   })
 
+  const verificationMutation = useMutation({
+    mutationFn: ({
+      studentId,
+      gradeId,
+      verified,
+    }: {
+      studentId: number
+      gradeId: number
+      verified: boolean
+    }) => schoolAdminApi.setGradeVerification(studentId, gradeId, verified),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['school-admin', 'students'] })
+      toast.success(response.data.message)
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message ?? 'Could not update grade verification.')
+    },
+  })
+
   if (studentsQ.isLoading || counselorsQ.isLoading) {
     return <p className="loading-text">Loading learners…</p>
   }
@@ -155,6 +174,55 @@ export default function SchoolStudentsPage() {
             <div className="admin-person">
               <strong>{name}</strong>
               <span>{student.email}</span>
+              {student.transfer?.previous_membership_count > 0 && (
+                <span>
+                  Transferred in · {student.transfer.previous_membership_count} previous membership
+                  {student.transfer.previous_membership_count === 1 ? '' : 's'}
+                </span>
+              )}
+              {student.academic_evidence?.map(evidence => (
+                <div className="admin-evidence" key={evidence.id}>
+                  <span>
+                    {evidence.subject_name} · Term {evidence.term} {evidence.year} · {evidence.level}
+                  </span>
+                  <small>{evidence.framework.code} {evidence.framework.version}</small>
+                  <small>
+                    {evidence.verified_school
+                      ? `Verified by ${evidence.verified_school.name}`
+                      : 'Learner-entered evidence'}
+                  </small>
+                  {evidence.can_verify && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      aria-label={`Verify ${evidence.subject_name} Term ${evidence.term}`}
+                      disabled={verificationMutation.isPending}
+                      onClick={() => verificationMutation.mutate({
+                        studentId: student.id,
+                        gradeId: evidence.id,
+                        verified: true,
+                      })}
+                    >
+                      {verificationMutation.isPending ? 'Saving…' : 'Verify'}
+                    </button>
+                  )}
+                  {evidence.can_remove_verification && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      aria-label={`Remove verification for ${evidence.subject_name} Term ${evidence.term}`}
+                      disabled={verificationMutation.isPending}
+                      onClick={() => verificationMutation.mutate({
+                        studentId: student.id,
+                        gradeId: evidence.id,
+                        verified: false,
+                      })}
+                    >
+                      Remove verification
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )

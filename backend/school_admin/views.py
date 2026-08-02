@@ -27,7 +27,7 @@ from guidance.serializers import (
     SchoolSummarySerializer,
     SubjectCombinationSerializer,
 )
-from students.models import CBCGrade
+from students.models import CBCGrade, StudentSubject
 from students.serializers import CBCGradeSerializer
 from system_admin.models import AuditLog
 from notifications.models import Notification
@@ -532,13 +532,36 @@ class SchoolStudentsView(APIView):
         has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
 
         profiles = (
-            StudentProfile.objects.filter(school=school, mode='school_linked')
+            StudentProfile.objects.filter(
+                school=school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
             .select_related('user')
             .annotate(has_assessment=Exists(has_assessment))
             .prefetch_related(
                 Prefetch(
                     'counselor_assignments',
                     queryset=CounselorAssignment.objects.filter(is_active=True).select_related('counselor'),
+                ),
+                Prefetch(
+                    'school_memberships',
+                    queryset=StudentSchoolMembership.objects.select_related('school'),
+                    to_attr='admin_memberships',
+                ),
+                Prefetch(
+                    'enrolled_subjects',
+                    queryset=StudentSubject.objects.select_related('subject').prefetch_related(
+                        Prefetch(
+                            'grades',
+                            queryset=CBCGrade.objects.select_related(
+                                'framework', 'verified_school'
+                            ).order_by(
+                                'academic_grade', 'year', 'term', 'created_at', 'pk'
+                            ),
+                        )
+                    ),
+                    to_attr='admin_enrollments',
                 ),
             )
             .order_by('user__first_name', 'user__last_name')
@@ -551,6 +574,62 @@ class SchoolStudentsView(APIView):
                 if a.is_active:
                     active_assignment = a
                     break
+
+            memberships = list(getattr(p, 'admin_memberships', []))
+            current_membership = next(
+                (
+                    membership for membership in memberships
+                    if membership.school_id == school.id
+                    and membership.status in {
+                        StudentSchoolMembership.STATUS_ACTIVE,
+                        StudentSchoolMembership.STATUS_PENDING,
+                    }
+                ),
+                None,
+            )
+            has_active_membership = (
+                p.school_membership_status == 'active'
+                and (
+                    current_membership is None
+                    or current_membership.status == StudentSchoolMembership.STATUS_ACTIVE
+                )
+            )
+            academic_evidence = []
+            if has_active_membership:
+                for enrollment in getattr(p, 'admin_enrollments', []):
+                    for grade in enrollment.grades.all():
+                        verified = grade.verified_at is not None
+                        academic_evidence.append({
+                            'id': grade.id,
+                            'continuity_code': enrollment.continuity_code,
+                            'subject_name': enrollment.subject.name,
+                            'academic_grade': grade.academic_grade,
+                            'term': grade.term,
+                            'year': grade.year,
+                            'level': grade.level,
+                            'framework': {
+                                'code': grade.framework.code,
+                                'version': grade.framework.version,
+                            },
+                            'source': grade.source,
+                            'verified_school': (
+                                {
+                                    'id': grade.verified_school_id,
+                                    'name': grade.verified_school.name,
+                                }
+                                if grade.verified_school_id is not None
+                                else None
+                            ),
+                            'verified_at': (
+                                grade.verified_at.isoformat()
+                                if grade.verified_at is not None
+                                else None
+                            ),
+                            'can_verify': not verified,
+                            'can_remove_verification': (
+                                verified and grade.verified_school_id == school.id
+                            ),
+                        })
 
             data.append({
                 'id': p.user.id,
@@ -566,6 +645,28 @@ class SchoolStudentsView(APIView):
                     f'{active_assignment.counselor.first_name} {active_assignment.counselor.last_name}'
                     if active_assignment else None
                 ),
+                'membership': (
+                    {
+                        'id': current_membership.id,
+                        'status': current_membership.status,
+                        'record_source': current_membership.record_source,
+                        'requested_at': current_membership.requested_at.isoformat()
+                        if current_membership.requested_at else None,
+                        'started_at': current_membership.started_at.isoformat()
+                        if current_membership.started_at else None,
+                        'ended_at': current_membership.ended_at.isoformat()
+                        if current_membership.ended_at else None,
+                    }
+                    if current_membership is not None
+                    else None
+                ),
+                'transfer': {
+                    'previous_membership_count': sum(
+                        membership.status == StudentSchoolMembership.STATUS_ENDED
+                        for membership in memberships
+                    ) if has_active_membership else 0,
+                },
+                'academic_evidence': academic_evidence,
             })
         return _success(data=data)
 

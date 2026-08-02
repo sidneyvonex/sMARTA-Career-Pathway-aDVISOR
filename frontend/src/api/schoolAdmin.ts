@@ -32,6 +32,30 @@ export interface SchoolStudent {
   school_membership_status: 'pending' | 'active' | 'rejected'
   counselor_id: number | null
   counselor_name: string | null
+  membership: {
+    id: number
+    status: 'pending' | 'active'
+    record_source: 'legacy_backfill' | 'learner_request'
+    requested_at: string | null
+    started_at: string | null
+    ended_at: string | null
+  } | null
+  transfer: { previous_membership_count: number }
+  academic_evidence: {
+    id: number
+    continuity_code: string
+    subject_name: string
+    academic_grade: number
+    term: 1 | 2 | 3
+    year: number
+    level: string
+    framework: { code: string; version: string }
+    source: 'learner' | 'school'
+    verified_school: { id: number; name: string } | null
+    verified_at: string | null
+    can_verify: boolean
+    can_remove_verification: boolean
+  }[]
 }
 
 export interface SchoolMembershipRequest {
@@ -101,6 +125,12 @@ export const schoolAdminApi = {
       }
       message: string
     }>(`/school-admin/membership-requests/${studentId}/decision/`, { decision }),
+
+  setGradeVerification: (studentId: number, gradeId: number, verified: boolean) =>
+    api.put(
+      `/school-admin/students/${studentId}/grades/${gradeId}/verification/`,
+      { verified },
+    ),
 
   getStats: () =>
     api.get<{ data: SchoolStats }>('/school-admin/stats/'),

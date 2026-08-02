@@ -354,6 +354,16 @@ describe('SchoolStudentsPage', () => {
     await waitFor(() => expect(assignedIds).toEqual([21]))
   })
 
+  it('shows transfer-safe provenance and only valid verification controls', async () => {
+    renderPage()
+
+    expect(await screen.findByText('Transferred in · 1 previous membership')).toBeInTheDocument()
+    expect(screen.getByText('Verified by Previous School')).toBeInTheDocument()
+    expect(screen.getAllByText('CBC-JUNIOR-SCHOOL pilot-2026')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Remove verification for Mathematics Term 1' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verify Mathematics Term 2' })).toBeInTheDocument()
+  })
+
   it('shows a retryable error when the student query fails', async () => {
     server.use(
       http.get('/api/v1/school-admin/students/', () => HttpResponse.json({}, { status: 500 })),
