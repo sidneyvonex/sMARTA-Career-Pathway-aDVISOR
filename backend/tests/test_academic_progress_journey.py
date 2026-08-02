@@ -146,6 +146,7 @@ def test_seeded_grade_10_support_journey_survives_school_transfer():
     )
     assert intervention.status_code == 201
     intervention_id = intervention.data['data']['id']
+    assert intervention.data['data']['learner_visible'] is True
 
     transfer_request = learner_client.post(
         '/api/v1/students/school-memberships/',
@@ -209,6 +210,7 @@ def test_seeded_grade_10_support_journey_survives_school_transfer():
         counselor=counselor,
         student=learner.user,
         category=CounselorIntervention.CATEGORY_ACADEMIC_EVIDENCE,
+        learner_visible=True,
     ).exists()
 
     progress_after_transfer = learner_client.get('/api/v1/students/progress/')
@@ -222,24 +224,28 @@ def test_seeded_grade_10_support_journey_survives_school_transfer():
             'records_used'
         ]
     ] == evidence_ids
+    academic_goals_after_transfer = learner_client.get(
+        '/api/v1/students/academic-goals/'
+    )
+    assert academic_goals_after_transfer.status_code == 200
     assert [
-        row['id']
-        for row in learner_client.get(
-            '/api/v1/students/academic-goals/'
-        ).data['data']
+        row['id'] for row in academic_goals_after_transfer.data['data']
     ] == [academic_goal_id]
+    education_goals_after_transfer = learner_client.get(
+        '/api/v1/students/education-goals/'
+    )
+    assert education_goals_after_transfer.status_code == 200
     assert [
-        row['id']
-        for row in learner_client.get(
-            '/api/v1/students/education-goals/'
-        ).data['data']
+        row['id'] for row in education_goals_after_transfer.data['data']
     ] == [education_goal_id]
+    interventions_after_transfer = learner_client.get(
+        '/api/v1/students/interventions/'
+    )
+    assert interventions_after_transfer.status_code == 200
     assert [
-        row['id']
-        for row in learner_client.get(
-            '/api/v1/students/interventions/'
-        ).data['data']
+        row['id'] for row in interventions_after_transfer.data['data']
     ] == [intervention_id]
+    assert interventions_after_transfer.data['data'][0]['learner_visible'] is True
 
     notifications = Notification.objects.filter(user=learner.user)
     assert set(notifications.values_list('type', flat=True)) == {
