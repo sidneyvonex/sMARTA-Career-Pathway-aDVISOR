@@ -163,6 +163,24 @@ describe('SystemAdminCataloguePage', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument()
   })
 
+  it('manages sourced assessment and tertiary metadata without rewriting provenance', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Academic source metadata' })).toBeInTheDocument()
+    expect(screen.getByText('CBC-JUNIOR-SCHOOL pilot-2026')).toBeInTheDocument()
+    expect(screen.getByText('Test University 1')).toBeInTheDocument()
+    expect(screen.getAllByText('KCSE · 2025/2026').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Open source for Test University 1' })).toHaveAttribute(
+      'href',
+      'https://students.kuccps.net/institutions/',
+    )
+    expect(screen.queryByRole('button', { name: 'Mark Test University 1 unavailable' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Retire CBC-JUNIOR-SCHOOL pilot-2026' }))
+    const toastModule = await import('react-hot-toast')
+    await waitFor(() => expect(toastModule.default.success).toHaveBeenCalledWith('Framework status updated.'))
+  })
+
   it('filters combinations by search term', async () => {
     const user = userEvent.setup()
     renderPage()

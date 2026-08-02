@@ -1605,6 +1605,32 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/system-admin/source-metadata/', () => {
+    return HttpResponse.json({
+      data: {
+        assessment_frameworks: [{
+          id: 10, record_type: 'assessment_framework', code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026', title: 'Junior school performance levels', scope: 'junior_school', source_url: 'https://kicd.ac.ke/curriculum-reform/', effective_date: '2026-01-01', status: 'active', level_count: 4, evidence_count: 12, can_change_status: true,
+        }],
+        tertiary_sources: [{
+          id: 1, record_type: 'institution', name: 'Test University 1', source_scope: 'kuccps-2025-catalogue', external_key: 'INST-0001', source_url: 'https://students.kuccps.net/institutions/', education_framework: 'KCSE', admission_cycle: '2025/2026', effective_date: '2025-03-01', verification_status: 'historical', can_change_status: false,
+        }, {
+          id: 2, record_type: 'programme', name: 'Test Programme 1', source_scope: 'kuccps-2025-catalogue', external_key: 'PROG-0001', source_url: 'https://students.kuccps.net/programmes/', education_framework: 'KCSE', admission_cycle: '2025/2026', effective_date: '2025-03-01', verification_status: 'historical', can_change_status: false,
+        }],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch('/api/v1/system-admin/source-metadata/:recordType/:recordId/', async ({ request }) => {
+    const body = await request.json() as { status: string }
+    return HttpResponse.json({
+      data: { status: body.status },
+      error: null,
+      message: 'Source status updated.',
+    })
+  }),
+
   http.patch(/\/api\/v1\/system-admin\/catalogue\/combinations\/\d+\//, async ({ request }) => {
     const body = await request.json() as { is_active: boolean }
     return HttpResponse.json({

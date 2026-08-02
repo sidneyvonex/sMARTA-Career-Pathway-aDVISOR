@@ -5,6 +5,7 @@ import {
   systemAdminApi,
   type CatalogueCombination,
   type CatalogueData,
+  type AcademicSourceMetadataData,
 } from '../../api/systemAdmin'
 import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
@@ -32,6 +33,12 @@ export default function SystemAdminCataloguePage() {
     queryFn: () => systemAdminApi.getCatalogue().then(response => response.data.data),
   })
 
+  const sourceMetadataQ = useQuery({
+    queryKey: ['system-admin', 'source-metadata'],
+    queryFn: () => systemAdminApi.getAcademicSourceMetadata()
+      .then(response => response.data.data),
+  })
+
   const statusMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
       systemAdminApi.updateCombinationStatus(id, isActive)
@@ -56,6 +63,47 @@ export default function SystemAdminCataloguePage() {
     },
     onError: () => {
       toast.error('The combination status could not be updated.')
+    },
+  })
+
+  const sourceStatusMutation = useMutation({
+    mutationFn: ({
+      recordType,
+      id,
+      status,
+    }: {
+      recordType: 'assessment_framework' | 'institution' | 'programme'
+      id: number
+      status: string
+    }) => systemAdminApi.updateSourceStatus(recordType, id, status),
+    onSuccess: (_response, variables) => {
+      queryClient.setQueryData<AcademicSourceMetadataData>(
+        ['system-admin', 'source-metadata'],
+        current => current ? {
+          assessment_frameworks: current.assessment_frameworks.map(item =>
+            item.record_type === variables.recordType && item.id === variables.id
+              ? { ...item, status: variables.status as typeof item.status }
+              : item,
+          ),
+          tertiary_sources: current.tertiary_sources.map(item =>
+            item.record_type === variables.recordType && item.id === variables.id
+              ? { ...item, verification_status: variables.status as typeof item.verification_status }
+              : item,
+          ),
+        } : current,
+      )
+      queryClient.invalidateQueries({ queryKey: ['system-admin', 'audit-logs'] })
+      toast.success(
+        variables.recordType === 'assessment_framework'
+          ? 'Framework status updated.'
+          : 'Tertiary source status updated.',
+      )
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message
+          ?? 'The source status could not be updated.',
+      )
     },
   })
 
@@ -162,6 +210,100 @@ export default function SystemAdminCataloguePage() {
             Open official source
           </a>
         </dl>
+      </section>
+
+      <section className="source-metadata" aria-labelledby="source-metadata-title">
+        <SectionHeader
+          eyebrow="Provenance controls"
+          title="Academic source metadata"
+          titleId="source-metadata-title"
+          description="Review source dates, frameworks, cycles, and lifecycle status. Referenced tertiary records remain locked to preserve evidence history."
+        />
+        {sourceMetadataQ.isLoading && <p className="loading-text">Loading source metadata…</p>}
+        {sourceMetadataQ.isError && (
+          <p role="alert">Source metadata could not load. No status was changed.</p>
+        )}
+        {sourceMetadataQ.data && (
+          <div className="source-metadata__groups">
+            <div>
+              <h3>Assessment frameworks</h3>
+              <div className="source-metadata__grid">
+                {sourceMetadataQ.data.assessment_frameworks.map(item => (
+                  <article className="source-metadata__card" key={`framework-${item.id}`}>
+                    <strong>{item.code} {item.version}</strong>
+                    <span>{item.title}</span>
+                    <span>{item.scope} · effective {item.effective_date}</span>
+                    <span>{item.level_count} levels · {item.evidence_count} evidence records</span>
+                    <span className="sysadmin-badge">{item.status}</span>
+                    <a
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open source for ${item.code} ${item.version}`}
+                    >
+                      Open source
+                    </a>
+                    {item.can_change_status && item.status !== 'retired' && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        disabled={sourceStatusMutation.isPending}
+                        aria-label={`Retire ${item.code} ${item.version}`}
+                        onClick={() => sourceStatusMutation.mutate({
+                          recordType: item.record_type,
+                          id: item.id,
+                          status: 'retired',
+                        })}
+                      >
+                        {sourceStatusMutation.isPending ? 'Updating…' : 'Retire'}
+                      </button>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3>Tertiary sources</h3>
+              <div className="source-metadata__grid">
+                {sourceMetadataQ.data.tertiary_sources.map(item => (
+                  <article className="source-metadata__card" key={`${item.record_type}-${item.id}`}>
+                    <strong>{item.name}</strong>
+                    <span>{item.record_type} · {item.external_key}</span>
+                    <span>{item.education_framework} · {item.admission_cycle}</span>
+                    <span>Effective {item.effective_date} · {item.verification_status}</span>
+                    <a
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open source for ${item.name}`}
+                    >
+                      Open source
+                    </a>
+                    {item.can_change_status ? (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        disabled={sourceStatusMutation.isPending}
+                        aria-label={`Mark ${item.name} ${item.verification_status === 'unavailable' ? 'historical' : 'unavailable'}`}
+                        onClick={() => sourceStatusMutation.mutate({
+                          recordType: item.record_type,
+                          id: item.id,
+                          status: item.verification_status === 'unavailable'
+                            ? 'historical'
+                            : 'unavailable',
+                        })}
+                      >
+                        {sourceStatusMutation.isPending ? 'Updating…' : 'Change status'}
+                      </button>
+                    ) : (
+                      <small>Locked after reference</small>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="combination-list-title">

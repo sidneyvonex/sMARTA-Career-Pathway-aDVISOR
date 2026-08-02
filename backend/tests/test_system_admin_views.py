@@ -1,10 +1,13 @@
 import pytest
 from rest_framework.test import APIClient
 from tests.factories import (
+    AssessmentFrameworkFactory,
     AuditLogFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
     FrameworkVersionFactory,
+    InstitutionFactory,
+    ProgrammeFactory,
     SchoolAdminFactory,
     SchoolFactory,
     StudentProfileFactory,
@@ -12,6 +15,7 @@ from tests.factories import (
     SystemAdminFactory,
     VerifiedUserFactory,
 )
+from students.models import AssessmentFramework
 from system_admin.models import AuditLog
 from accounts.models import School, StudentProfile
 from guidance.models import LearnerCombinationChoice, LearnerPlan
@@ -245,6 +249,95 @@ class TestFrameworkCatalogueView:
 
         assert response.status_code == 403
 
+
+class TestAcademicSourceMetadataView:
+    def setup_method(self):
+        self.client = APIClient()
+        self.admin = SystemAdminFactory()
+        self.client.force_authenticate(self.admin)
+
+    def test_lists_assessment_and_tertiary_provenance(self):
+        framework = AssessmentFrameworkFactory(
+            status=AssessmentFramework.STATUS_DRAFT,
+        )
+        institution = InstitutionFactory()
+        programme = ProgrammeFactory(institution=institution)
+
+        response = self.client.get('/api/v1/system-admin/source-metadata/')
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assessment = next(
+            item for item in data['assessment_frameworks']
+            if item['id'] == framework.id
+        )
+        assert assessment['version'] == framework.version
+        assert assessment['source_url'] == framework.source_url
+        assert assessment['effective_date'] == framework.effective_date.isoformat()
+        sources = {
+            (item['record_type'], item['id']): item
+            for item in data['tertiary_sources']
+        }
+        assert sources[('institution', institution.id)]['admission_cycle'] == '2025/2026'
+        assert sources[('institution', institution.id)]['can_change_status'] is False
+        assert sources[('programme', programme.id)]['education_framework'] == 'KCSE'
+
+    def test_changes_unreferenced_tertiary_status_and_audits(self):
+        institution = InstitutionFactory()
+
+        response = self.client.patch(
+            f'/api/v1/system-admin/source-metadata/institution/{institution.id}/',
+            {'status': 'unavailable'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        institution.refresh_from_db()
+        assert institution.verification_status == 'unavailable'
+        entry = AuditLog.objects.get(action='tertiary_source_status_changed')
+        assert entry.details['previous_status'] == 'historical'
+        assert entry.details['status'] == 'unavailable'
+
+    def test_rejects_status_change_once_tertiary_source_is_referenced(self):
+        institution = InstitutionFactory()
+        ProgrammeFactory(institution=institution)
+
+        response = self.client.patch(
+            f'/api/v1/system-admin/source-metadata/institution/{institution.id}/',
+            {'status': 'unavailable'},
+            format='json',
+        )
+
+        assert response.status_code == 409
+        institution.refresh_from_db()
+        assert institution.verification_status == 'historical'
+
+    def test_changes_assessment_framework_lifecycle_and_audits(self):
+        framework = AssessmentFrameworkFactory(
+            status=AssessmentFramework.STATUS_DRAFT,
+        )
+
+        response = self.client.patch(
+            f'/api/v1/system-admin/source-metadata/assessment_framework/{framework.id}/',
+            {'status': 'retired'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        framework.refresh_from_db()
+        assert framework.status == AssessmentFramework.STATUS_RETIRED
+        assert AuditLog.objects.filter(
+            action='assessment_framework_status_changed',
+            target_id=framework.id,
+        ).exists()
+
+    def test_source_metadata_requires_system_admin(self):
+        client = APIClient()
+        client.force_authenticate(VerifiedUserFactory(role='student'))
+
+        response = client.get('/api/v1/system-admin/source-metadata/')
+
+        assert response.status_code == 403
 
 class TestSchoolListView:
     def setup_method(self):

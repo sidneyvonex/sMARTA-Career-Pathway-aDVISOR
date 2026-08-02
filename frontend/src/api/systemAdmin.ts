@@ -137,6 +137,40 @@ export interface CatalogueData {
   combinations: CatalogueCombination[]
 }
 
+export interface AssessmentFrameworkMetadata {
+  id: number
+  record_type: 'assessment_framework'
+  code: string
+  version: string
+  title: string
+  scope: string
+  source_url: string
+  effective_date: string
+  status: 'draft' | 'active' | 'retired'
+  level_count: number
+  evidence_count: number
+  can_change_status: boolean
+}
+
+export interface TertiarySourceMetadata {
+  id: number
+  record_type: 'institution' | 'programme'
+  name: string
+  source_scope: string
+  external_key: string
+  source_url: string
+  education_framework: string
+  admission_cycle: string
+  effective_date: string
+  verification_status: 'verified' | 'historical' | 'unavailable'
+  can_change_status: boolean
+}
+
+export interface AcademicSourceMetadataData {
+  assessment_frameworks: AssessmentFrameworkMetadata[]
+  tertiary_sources: TertiarySourceMetadata[]
+}
+
 export const systemAdminApi = {
   getDashboard: () =>
     api.get<{ data: DashboardData }>('/system-admin/dashboard/'),
@@ -149,6 +183,18 @@ export const systemAdminApi = {
       `/system-admin/catalogue/combinations/${id}/`,
       { is_active: isActive },
     ),
+
+  getAcademicSourceMetadata: () =>
+    api.get<{ data: AcademicSourceMetadataData }>('/system-admin/source-metadata/'),
+
+  updateSourceStatus: (
+    recordType: AssessmentFrameworkMetadata['record_type'] | TertiarySourceMetadata['record_type'],
+    id: number,
+    status: string,
+  ) => api.patch(
+    `/system-admin/source-metadata/${recordType}/${id}/`,
+    { status },
+  ),
 
   getSchools: (params?: { county?: string; search?: string; active?: string; page?: number }) =>
     api.get<{ data: PaginatedResponse<SchoolItem> }>('/system-admin/schools/', { params }),

@@ -5,6 +5,16 @@ urlpatterns = [
     path('dashboard/', views.DashboardView.as_view(), name='system-admin-dashboard'),
     path('catalogue/', views.FrameworkCatalogueView.as_view(), name='system-admin-catalogue'),
     path(
+        'source-metadata/',
+        views.AcademicSourceMetadataView.as_view(),
+        name='system-admin-source-metadata',
+    ),
+    path(
+        'source-metadata/<str:record_type>/<int:record_id>/',
+        views.AcademicSourceMetadataStatusView.as_view(),
+        name='system-admin-source-metadata-status',
+    ),
+    path(
         'catalogue/combinations/<int:combination_id>/',
         views.FrameworkCombinationStatusView.as_view(),
         name='system-admin-catalogue-combination-status',

@@ -1,7 +1,8 @@
 import logging
 from datetime import timedelta
 
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
@@ -14,6 +15,8 @@ from accounts.response import _success, _error
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerPlan, SubjectCombination
 from riasec.models import RIASECAssessment
+from students.models import AssessmentFramework
+from tertiary.models import Institution, Programme
 from .models import AuditLog
 from .utils import log_action
 
@@ -22,6 +25,39 @@ logger = logging.getLogger(__name__)
 SYSTEM_ADMIN_PERMS = [IsAuthenticated, IsEmailVerified, IsSystemAdmin]
 VALID_COUNTIES = {c[0] for c in COUNTY_CHOICES}
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
+
+
+def _assessment_framework_metadata(framework):
+    return {
+        'id': framework.id,
+        'record_type': 'assessment_framework',
+        'code': framework.code,
+        'version': framework.version,
+        'title': framework.title,
+        'scope': framework.scope,
+        'source_url': framework.source_url,
+        'effective_date': framework.effective_date.isoformat(),
+        'status': framework.status,
+        'level_count': framework.level_count,
+        'evidence_count': framework.evidence_count,
+        'can_change_status': True,
+    }
+
+
+def _tertiary_source_metadata(record, record_type):
+    return {
+        'id': record.id,
+        'record_type': record_type,
+        'name': record.name,
+        'source_scope': record.source_scope,
+        'external_key': record.external_key,
+        'source_url': record.source_url,
+        'education_framework': record.education_framework,
+        'admission_cycle': record.admission_cycle,
+        'effective_date': record.effective_date.isoformat(),
+        'verification_status': record.verification_status,
+        'can_change_status': record.reference_count == 0,
+    }
 
 
 def _catalogue_combination_data(combination):
@@ -203,6 +239,127 @@ class FrameworkCatalogueView(APIView):
                 for combination in combinations
             ],
         })
+
+
+class AcademicSourceMetadataView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def get(self, request):
+        frameworks = AssessmentFramework.objects.annotate(
+            level_count=Count('level_definitions', distinct=True),
+            evidence_count=Count('grades', distinct=True),
+        )
+        institutions = Institution.objects.annotate(
+            reference_count=(
+                Count('programmes', distinct=True)
+                + Count('learner_goals', distinct=True)
+            ),
+        )
+        programmes = Programme.objects.select_related('institution').annotate(
+            reference_count=(
+                Count('subject_references', distinct=True)
+                + Count('historical_admission_references', distinct=True)
+                + Count('learner_goals', distinct=True)
+            ),
+        )
+        return _success(data={
+            'assessment_frameworks': [
+                _assessment_framework_metadata(framework)
+                for framework in frameworks
+            ],
+            'tertiary_sources': [
+                *(
+                    _tertiary_source_metadata(record, 'institution')
+                    for record in institutions
+                ),
+                *(
+                    _tertiary_source_metadata(record, 'programme')
+                    for record in programmes
+                ),
+            ],
+        })
+
+
+class AcademicSourceMetadataStatusView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def patch(self, request, record_type, record_id):
+        new_status = request.data.get('status')
+        if record_type == 'assessment_framework':
+            valid_statuses = dict(AssessmentFramework.STATUS_CHOICES)
+            model = AssessmentFramework
+        elif record_type == 'institution':
+            valid_statuses = dict(Institution.VERIFICATION_CHOICES)
+            model = Institution
+        elif record_type == 'programme':
+            valid_statuses = dict(Programme.VERIFICATION_CHOICES)
+            model = Programme
+        else:
+            return _error('Unsupported source record type.')
+        if new_status not in valid_statuses:
+            return _error('Choose a supported source status.')
+
+        try:
+            with transaction.atomic():
+                record = model.objects.select_for_update().get(pk=record_id)
+                previous_status = (
+                    record.status
+                    if record_type == 'assessment_framework'
+                    else record.verification_status
+                )
+                if previous_status != new_status:
+                    if record_type == 'assessment_framework':
+                        record.status = new_status
+                        record.save(update_fields=['status', 'updated_at'])
+                        action = 'assessment_framework_status_changed'
+                    else:
+                        record.verification_status = new_status
+                        record.save(
+                            update_fields=['verification_status', 'updated_at'],
+                        )
+                        action = 'tertiary_source_status_changed'
+                    log_action(
+                        actor=request.user,
+                        action=action,
+                        target_type=record_type,
+                        target_id=record.id,
+                        details={
+                            'previous_status': previous_status,
+                            'status': new_status,
+                            'source_url': record.source_url,
+                        },
+                        request=request,
+                    )
+        except model.DoesNotExist:
+            return _error('Source metadata record not found.', status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return _error(
+                'Referenced tertiary source metadata cannot be changed.',
+                status.HTTP_409_CONFLICT,
+            )
+        except IntegrityError:
+            return _error(
+                'Another active framework already exists for this scope.',
+                status.HTTP_409_CONFLICT,
+            )
+
+        if record_type == 'assessment_framework':
+            record.level_count = record.level_definitions.count()
+            record.evidence_count = record.grades.count()
+            data = _assessment_framework_metadata(record)
+        elif record_type == 'institution':
+            record.reference_count = (
+                record.programmes.count() + record.learner_goals.count()
+            )
+            data = _tertiary_source_metadata(record, record_type)
+        else:
+            record.reference_count = (
+                record.subject_references.count()
+                + record.historical_admission_references.count()
+                + record.learner_goals.count()
+            )
+            data = _tertiary_source_metadata(record, record_type)
+        return _success(data=data, message='Source status updated.')
 
 
 class FrameworkCombinationStatusView(APIView):
