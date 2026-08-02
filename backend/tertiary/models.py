@@ -1,8 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import F, Value
-from django.db.models.functions import Length, Replace
-from django.db.models.lookups import GreaterThan
 
 from accounts.models import StudentProfile
 
@@ -64,10 +61,9 @@ class ValidatedCatalogueManager(models.Manager.from_queryset(ValidatedCatalogueQ
 
 
 def _has_non_whitespace(field):
-    expression = F(field)
-    for whitespace in SEMANTIC_WHITESPACE:
-        expression = Replace(expression, Value(whitespace), Value(''))
-    return GreaterThan(Length(expression), 0)
+    # MySQL ICU's ``\s`` omits the four C0 separators that Python treats as
+    # whitespace, so include them explicitly while keeping the SQL tree flat.
+    return models.Q(**{f'{field}__regex': r'[^\s\x1c-\x1f]'})
 
 
 def _provenance_constraints(prefix):

@@ -1,3 +1,5 @@
+import sqlite3
+
 import pytest
 from django.db import OperationalError, connection
 from django.db.migrations.executor import MigrationExecutor
@@ -204,6 +206,19 @@ def test_0003_backfills_mysql_safe_non_null_choice_identity():
     field = Goal._meta.get_field('choice_identity')
     assert field.null is False
     assert field.max_length <= 191
+
+
+def test_0003_constraints_fit_a_conservative_sqlite_expression_depth():
+    """Catches provenance checks that overflow SQLite's parser in CI."""
+    _old_models()
+    raw_connection = connection.connection
+    previous_limit = raw_connection.setlimit(sqlite3.SQLITE_LIMIT_EXPR_DEPTH, 30)
+    try:
+        MigrationExecutor(connection).migrate([
+            ('tertiary', '0003_enforce_catalogue_integrity'),
+        ])
+    finally:
+        raw_connection.setlimit(sqlite3.SQLITE_LIMIT_EXPR_DEPTH, previous_limit)
 
 
 def test_0003_fails_with_actionable_error_when_existing_choices_duplicate():

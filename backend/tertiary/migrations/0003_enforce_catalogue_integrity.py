@@ -1,7 +1,4 @@
 from django.db import migrations, models
-from django.db.models import F, Value
-from django.db.models.functions import Length, Replace
-from django.db.models.lookups import GreaterThan
 
 
 PROVENANCE_FIELDS = (
@@ -159,10 +156,8 @@ def clear_choice_identity(apps, _schema_editor):
 
 
 def has_non_whitespace(field):
-    expression = F(field)
-    for whitespace in SEMANTIC_WHITESPACE:
-        expression = Replace(expression, Value(whitespace), Value(''))
-    return GreaterThan(Length(expression), 0)
+    # Keep Python/SQLite and MySQL ICU aligned for the extra C0 separators.
+    return models.Q(**{f'{field}__regex': r'[^\s\x1c-\x1f]'})
 
 
 def provenance_constraints(model_name, prefix):
