@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { EducationGoal } from '../../api/tertiary'
 import LoadingSkeleton from '../common/dashboard/LoadingSkeleton'
 
@@ -41,6 +42,9 @@ export default function EducationGoalPreview({ goals, isLoading = false }: Props
       <p className="progress-education__note">
         Education goals support exploration. They do not determine official placement or admission.
       </p>
+      <Link className="student-action student-action--secondary progress-education__link" to="/education-goals">
+        Explore education goals
+      </Link>
     </section>
   )
 }

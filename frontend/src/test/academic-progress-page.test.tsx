@@ -231,6 +231,9 @@ describe('flagged My Progress dashboard', () => {
     expect(screen.getByText('University of Nairobi')).toBeInTheDocument()
     expect(screen.getByText('BSc Computer Science')).toBeInTheDocument()
     expect(screen.getByText(/historical catalogue reference/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Explore education goals' })).toHaveAttribute(
+      'href', '/education-goals',
+    )
     expect(screen.queryByText(/eligible|probability|admission chance/i)).not.toBeInTheDocument()
   })
 

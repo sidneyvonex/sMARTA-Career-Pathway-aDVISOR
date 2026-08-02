@@ -88,6 +88,23 @@ describe('authenticated shell layout', () => {
     expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent('My progress')
   })
 
+  it('exposes education goals only while the academic progress rollout is on', () => {
+    vi.stubEnv('VITE_ACADEMIC_PROGRESS_V1', 'true')
+    useAuthStore.setState({ user: roleUsers.student })
+
+    const { unmount } = renderShell('/education-goals')
+
+    expect(screen.getByRole('link', { name: 'Education Goals' })).toHaveAttribute(
+      'href', '/education-goals',
+    )
+    expect(screen.getByText('Education goals', { selector: '.topbar__greeting-main' })).toBeInTheDocument()
+    unmount()
+
+    vi.stubEnv('VITE_ACADEMIC_PROGRESS_V1', 'false')
+    renderShell('/education-goals')
+    expect(screen.queryByRole('link', { name: 'Education Goals' })).not.toBeInTheDocument()
+  })
+
   it('starts keyboard navigation with the skip link and then the sidebar control', async () => {
     const user = userEvent.setup()
     renderShell()

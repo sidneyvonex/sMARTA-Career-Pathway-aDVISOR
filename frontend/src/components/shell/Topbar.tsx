@@ -30,6 +30,12 @@ function getPageContext(pathname: string): PageContext {
       title: isFeatureEnabled('academic_progress_v1') ? 'My progress' : 'My grades',
     }
   }
+  if (pathname === '/education-goals' && isFeatureEnabled('academic_progress_v1')) {
+    return {
+      title: 'Education goals',
+      parent: { label: 'My progress', to: '/grades' },
+    }
+  }
   if (pathname === '/explore') return { title: 'Explore combinations' }
   if (pathname === '/compare') return {
     title: 'Compare combinations',

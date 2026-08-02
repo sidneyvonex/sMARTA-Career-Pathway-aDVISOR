@@ -33,6 +33,9 @@ export function getBaseNavItems(role: User['role']): NavItem[] {
     return [
       { to: '/', label: 'Dashboard', short: 'Home', icon: NAV_ICONS.grid },
       gradesItem,
+      ...(isFeatureEnabled('academic_progress_v1')
+        ? [{ to: '/education-goals', label: 'Education Goals', short: 'Goals', icon: NAV_ICONS.school }]
+        : []),
       { to: '/explore', label: 'Explore Choices', short: 'Explore', icon: NAV_ICONS.grid },
       { to: '/compare', label: 'Compare Choices', short: 'Compare', icon: NAV_ICONS.clipboard },
       { to: '/plan', label: 'My Plan', short: 'Plan', icon: NAV_ICONS.note },

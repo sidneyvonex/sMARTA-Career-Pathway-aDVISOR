@@ -69,7 +69,7 @@ export function academicGoalFixture(overrides: Partial<AcademicGoal> = {}): Acad
   }
 }
 
-const institutionFixture: Institution = {
+export const institutionFixture: Institution = {
   id: 1,
   name: 'University of Nairobi',
   institution_type: 'university',
@@ -84,7 +84,7 @@ const institutionFixture: Institution = {
   verification_status: 'historical',
 }
 
-const programmeFixture: ProgrammeDetail = {
+export const programmeFixture: ProgrammeDetail = {
   id: 10,
   institution: institutionFixture,
   code: 'BSC-CS',
@@ -106,6 +106,20 @@ const programmeFixture: ProgrammeDetail = {
     advisory_label: 'Exploration reference only; this does not determine admission.',
     source_scope: 'kuccps-2025',
     external_key: 'UON-CS-MAT',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }, {
+    id: 21,
+    subject_code: 'CHE',
+    subject_name: 'Chemistry',
+    mapping_kind: 'exploratory_alignment',
+    notes: 'A useful subject to discuss with a counsellor.',
+    advisory_label: 'Exploration reference only; this does not determine admission.',
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-CHE',
     source_url: 'https://students.kuccps.net/',
     education_framework: 'KCSE',
     admission_cycle: '2025/2026',
