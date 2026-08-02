@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Value
 from rest_framework.test import APIClient
-from students.models import AssessmentFramework, PerformanceLevelDefinition
+from students.models import AssessmentFramework, CBCGrade, PerformanceLevelDefinition
+from system_admin.models import AuditLog
 
 from tests.factories import (
     AssessmentFrameworkFactory,
@@ -136,10 +137,11 @@ def test_verified_evidence_rejects_base_manager_delete():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager', 'history'])
 @pytest.mark.parametrize('field, value', [
     ('level', 'EE1'),
     ('level_definition_id_snapshot', None),
+    ('verified_at', '2026-08-02T10:00:00Z'),
 ])
 def test_grade_managers_reject_identity_and_snapshot_updates(
     manager_name,
@@ -159,7 +161,7 @@ def test_grade_managers_reject_identity_and_snapshot_updates(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager', 'history'])
 def test_grade_managers_reject_bulk_deletion(manager_name):
     """Catches unverified history deletion through a default or base queryset."""
     grade = CBCGradeFactory()
@@ -169,6 +171,21 @@ def test_grade_managers_reject_bulk_deletion(manager_name):
         manager.filter(pk=grade.pk).delete()
 
     assert type(grade).objects.filter(pk=grade.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager', 'history'])
+def test_grade_managers_reject_bulk_write_paths(manager_name):
+    """Catches a guarded manager exposing protected bulk write operations."""
+    manager = getattr(CBCGrade, manager_name)
+    grade = CBCGradeFactory()
+    grade.level = 'EE1'
+
+    with pytest.raises(ValidationError, match='bulk persistence'):
+        manager.bulk_update([grade], fields=['level'])
+
+    with pytest.raises(ValidationError, match='bulk persistence'):
+        manager.bulk_create([CBCGradeFactory.build()])
 
 
 @pytest.mark.django_db
@@ -204,6 +221,7 @@ def test_history_snapshot_rewrite_requires_audited_reason_and_is_narrow():
     grade = CBCGradeFactory()
     original_level = grade.level
     original_framework_id = grade.framework_id
+    original_snapshot_id = grade.level_definition_id_snapshot
 
     with pytest.raises(ValidationError, match='audit reason'):
         rewrite_grade_definition_snapshot_for_history(
@@ -222,6 +240,17 @@ def test_history_snapshot_rewrite_requires_audited_reason_and_is_narrow():
     assert grade.level_definition_id_snapshot is None
     assert grade.level == original_level
     assert grade.framework_id == original_framework_id
+    audit = AuditLog.objects.get(
+        action='grade_definition_snapshot_rewritten',
+        target_type='grade',
+        target_id=grade.id,
+    )
+    assert audit.actor is None
+    assert audit.details == {
+        'reason': 'Legacy import omitted definition snapshot.',
+        'old_snapshot_id': original_snapshot_id,
+        'new_snapshot_id': None,
+    }
 
 
 @pytest.mark.django_db
@@ -246,6 +275,25 @@ def test_incomplete_framework_rejects_direct_active_create():
 
 
 @pytest.mark.django_db
+def test_incomplete_framework_rejects_expression_valued_active_create():
+    """Catches model inserts resolving a status expression to active in SQL."""
+    incomplete = AssessmentFrameworkFactory.build()
+
+    with pytest.raises(ValidationError, match='status must be a scalar'):
+        AssessmentFramework.objects.create(
+            code=incomplete.code,
+            version=incomplete.version,
+            title=incomplete.title,
+            scope=incomplete.scope,
+            source_url=incomplete.source_url,
+            effective_date=incomplete.effective_date,
+            status=Value(AssessmentFramework.STATUS_ACTIVE),
+        )
+
+    assert not AssessmentFramework.objects.filter(code=incomplete.code).exists()
+
+
+@pytest.mark.django_db
 def test_incomplete_framework_rejects_direct_model_activation():
     """Catches an incomplete draft changing status through model save."""
     model_framework = AssessmentFrameworkFactory()
@@ -255,6 +303,19 @@ def test_incomplete_framework_rejects_direct_model_activation():
 
     model_framework.refresh_from_db()
     assert model_framework.status == AssessmentFramework.STATUS_DRAFT
+
+
+@pytest.mark.django_db
+def test_incomplete_framework_rejects_expression_valued_model_activation():
+    """Catches model updates resolving a status expression to active in SQL."""
+    framework = AssessmentFrameworkFactory()
+    framework.status = Value(AssessmentFramework.STATUS_ACTIVE)
+
+    with pytest.raises(ValidationError, match='status must be a scalar'):
+        framework.save(update_fields=['status'])
+
+    framework.refresh_from_db()
+    assert framework.status == AssessmentFramework.STATUS_DRAFT
 
 
 @pytest.mark.django_db
@@ -345,6 +406,112 @@ def test_complete_framework_activates_through_the_supported_model_path():
 
     framework.refresh_from_db()
     assert framework.status == AssessmentFramework.STATUS_ACTIVE
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+def test_active_framework_definitions_reject_manager_mutation(manager_name):
+    """Catches queryset or bulk changes invalidating an active framework."""
+    framework = activate_complete_framework(AssessmentFrameworkFactory())
+    definition = framework.level_definitions.get(code='EE1')
+    manager = getattr(PerformanceLevelDefinition, manager_name)
+
+    with pytest.raises(ValidationError, match='active framework'):
+        manager.filter(pk=definition.pk).update(code='OTHER')
+
+    definition.rank = 7
+    with pytest.raises(ValidationError, match='active framework'):
+        manager.bulk_update([definition], fields=['rank'])
+
+    with pytest.raises(ValidationError, match='active framework'):
+        manager.bulk_create([
+            PerformanceLevelDefinitionFactory.build(framework=framework)
+        ])
+
+    with pytest.raises(ValidationError, match='active framework'):
+        manager.filter(pk=definition.pk).delete()
+
+
+@pytest.mark.django_db
+def test_active_framework_definition_rejects_instance_and_admin_order_mutation():
+    """Catches parent-first activation followed by an inline-style deletion."""
+    framework = AssessmentFrameworkFactory()
+    for code, rank in (
+        ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+        ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+    ):
+        PerformanceLevelDefinitionFactory(framework=framework, code=code, rank=rank)
+    definition = framework.level_definitions.get(code='BE2')
+
+    with transaction.atomic():
+        framework.status = AssessmentFramework.STATUS_ACTIVE
+        framework.save(update_fields=['status'])
+        with pytest.raises(ValidationError, match='active framework'):
+            definition.delete()
+
+    framework.refresh_from_db()
+    assert framework.status == AssessmentFramework.STATUS_ACTIVE
+    assert framework.level_definitions.filter(pk=definition.pk).exists()
+
+
+@pytest.mark.django_db
+def test_verified_legacy_snapshot_requires_history_rewrite():
+    """Catches ordinary saves auto-repairing verified legacy snapshots."""
+    from students.evidence import rewrite_grade_definition_snapshot_for_history
+
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+    rewrite_grade_definition_snapshot_for_history(
+        grade_id=grade.id,
+        definition_id=None,
+        audit_reason='Create a verified pre-snapshot legacy record.',
+    )
+    grade.refresh_from_db()
+
+    grade.save(update_fields=['updated_at'])
+
+    grade.refresh_from_db()
+    assert grade.level_definition_id_snapshot is None
+
+    rewrite_grade_definition_snapshot_for_history(
+        grade_id=grade.id,
+        definition_id=PerformanceLevelDefinition.objects.get(
+            framework=grade.framework,
+            code=grade.level,
+        ).id,
+        audit_reason='Restore verified legacy snapshot through audited history.',
+    )
+    grade.refresh_from_db()
+    assert grade.level_definition_id_snapshot is not None
+
+
+@pytest.mark.django_db
+def test_stale_grade_instance_rechecks_current_verification_before_edit_or_delete():
+    """Catches stale unverified ORM instances mutating newly verified evidence."""
+    from students.evidence import transition_grade_verification
+
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory()
+    stale_edit = CBCGrade.objects.get(pk=grade.pk)
+    stale_delete = CBCGrade.objects.get(pk=grade.pk)
+    transition_grade_verification(
+        grade,
+        actor=verifier,
+        school=verifier.school,
+        should_verify=True,
+    )
+
+    stale_edit.level = 'EE1'
+    with pytest.raises(ValidationError, match='verified evidence'):
+        stale_edit.save(update_fields=['level'])
+    with pytest.raises(ValidationError, match='verified evidence'):
+        stale_delete.delete()
+
+    grade.refresh_from_db()
+    assert grade.level == 'ME1'
 
 
 @pytest.mark.django_db

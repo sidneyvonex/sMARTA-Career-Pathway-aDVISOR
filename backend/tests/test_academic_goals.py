@@ -754,6 +754,8 @@ def test_target_snapshot_and_readiness_do_not_drift_with_live_definition_edits()
         year=2026,
     )
     target = target_level(grade.framework, 'ME1')
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     target.code = 'MEX'
     target.rank = 9
     target.save(update_fields=['code', 'rank'])
@@ -781,6 +783,8 @@ def test_reselecting_same_target_definition_does_not_refresh_mutated_snapshot():
     goal_id = created.data['data']['id']
     goal = AcademicGoal.objects.get(pk=goal_id)
     target = goal.target_level_definition
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     target.code = 'ME1-RENAMED'
     target.rank = 9
     target.save(update_fields=['code', 'rank'])
@@ -851,6 +855,8 @@ def test_level_definition_rename_uses_frozen_id_and_rank_for_later_evidence():
     goal_id = created.data['data']['id']
     frozen_framework = created.data['data']['target_level']['framework']
     target = target_level(grade.framework, 'ME1')
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     target.code = 'ME1-NEW'
     target.rank = 9
     target.save(update_fields=['code', 'rank'])
@@ -885,6 +891,8 @@ def test_reused_level_code_cannot_redirect_later_evidence_definition_identity():
         GOALS_URL, create_payload(grade), format='json'
     ).data['data']['id']
     target = target_level(grade.framework, 'ME1')
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     later = CBCGradeFactory(
         student_subject=enrollment,
         framework=grade.framework,
@@ -917,6 +925,8 @@ def test_later_evidence_with_new_reused_definition_id_does_not_fallback_by_code(
         GOALS_URL, create_payload(grade), format='json'
     ).data['data']['id']
     original_target = target_level(grade.framework, 'ME1')
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     original_target.code = 'ME1-HISTORICAL'
     original_target.save(update_fields=['code'])
     reused_definition = PerformanceLevelDefinitionFactory(
@@ -1067,6 +1077,8 @@ def test_goal_creation_uses_grade_definition_id_after_definition_code_reuse():
     """Catches a renamed definition's reused code redirecting a new goal baseline."""
     profile, _enrollment, grade = learner_with_evidence(level='ME2')
     original_definition = target_level(grade.framework, 'ME2')
+    grade.framework.status = AssessmentFramework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status'])
     original_definition.code = 'ME2-HISTORICAL'
     original_definition.save(update_fields=['code'])
     reused_definition = target_level(grade.framework, 'BE2')

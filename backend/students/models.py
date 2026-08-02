@@ -92,6 +92,7 @@ class AssessmentFrameworkQuerySet(models.QuerySet):
         return raw_queryset.bulk_update(objs, fields, batch_size=batch_size)
 
     def bulk_create(self, objs, **kwargs):
+        objs = tuple(objs)
         if any(
             not isinstance(obj.status, str)
             or obj.status == AssessmentFramework.STATUS_ACTIVE
@@ -164,12 +165,18 @@ class AssessmentFramework(models.Model):
                 'EE1–BE2 definition set with ranks 8–1.'
             )
 
+    def _validate_status_scalar(self):
+        if not isinstance(self.status, str):
+            raise ValidationError('Assessment framework status must be a scalar value.')
+
     def clean(self):
         super().clean()
+        self._validate_status_scalar()
         if self.status == self.STATUS_ACTIVE:
             self.validate_activation_readiness()
 
     def save(self, *args, **kwargs):
+        self._validate_status_scalar()
         if self.status == self.STATUS_ACTIVE:
             self.validate_activation_readiness()
         return super().save(*args, **kwargs)
@@ -179,6 +186,63 @@ class AssessmentFramework(models.Model):
         self.status = self.STATUS_ACTIVE
         self.save(update_fields=['status', 'updated_at'])
         return self
+
+
+class PerformanceLevelDefinitionQuerySet(models.QuerySet):
+    @staticmethod
+    def _active_framework_error():
+        return ValidationError(
+            'Performance definitions for an active framework cannot be modified.'
+        )
+
+    def _ensure_mutable(self, target_framework_id=None):
+        if self.filter(framework__status=AssessmentFramework.STATUS_ACTIVE).exists() or (
+            target_framework_id is not None
+            and AssessmentFramework.objects.filter(
+                pk=target_framework_id,
+                status=AssessmentFramework.STATUS_ACTIVE,
+            ).exists()
+        ):
+            raise self._active_framework_error()
+
+    def update(self, **kwargs):
+        protected = {'framework', 'framework_id', 'code', 'rank'}
+        if protected & set(kwargs):
+            target = kwargs.get('framework_id', kwargs.get('framework'))
+            with transaction.atomic(using=self.db):
+                self.select_for_update()._ensure_mutable(getattr(target, 'pk', target))
+        return super().update(**kwargs)
+
+    def delete(self):
+        self._ensure_mutable()
+        return super().delete()
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        objs = tuple(objs)
+        if {'framework', 'framework_id', 'code', 'rank'} & set(fields) and any(
+            obj.framework.status == AssessmentFramework.STATUS_ACTIVE for obj in objs
+        ):
+            raise self._active_framework_error()
+        if {'framework', 'framework_id', 'code', 'rank'} & set(fields):
+            with transaction.atomic(using=self.db):
+                if self.model.objects.using(self.db).select_for_update().filter(
+                    pk__in=[obj.pk for obj in objs],
+                    framework__status=AssessmentFramework.STATUS_ACTIVE,
+                ).exists():
+                    raise self._active_framework_error()
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+    def bulk_create(self, objs, **kwargs):
+        objs = tuple(objs)
+        if any(obj.framework.status == AssessmentFramework.STATUS_ACTIVE for obj in objs):
+            raise self._active_framework_error()
+        return super().bulk_create(objs, **kwargs)
+
+
+class PerformanceLevelDefinitionManager(
+    models.Manager.from_queryset(PerformanceLevelDefinitionQuerySet)
+):
+    pass
 
 
 class PerformanceLevelDefinition(models.Model):
@@ -210,8 +274,11 @@ class PerformanceLevelDefinition(models.Model):
         blank=True,
     )
 
+    objects = PerformanceLevelDefinitionManager()
+
     class Meta:
         ordering = ['-rank', 'code']
+        base_manager_name = 'objects'
         constraints = [
             models.UniqueConstraint(
                 fields=['framework', 'code'],
@@ -225,6 +292,33 @@ class PerformanceLevelDefinition(models.Model):
 
     def __str__(self):
         return f"{self.framework.code} {self.framework.version} — {self.code}"
+
+    def _ensure_framework_mutable(self, *, update_fields=None):
+        protected = {'framework', 'framework_id', 'code', 'rank'}
+        if update_fields is not None and not protected & set(update_fields):
+            return
+        if self.framework.status == AssessmentFramework.STATUS_ACTIVE:
+            raise ValidationError(
+                'Performance definitions for an active framework cannot be modified.'
+            )
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        with transaction.atomic(using=kwargs.get('using') or self._state.db):
+            self._ensure_framework_mutable(update_fields=update_fields)
+            if not self._state.adding and (
+                update_fields is None or {'framework', 'framework_id', 'code', 'rank'} & set(update_fields)
+            ):
+                original = type(self).objects.select_for_update().filter(pk=self.pk).values('framework_id').first()
+                if original and AssessmentFramework.objects.filter(
+                    pk=original['framework_id'], status=AssessmentFramework.STATUS_ACTIVE,
+                ).exists():
+                    raise ValidationError('Performance definitions for an active framework cannot be modified.')
+            return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self._ensure_framework_mutable()
+        return super().delete(*args, **kwargs)
 
 
 class Subject(models.Model):
@@ -426,21 +520,26 @@ class CBCGradeHistoryManager(CBCGradeManager):
         if grade_id is None:
             raise ValidationError('History snapshot rewrites require an existing grade.')
 
-        raw_query = models.QuerySet(model=self.model, using=self.db)
-        updated = raw_query.filter(pk=grade_id).update(
-            level_definition_id_snapshot=definition_id,
-        )
-        if updated != 1:
-            raise self.model.DoesNotExist(
-                'CBC grade history record was not found for snapshot rewrite.'
+        with transaction.atomic(using=self.db):
+            grade = self.model._base_manager.select_for_update().get(pk=grade_id)
+            old_snapshot_id = grade.level_definition_id_snapshot
+            raw_query = models.QuerySet(model=self.model, using=self.db)
+            updated = raw_query.filter(pk=grade_id).update(
+                level_definition_id_snapshot=definition_id,
             )
-        logger.info(
-            'Rewriting CBC grade definition snapshot for legacy history: '
-            'grade_id=%s audit_reason=%s',
-            grade_id,
-            audit_reason,
-        )
-        return updated
+            from system_admin.models import AuditLog
+            AuditLog.objects.using(self.db).create(
+                actor=None,
+                action='grade_definition_snapshot_rewritten',
+                target_type='grade',
+                target_id=grade_id,
+                details={
+                    'reason': audit_reason,
+                    'old_snapshot_id': old_snapshot_id,
+                    'new_snapshot_id': definition_id,
+                },
+            )
+            return updated
 
 
 class CBCGrade(models.Model):
@@ -621,6 +720,11 @@ class CBCGrade(models.Model):
             )
 
     def save(self, *args, **kwargs):
+        using = kwargs.get('using') or self._state.db
+        with transaction.atomic(using=using):
+            return self._save(*args, **kwargs)
+
+    def _save(self, *args, **kwargs):
         update_fields = kwargs.get('update_fields')
         if update_fields is not None:
             update_fields = set(update_fields)
@@ -628,7 +732,7 @@ class CBCGrade(models.Model):
 
         original_persistence = None
         if not self._state.adding:
-            original_persistence = type(self).objects.filter(pk=self.pk).values(
+            original_persistence = type(self).objects.using(kwargs.get('using') or self._state.db).select_for_update().filter(pk=self.pk).values(
                 'student_subject_id',
                 'academic_grade',
                 'framework_id',
@@ -805,7 +909,7 @@ class CBCGrade(models.Model):
                             )
                         }
                     )
-                if original_snapshot is None:
+                if original_snapshot is None and not has_verification_provenance:
                     definition_identity_changed = True
 
         if definition_identity_changed and definition_framework_id is not None:
@@ -838,9 +942,14 @@ class CBCGrade(models.Model):
             del self._verification_transition_token
 
     def delete(self, *args, **kwargs):
-        if any((self.verified_by_id, self.verified_at, self.verified_school_id)):
-            raise ValidationError('School-verified evidence cannot be deleted.')
-        return super().delete(*args, **kwargs)
+        using = kwargs.get('using') or self._state.db
+        with transaction.atomic(using=using):
+            current = type(self).objects.using(using).select_for_update().filter(pk=self.pk).values(
+                'verified_by_id', 'verified_at', 'verified_school_id',
+            ).first()
+            if current is not None and any(current.values()):
+                raise ValidationError('School-verified evidence cannot be deleted.')
+            return super().delete(*args, **kwargs)
 
 
 class AcademicGoalQuerySet(models.QuerySet):
