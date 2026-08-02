@@ -4,9 +4,35 @@ from itertools import product
 import pytest
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.exceptions import IrreversibleError
+
+from tests.factories import AcademicGoalFactory
 
 
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+def test_0013_reverse_preflight_blocks_null_evidence_before_schema_changes():
+    """Catches rollback attempting to restore a non-null evidence foreign key."""
+    goal = AcademicGoalFactory()
+    evidence = goal.current_evidence
+    evidence.delete()
+    goal.refresh_from_db()
+    assert goal.current_evidence_id is None
+
+    executor = MigrationExecutor(connection)
+
+    with pytest.raises(IrreversibleError, match='null current_evidence'):
+        executor.migrate([
+            ('accounts', '0014_enforce_membership_lifecycle_timestamps'),
+            ('students', '0012_academic_goals'),
+        ])
+
+    executor = MigrationExecutor(connection)
+    assert (
+        'students',
+        '0013_harden_academic_goal_lifecycle',
+    ) in executor.loader.applied_migrations
 
 
 def test_0013_totally_preserves_every_0012_valid_lifecycle_actor_and_evidence_shape():

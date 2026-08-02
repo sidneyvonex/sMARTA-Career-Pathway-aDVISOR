@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import migrations, models
+from django.db.migrations.exceptions import IrreversibleError
 import django.db.models.deletion
 import students.models
 
@@ -105,6 +106,15 @@ def backfill_factual_creation_snapshots(apps, schema_editor):
             'legacy_lifecycle_unverifiable': not (normal_active or normal_closed),
         }
         AcademicGoal.objects.filter(pk=goal.pk).update(**updates)
+
+
+def prevent_unsafe_reverse(apps, schema_editor):
+    AcademicGoal = apps.get_model('students', 'AcademicGoal')
+    if AcademicGoal.objects.filter(current_evidence__isnull=True).exists():
+        raise IrreversibleError(
+            'Cannot reverse students.0013 while academic goals have null '
+            'current_evidence; the prior schema requires non-null evidence.'
+        )
 
 
 class Migration(migrations.Migration):
@@ -235,5 +245,9 @@ class Migration(migrations.Migration):
                 ),
                 name='students_goal_lifecycle_coherence_ck',
             ),
+        ),
+        migrations.RunPython(
+            migrations.RunPython.noop,
+            prevent_unsafe_reverse,
         ),
     ]
