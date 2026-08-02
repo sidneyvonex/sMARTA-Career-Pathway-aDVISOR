@@ -4,7 +4,7 @@ import DashboardHero from './DashboardHero'
 import Avatar from '../../../common/Avatar'
 import SectionHeader from '../../../common/dashboard/SectionHeader'
 import type { RadarDatum } from './PersonalityRadar'
-import type { GradePoint } from './GradeTrend'
+import type { GradeChronology } from './GradeTrend'
 import '../../../../styles/dashboard-lively.css'
 
 const PersonalityRadar = lazy(() => import('./PersonalityRadar'))
@@ -29,7 +29,7 @@ export interface LivelyData {
   topStrength: string | null
   radar: RadarDatum[] | null
   pathways: { name: string; rank: number }[] | null
-  gradeTrend: GradePoint[] | null
+  gradeTrend: GradeChronology[] | null
   counselor: { name: string; role: string; message?: string; photoUrl?: string | null } | null
   activity: { text: string; time: string; actor?: string }[]
   interventions: {
