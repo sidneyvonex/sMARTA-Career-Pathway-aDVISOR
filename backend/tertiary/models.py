@@ -1,7 +1,68 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from accounts.models import StudentProfile
+
+
+PROVENANCE_FIELDS = frozenset({
+    'source_scope',
+    'external_key',
+    'source_url',
+    'education_framework',
+    'admission_cycle',
+    'effective_date',
+    'verification_status',
+})
+PARENT_FIELDS = frozenset({'institution', 'institution_id', 'programme', 'programme_id'})
+CATALOGUE_PROTECTED_FIELDS = PROVENANCE_FIELDS | PARENT_FIELDS | frozenset({
+    'name', 'institution_type', 'county', 'website_url', 'code', 'description',
+    'subject_code', 'subject_name', 'mapping_kind', 'notes',
+    'requirement_summary',
+})
+
+
+def _protected_write_error(fields):
+    names = ', '.join(sorted(fields))
+    return ValidationError(
+        f'Protected catalogue fields ({names}) must use validated instance saves.'
+    )
+
+
+class ValidatedCatalogueQuerySet(models.QuerySet):
+    """Keep public bulk APIs from bypassing sourced-record validation."""
+
+    def update(self, **kwargs):
+        protected = set(kwargs) & CATALOGUE_PROTECTED_FIELDS
+        if protected:
+            raise _protected_write_error(protected)
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        protected = set(fields) & CATALOGUE_PROTECTED_FIELDS
+        if protected:
+            raise _protected_write_error(protected)
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+    def bulk_create(self, *args, **kwargs):
+        raise _protected_write_error(PROVENANCE_FIELDS)
+
+
+class ValidatedCatalogueManager(models.Manager.from_queryset(ValidatedCatalogueQuerySet)):
+    pass
+
+
+def _provenance_constraints(prefix):
+    return [
+        models.CheckConstraint(check=~models.Q(source_scope=''), name=f'{prefix}_scope_nonempty_ck'),
+        models.CheckConstraint(check=~models.Q(external_key=''), name=f'{prefix}_key_nonempty_ck'),
+        models.CheckConstraint(check=~models.Q(source_url=''), name=f'{prefix}_url_nonempty_ck'),
+        models.CheckConstraint(check=~models.Q(education_framework=''), name=f'{prefix}_frame_nonempty_ck'),
+        models.CheckConstraint(check=~models.Q(admission_cycle=''), name=f'{prefix}_cycle_nonempty_ck'),
+        models.CheckConstraint(
+            check=models.Q(verification_status__in=['verified', 'historical', 'unavailable']),
+            name=f'{prefix}_verification_ck',
+        ),
+    ]
 
 
 class SourcedCatalogueRecord(models.Model):
@@ -27,8 +88,59 @@ class SourcedCatalogueRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = ValidatedCatalogueManager()
+
     class Meta:
         abstract = True
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        for field in PROVENANCE_FIELDS - {'effective_date', 'verification_status'}:
+            value = getattr(self, field, None)
+            if not isinstance(value, str) or not value.strip():
+                errors[field] = 'This provenance value is required.'
+        if self.verification_status not in dict(self.VERIFICATION_CHOICES):
+            errors['verification_status'] = 'Choose a supported verification status.'
+        if errors:
+            raise ValidationError(errors)
+
+    def _reject_referenced_changes(self, related_queries):
+        if not self.pk or not any(query.exists() for query in related_queries):
+            return
+        original = type(self).objects.filter(pk=self.pk).values(*PROVENANCE_FIELDS).first()
+        if original and any(original[field] != getattr(self, field) for field in PROVENANCE_FIELDS):
+            raise ValidationError(
+                'Catalogue identity and provenance cannot be changed once referenced.'
+            )
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if self.pk:
+                type(self).objects.select_for_update().filter(pk=self.pk).exists()
+            self.full_clean(validate_unique=False, validate_constraints=False)
+            return super().save(*args, **kwargs)
+
+
+def _parent_value(parent, field):
+    return getattr(parent, field)
+
+
+def _validate_parent_coherence(child, parent, parent_field):
+    # A sourced release shares scope/framework/cycle. Effective dates remain
+    # record-specific, and status may differ only when the child is no more
+    # authoritative than its parent (verified > historical > unavailable).
+    errors = {}
+    for field in ('source_scope', 'education_framework', 'admission_cycle'):
+        if getattr(child, field) != _parent_value(parent, field):
+            errors[field] = f'Must match the selected {parent_field} source release.'
+    authority = {'unavailable': 0, 'historical': 1, 'verified': 2}
+    if authority.get(child.verification_status, -1) > authority.get(parent.verification_status, -1):
+        errors['verification_status'] = (
+            f'Cannot be more authoritative than the selected {parent_field}.'
+        )
+    if errors:
+        raise ValidationError(errors)
 
 
 class Institution(SourcedCatalogueRecord):
@@ -51,9 +163,14 @@ class Institution(SourcedCatalogueRecord):
     class Meta:
         ordering = ['name', 'pk']
         constraints = [
+            *_provenance_constraints('tert_inst'),
             models.UniqueConstraint(
                 fields=['source_scope', 'external_key'],
                 name='tertiary_inst_scope_external_uniq',
+            ),
+            models.CheckConstraint(
+                check=models.Q(institution_type__in=['university', 'college', 'tvet', 'other']),
+                name='tert_inst_type_ck',
             ),
         ]
         indexes = [
@@ -63,6 +180,13 @@ class Institution(SourcedCatalogueRecord):
 
     def __str__(self):
         return self.name
+
+    def clean(self):
+        super().clean()
+        if self.institution_type not in dict(self.TYPE_CHOICES):
+            raise ValidationError({'institution_type': 'Choose a supported institution type.'})
+        if self.pk:
+            self._reject_referenced_changes((self.programmes.all(), self.learner_goals.all()))
 
 
 class Programme(SourcedCatalogueRecord):
@@ -78,6 +202,7 @@ class Programme(SourcedCatalogueRecord):
     class Meta:
         ordering = ['institution__name', 'name', 'pk']
         constraints = [
+            *_provenance_constraints('tert_prog'),
             models.UniqueConstraint(
                 fields=['source_scope', 'external_key'],
                 name='tertiary_prog_scope_external_uniq',
@@ -91,6 +216,35 @@ class Programme(SourcedCatalogueRecord):
 
     def __str__(self):
         return f'{self.institution.name} — {self.name}'
+
+    def clean(self):
+        super().clean()
+        if self.institution_id:
+            _validate_parent_coherence(self, self.institution, 'institution')
+        if self.pk:
+            original = Programme.objects.filter(pk=self.pk).values('institution_id').first()
+            is_referenced = (
+                self.subject_references.exists()
+                or self.historical_admission_references.exists()
+                or self.learner_goals.exists()
+            )
+            if original and is_referenced and original['institution_id'] != self.institution_id:
+                raise ValidationError(
+                    'Catalogue identity and provenance cannot be changed once referenced.'
+                )
+            self._reject_referenced_changes((
+                self.subject_references.all(),
+                self.historical_admission_references.all(),
+                self.learner_goals.all(),
+            ))
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if self.institution_id:
+                self.institution = Institution.objects.select_for_update().get(
+                    pk=self.institution_id
+                )
+            return super().save(*args, **kwargs)
 
 
 class ProgrammeSubjectReference(SourcedCatalogueRecord):
@@ -114,6 +268,7 @@ class ProgrammeSubjectReference(SourcedCatalogueRecord):
     class Meta:
         ordering = ['subject_name', 'pk']
         constraints = [
+            *_provenance_constraints('tert_subj'),
             models.UniqueConstraint(
                 fields=['source_scope', 'external_key'],
                 name='tertiary_subj_scope_external_uniq',
@@ -127,10 +282,40 @@ class ProgrammeSubjectReference(SourcedCatalogueRecord):
                 ),
                 name='tertiary_subj_mapping_kind_ck',
             ),
+            models.CheckConstraint(
+                check=(
+                    ~models.Q(mapping_kind='historical_requirement')
+                    | (
+                        models.Q(education_framework='KCSE')
+                        & models.Q(verification_status='historical')
+                    )
+                ),
+                name='tert_subj_historical_kcse_ck',
+            ),
         ]
         indexes = [
             models.Index(fields=['programme', 'mapping_kind'], name='tert_subj_prog_kind_idx'),
         ]
+
+    def clean(self):
+        super().clean()
+        if self.programme_id:
+            _validate_parent_coherence(self, self.programme, 'programme')
+        if self.mapping_kind == self.KIND_HISTORICAL_REQUIREMENT and (
+            self.education_framework != 'KCSE'
+            or self.verification_status != self.VERIFICATION_HISTORICAL
+        ):
+            raise ValidationError({
+                'mapping_kind': 'Historical requirements must be historical KCSE references.'
+            })
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if self.programme_id:
+                self.programme = Programme.objects.select_for_update().get(
+                    pk=self.programme_id
+                )
+            return super().save(*args, **kwargs)
 
 
 class HistoricalAdmissionReference(SourcedCatalogueRecord):
@@ -144,6 +329,7 @@ class HistoricalAdmissionReference(SourcedCatalogueRecord):
     class Meta:
         ordering = ['-effective_date', '-pk']
         constraints = [
+            *_provenance_constraints('tert_hist'),
             models.UniqueConstraint(
                 fields=['source_scope', 'external_key'],
                 name='tertiary_hist_scope_external_uniq',
@@ -159,6 +345,53 @@ class HistoricalAdmissionReference(SourcedCatalogueRecord):
         indexes = [
             models.Index(fields=['programme', 'admission_cycle'], name='tert_hist_prog_cycle_idx'),
         ]
+
+    def clean(self):
+        super().clean()
+        if self.programme_id:
+            _validate_parent_coherence(self, self.programme, 'programme')
+        if (
+            self.education_framework != 'KCSE'
+            or self.verification_status != self.VERIFICATION_HISTORICAL
+        ):
+            raise ValidationError(
+                'Historical admission references must use KCSE and historical status.'
+            )
+
+    def save(self, *args, **kwargs):
+        with transaction.atomic():
+            if self.programme_id:
+                self.programme = Programme.objects.select_for_update().get(
+                    pk=self.programme_id
+                )
+            return super().save(*args, **kwargs)
+
+
+def education_choice_identity(institution_id, programme_id):
+    programme = programme_id if programme_id is not None else 'none'
+    return f'institution:{institution_id}:programme:{programme}'
+
+
+class LearnerEducationGoalQuerySet(models.QuerySet):
+    PROTECTED_FIELDS = frozenset({
+        'learner', 'learner_id', 'institution', 'institution_id', 'programme',
+        'programme_id', 'choice_identity', 'kind', 'priority', 'created_by',
+        'created_by_id',
+    })
+
+    def update(self, **kwargs):
+        protected = set(kwargs) & self.PROTECTED_FIELDS
+        if protected:
+            raise ValidationError('Education choices must use validated instance saves.')
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if set(fields) & self.PROTECTED_FIELDS:
+            raise ValidationError('Education choices must use validated instance saves.')
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+    def bulk_create(self, *args, **kwargs):
+        raise ValidationError('Education choices must use validated instance saves.')
 
 
 class LearnerEducationGoal(models.Model):
@@ -186,6 +419,7 @@ class LearnerEducationGoal(models.Model):
         blank=True,
         related_name='learner_goals',
     )
+    choice_identity = models.CharField(max_length=80)
     kind = models.CharField(max_length=16, choices=KIND_CHOICES)
     priority = models.PositiveSmallIntegerField()
     created_by = models.ForeignKey(
@@ -196,12 +430,18 @@ class LearnerEducationGoal(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = models.Manager.from_queryset(LearnerEducationGoalQuerySet)()
+
     class Meta:
         ordering = ['kind', 'priority', 'created_at', 'pk']
         constraints = [
             models.UniqueConstraint(
                 fields=['learner', 'kind', 'priority'],
                 name='tertiary_goal_learner_slot_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['learner', 'choice_identity'],
+                name='tertiary_goal_learner_choice_uniq',
             ),
             models.CheckConstraint(
                 check=(
@@ -229,5 +469,11 @@ class LearnerEducationGoal(models.Model):
                 )
 
     def save(self, *args, **kwargs):
+        self.choice_identity = education_choice_identity(
+            self.institution_id, self.programme_id
+        )
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and {'institution', 'programme'} & set(update_fields):
+            kwargs['update_fields'] = set(update_fields) | {'choice_identity'}
         self.full_clean(validate_unique=False, validate_constraints=False)
         return super().save(*args, **kwargs)

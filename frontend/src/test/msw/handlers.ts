@@ -393,13 +393,46 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/v1/tertiary/institutions/', () => HttpResponse.json({
-    data: [institutionFixture], error: null, message: '',
-  })),
+  http.get('/api/v1/tertiary/institutions/', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const search = query.get('search')?.toLocaleLowerCase()
+    const matches = (
+      (!search || institutionFixture.name.toLocaleLowerCase().includes(search)
+        || institutionFixture.external_key.toLocaleLowerCase().includes(search))
+      && (!query.get('county') || query.get('county')?.toLocaleLowerCase()
+        === institutionFixture.county.toLocaleLowerCase())
+      && (!query.get('framework') || query.get('framework')?.toLocaleLowerCase()
+        === institutionFixture.education_framework.toLocaleLowerCase())
+      && (!query.get('cycle') || query.get('cycle')?.toLocaleLowerCase()
+        === institutionFixture.admission_cycle.toLocaleLowerCase())
+      && (!query.get('verification_status')
+        || query.get('verification_status') === institutionFixture.verification_status)
+    )
+    return HttpResponse.json({
+      data: matches ? [institutionFixture] : [], error: null, message: '',
+    })
+  }),
 
-  http.get('/api/v1/tertiary/programmes/', () => HttpResponse.json({
-    data: [programmeFixture], error: null, message: '',
-  })),
+  http.get('/api/v1/tertiary/programmes/', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const search = query.get('search')?.toLocaleLowerCase()
+    const matches = (
+      (!search || programmeFixture.name.toLocaleLowerCase().includes(search)
+        || programmeFixture.code.toLocaleLowerCase().includes(search)
+        || programmeFixture.external_key.toLocaleLowerCase().includes(search))
+      && (!query.get('institution')
+        || Number(query.get('institution')) === programmeFixture.institution.id)
+      && (!query.get('framework') || query.get('framework')?.toLocaleLowerCase()
+        === programmeFixture.education_framework.toLocaleLowerCase())
+      && (!query.get('cycle') || query.get('cycle')?.toLocaleLowerCase()
+        === programmeFixture.admission_cycle.toLocaleLowerCase())
+      && (!query.get('verification_status')
+        || query.get('verification_status') === programmeFixture.verification_status)
+    )
+    return HttpResponse.json({
+      data: matches ? [programmeFixture] : [], error: null, message: '',
+    })
+  }),
 
   http.get('/api/v1/tertiary/programmes/:programmeId/', () => HttpResponse.json({
     data: programmeFixture, error: null, message: '',
@@ -416,9 +449,14 @@ export const handlers = [
     await delay(80)
     return HttpResponse.json({
       data: educationGoalFixture({
+        institution: { ...institutionFixture, id: body.institution },
         kind: body.kind,
         priority: body.priority,
-        programme: body.programme === null ? null : programmeFixture,
+        programme: body.programme == null ? null : {
+          ...programmeFixture,
+          id: body.programme,
+          institution: { ...institutionFixture, id: body.institution },
+        },
       }),
       error: null,
       message: 'Education goal saved.',
@@ -426,11 +464,27 @@ export const handlers = [
   }),
 
   http.patch('/api/v1/students/education-goals/:goalId/', async ({ params, request }) => {
-    const body = await request.json() as { programme?: number | null }
+    const body = await request.json() as Partial<{
+      institution: number
+      programme: number | null
+      kind: EducationGoal['kind']
+      priority: 1 | 2
+    }>
+    const institution = {
+      ...institutionFixture,
+      id: body.institution ?? institutionFixture.id,
+    }
     return HttpResponse.json({
       data: educationGoalFixture({
         id: Number(params.goalId),
-        programme: body.programme === null ? null : programmeFixture,
+        institution,
+        kind: body.kind ?? 'alternative',
+        priority: body.priority ?? 1,
+        programme: body.programme === null ? null : {
+          ...programmeFixture,
+          id: body.programme ?? programmeFixture.id,
+          institution,
+        },
       }),
       error: null,
       message: 'Education goal updated.',

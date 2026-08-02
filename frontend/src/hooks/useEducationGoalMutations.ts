@@ -20,7 +20,12 @@ function errorMessage(error: unknown): string {
   if (axiosError.response.status === 404) return 'That item no longer exists.'
   if (axiosError.response.status >= 500) return 'Server error. Please try again in a moment.'
   const message = axiosError.response.data?.message
-  return typeof message === 'string' ? message : 'Something went wrong. Please try again.'
+  if (typeof message !== 'string') return 'Something went wrong. Please try again.'
+  const clean = message.trim()
+  if (!clean || /ErrorDetail\s*\(/.test(clean) || /^[{[]/.test(clean)) {
+    return 'Something went wrong. Please try again.'
+  }
+  return clean
 }
 
 
