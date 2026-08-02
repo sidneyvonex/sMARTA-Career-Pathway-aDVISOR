@@ -786,9 +786,12 @@ class SubjectListView(APIView):
         qs = Subject.objects.filter(is_active=True)
         if grade_param is not None:
             try:
-                qs = qs.filter(grade=int(grade_param))
+                grade = int(grade_param)
             except ValueError:
-                return _error('Grade must be 9 or 10.')
+                return _error('Grade must be between 9 and 12.')
+            if grade not in range(9, 13):
+                return _error('Grade must be between 9 and 12.')
+            qs = qs.filter(grade=grade)
         return _success(data=SubjectSerializer(qs, many=True).data)
 
 

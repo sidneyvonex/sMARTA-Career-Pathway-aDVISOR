@@ -157,10 +157,12 @@ class TestSubjectListView:
         codes = [s['code'] for s in response.data['data']]
         assert 'MTH9' in codes
 
-    def test_invalid_grade_returns_400(self, verified_profile):
+    @pytest.mark.parametrize('grade', ['abc', '8', '13'])
+    def test_invalid_grade_returns_400(self, verified_profile, grade):
         c = make_auth_client(verified_profile.user)
-        response = c.get('/api/v1/students/subjects/?grade=abc')
+        response = c.get(f'/api/v1/students/subjects/?grade={grade}')
         assert response.status_code == 400
+        assert response.data['message'] == 'Grade must be between 9 and 12.'
 
     def test_grade10_catalogue_excludes_inactive_junior_style_subjects(self, db):
         user = VerifiedUserFactory(role='student')
