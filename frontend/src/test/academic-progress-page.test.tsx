@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ProgressAssessment, ProgressEvidence, SubjectProgress } from '../api/students'
 import { getBaseNavItems } from '../components/shell/navItems'
+import GradeEntryForm from '../components/students/GradeEntryForm'
 import GradesPage from '../pages/GradesPage'
 import { server } from './msw/server'
 
@@ -111,6 +112,18 @@ function renderPage() {
         <GradesPage />
         <Toaster />
       </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+function renderGradeForm() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <GradeEntryForm studentSubjectId={10} />
+      <Toaster />
     </QueryClientProvider>,
   )
 }
@@ -230,6 +243,107 @@ describe('flagged My Progress dashboard', () => {
     renderPage()
 
     expect(await screen.findByRole('status', { name: 'Loading academic progress' })).toBeInTheDocument()
+  })
+
+  it('keeps result recording disabled while enrolled subjects are loading', async () => {
+    server.use(
+      http.get('/api/v1/students/progress/', () => progressResponse()),
+      http.get('/api/v1/students/my-subjects/', async () => {
+        await delay('infinite')
+        return HttpResponse.json({ data: [], error: null, message: '' })
+      }),
+    )
+
+    renderPage()
+
+    const recordResult = await screen.findByRole('button', { name: 'Record a result' })
+    expect(recordResult).toBeDisabled()
+    expect(screen.getByRole('status', { name: 'Loading enrolled subjects' })).toBeInTheDocument()
+  })
+
+  it('shows an academic-target loading state without false empty or creation UI', async () => {
+    server.use(
+      http.get('/api/v1/students/progress/', () => progressResponse()),
+      http.get('/api/v1/students/academic-goals/', async () => {
+        await delay('infinite')
+        return HttpResponse.json({ data: [], error: null, message: '' })
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByRole('status', { name: 'Loading academic targets' })).toBeInTheDocument()
+    expect(screen.queryByText('You have no active academic targets yet.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set an academic target' })).not.toBeInTheDocument()
+  })
+
+  it('shows an education-goal loading state without a false empty message', async () => {
+    server.use(
+      http.get('/api/v1/students/progress/', () => progressResponse()),
+      http.get('/api/v1/students/education-goals/', async () => {
+        await delay('infinite')
+        return HttpResponse.json({ data: [], error: null, message: '' })
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByRole('status', { name: 'Loading education goals' })).toBeInTheDocument()
+    expect(screen.queryByText('No education goal has been saved yet.')).not.toBeInTheDocument()
+  })
+
+  it('refreshes the progress summary after saving new grade evidence', async () => {
+    let progressRequests = 0
+    server.use(http.get('/api/v1/students/progress/', () => {
+      progressRequests += 1
+      return progressResponse(progressRequests === 1 ? progressFixture : {
+        ...progressFixture,
+        overall: { status: 'strong', label: 'Strong', subject_continuity_codes: ['MTH'] },
+      })
+    }))
+    const user = userEvent.setup()
+
+    renderPage()
+    const summary = await screen.findByLabelText('Academic progress summary')
+    expect(within(summary).getByText('Support')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Record a result' }))
+    await user.click(screen.getByRole('button', { name: 'Add grade' }))
+
+    expect(await within(summary).findByText('Strong')).toBeInTheDocument()
+    expect(progressRequests).toBe(2)
+  })
+
+  it('uses the term-specific grade-saved toast after a successful save', async () => {
+    const user = userEvent.setup()
+    renderGradeForm()
+
+    await user.selectOptions(screen.getByLabelText('Term'), '2')
+    await user.click(screen.getByRole('button', { name: 'Add grade' }))
+
+    expect(await screen.findByText('Grade saved for Term 2.')).toBeInTheDocument()
+  })
+
+  it('uses the standard permission toast when grade saving is forbidden', async () => {
+    server.use(http.post('/api/v1/students/my-subjects/:id/grades/', () => HttpResponse.json(
+      { data: null, error: true, message: 'Raw forbidden response.' },
+      { status: 403 },
+    )))
+    const user = userEvent.setup()
+    renderGradeForm()
+
+    await user.click(screen.getByRole('button', { name: 'Add grade' }))
+
+    expect(await screen.findByText("You don't have permission to do that.")).toBeInTheDocument()
+  })
+
+  it('uses the standard connection toast when grade saving has no response', async () => {
+    server.use(http.post('/api/v1/students/my-subjects/:id/grades/', () => HttpResponse.error()))
+    const user = userEvent.setup()
+    renderGradeForm()
+
+    await user.click(screen.getByRole('button', { name: 'Add grade' }))
+
+    expect(await screen.findByText('Connection error. Please check your internet.')).toBeInTheDocument()
   })
 
   it('recovers from a progress error through the retry action', async () => {

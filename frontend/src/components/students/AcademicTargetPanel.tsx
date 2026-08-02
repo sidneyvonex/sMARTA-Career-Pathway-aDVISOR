@@ -10,19 +10,26 @@ import {
   type SubjectProgress,
 } from '../../api/students'
 import { useAcademicGoalMutations } from '../../hooks/useAcademicGoalMutations'
+import LoadingSkeleton from '../common/dashboard/LoadingSkeleton'
 
 
 interface Props {
   goals: AcademicGoal[]
   subjects: SubjectProgress[]
   initiallyOpen?: boolean
+  isLoading?: boolean
 }
 
 
 const currentYear = new Date().getFullYear()
 
 
-export default function AcademicTargetPanel({ goals, subjects, initiallyOpen = false }: Props) {
+export default function AcademicTargetPanel({
+  goals,
+  subjects,
+  initiallyOpen = false,
+  isLoading = false,
+}: Props) {
   const [open, setOpen] = useState(initiallyOpen)
   const [continuityCode, setContinuityCode] = useState(subjects[0]?.continuity_code ?? '')
   const [targetLevel, setTargetLevel] = useState<GradeLevel>('ME1')
@@ -62,7 +69,7 @@ export default function AcademicTargetPanel({ goals, subjects, initiallyOpen = f
           <h2 id="academic-targets-title">Academic targets</h2>
           <p>Choose one practical improvement target for a subject.</p>
         </div>
-        {!open && subjectsWithoutTargets.length > 0 && (
+        {!isLoading && !open && subjectsWithoutTargets.length > 0 && (
           <button type="button" className="student-action" onClick={() => {
             setContinuityCode(subjectsWithoutTargets[0].continuity_code)
             setOpen(true)
@@ -72,6 +79,10 @@ export default function AcademicTargetPanel({ goals, subjects, initiallyOpen = f
         )}
       </div>
 
+      {isLoading ? (
+        <LoadingSkeleton label="Loading academic targets" rows={2} variant="list" />
+      ) : (
+        <>
       {activeGoals.length > 0 && (
         <div className="progress-target-list">
           {activeGoals.map((goal) => {
@@ -181,6 +192,8 @@ export default function AcademicTargetPanel({ goals, subjects, initiallyOpen = f
             </button>
           </div>
         </form>
+      )}
+        </>
       )}
     </section>
   )

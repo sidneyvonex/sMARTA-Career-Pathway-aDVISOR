@@ -114,11 +114,18 @@ export default function AcademicProgressDashboard() {
       </header>
 
       {progress.subjects.length === 0 ? (
-        <EmptyState
-          title="Start your academic evidence"
-          description="Record a term result to begin building an explainable subject progress view."
-          action={{ label: 'Record your first result', onClick: openRecordPanel }}
-        />
+        <>
+          <EmptyState
+            title="Start your academic evidence"
+            description="Record a term result to begin building an explainable subject progress view."
+            action={subjectsQ.isLoading
+              ? undefined
+              : { label: 'Record your first result', onClick: openRecordPanel }}
+          />
+          {subjectsQ.isLoading && (
+            <LoadingSkeleton label="Loading enrolled subjects" rows={1} variant="list" />
+          )}
+        </>
       ) : (
         <>
           <section className="progress-overview" aria-labelledby="subject-progress-title">
@@ -127,9 +134,19 @@ export default function AcademicProgressDashboard() {
                 <h2 id="subject-progress-title">Subject progress</h2>
                 <p>Statuses use all available evidence. Filters change the evidence shown below.</p>
               </div>
-              <button type="button" className="student-action student-action--secondary" onClick={openRecordPanel}>
-                Record a result
-              </button>
+              <div className="progress-section-action">
+                <button
+                  type="button"
+                  className="student-action student-action--secondary"
+                  onClick={openRecordPanel}
+                  disabled={subjectsQ.isLoading}
+                >
+                  Record a result
+                </button>
+                {subjectsQ.isLoading && (
+                  <span role="status" aria-label="Loading enrolled subjects">Loading subjects…</span>
+                )}
+              </div>
             </div>
 
             <div className="progress-filters" aria-label="Filter academic evidence">
@@ -242,8 +259,15 @@ export default function AcademicProgressDashboard() {
       )}
 
       <div className="progress-goal-grid">
-        <AcademicTargetPanel goals={goalsQ.data ?? []} subjects={progress.subjects} />
-        <EducationGoalPreview goals={educationGoalsQ.data ?? []} />
+        <AcademicTargetPanel
+          goals={goalsQ.data ?? []}
+          subjects={progress.subjects}
+          isLoading={goalsQ.isLoading}
+        />
+        <EducationGoalPreview
+          goals={educationGoalsQ.data ?? []}
+          isLoading={educationGoalsQ.isLoading}
+        />
       </div>
 
       <p className="progress-disclaimer">{progress.advisory_disclaimer}</p>

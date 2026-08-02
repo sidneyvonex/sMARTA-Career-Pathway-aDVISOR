@@ -1,12 +1,14 @@
 import type { EducationGoal } from '../../api/tertiary'
+import LoadingSkeleton from '../common/dashboard/LoadingSkeleton'
 
 
 interface Props {
   goals: EducationGoal[]
+  isLoading?: boolean
 }
 
 
-export default function EducationGoalPreview({ goals }: Props) {
+export default function EducationGoalPreview({ goals, isLoading = false }: Props) {
   return (
     <section className="progress-panel progress-education" aria-labelledby="education-goal-preview-title">
       <div className="progress-section-heading">
@@ -16,7 +18,9 @@ export default function EducationGoalPreview({ goals }: Props) {
         </div>
       </div>
 
-      {goals.length === 0 ? (
+      {isLoading ? (
+        <LoadingSkeleton label="Loading education goals" rows={2} variant="list" />
+      ) : goals.length === 0 ? (
         <p className="progress-panel__empty">No education goal has been saved yet.</p>
       ) : (
         <div className="progress-education__list">

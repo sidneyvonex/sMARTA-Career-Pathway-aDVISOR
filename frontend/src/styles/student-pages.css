@@ -709,7 +709,7 @@ textarea.student-field__control {
   align-items: end;
   gap: var(--space-8);
   min-height: 224px;
-  padding: clamp(1.75rem, 4vw, 3.25rem);
+  padding: clamp(var(--space-6), 4vw, var(--space-12));
   overflow: hidden;
   color: var(--color-text-on-primary);
   border-radius: var(--radius-2xl);
@@ -789,6 +789,17 @@ textarea.student-field__control {
 
 .progress-section-heading .student-action {
   white-space: nowrap;
+}
+
+.progress-section-action {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: end;
+}
+
+.progress-section-action [role='status'] {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
 }
 
 .progress-filters {
@@ -1146,6 +1157,11 @@ textarea.student-field__control {
   .progress-section-heading .student-action,
   .progress-status {
     width: 100%;
+  }
+
+  .progress-section-action {
+    width: 100%;
+    justify-items: stretch;
   }
 
   .progress-status {
