@@ -444,6 +444,39 @@ def test_active_framework_definitions_reject_manager_mutation(manager_name):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+@pytest.mark.parametrize('update_field', ['code', 'rank', 'framework'])
+def test_definition_managers_reject_conflict_updating_bulk_create(
+    manager_name,
+    update_field,
+):
+    """Catches an upsert mutating an active definition via a draft target."""
+    framework = activate_complete_framework(AssessmentFrameworkFactory())
+    definition = framework.level_definitions.get(code='EE1')
+    draft_target = AssessmentFrameworkFactory()
+    conflict = PerformanceLevelDefinitionFactory.build(
+        id=definition.id,
+        framework=draft_target,
+        code='BYPASS',
+        rank=9,
+    )
+    manager = getattr(PerformanceLevelDefinition, manager_name)
+
+    with pytest.raises(ValidationError, match='conflict-updating bulk create'):
+        manager.bulk_create(
+            [conflict],
+            update_conflicts=True,
+            update_fields=[update_field],
+            unique_fields=['id'],
+        )
+
+    definition.refresh_from_db()
+    assert definition.framework_id == framework.id
+    assert definition.code == 'EE1'
+    assert definition.rank == 8
+
+
+@pytest.mark.django_db
 def test_active_framework_definition_rejects_instance_and_admin_order_mutation():
     """Catches parent-first activation followed by an inline-style deletion."""
     framework = AssessmentFrameworkFactory()

@@ -323,6 +323,10 @@ class PerformanceLevelDefinitionQuerySet(models.QuerySet):
         return super().bulk_update(objs, fields, batch_size=batch_size)
 
     def bulk_create(self, objs, **kwargs):
+        if kwargs.get('update_conflicts'):
+            raise ValidationError(
+                'Performance definition conflict-updating bulk create is disabled.'
+            )
         objs = tuple(objs)
         using = self._write_alias()
         write_queryset = self.using(using)
