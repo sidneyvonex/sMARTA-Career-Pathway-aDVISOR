@@ -6,6 +6,29 @@ from django.db.migrations.executor import MigrationExecutor
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.fixture(autouse=True)
+def restore_complete_migration_graph():
+    """Leave every migration test at the complete graph leaf, including failures."""
+    try:
+        yield
+    finally:
+        executor = MigrationExecutor(connection)
+        applied = executor.loader.applied_migrations
+        tertiary_target = (
+            [('tertiary', '0003_enforce_catalogue_integrity')]
+            if ('tertiary', '0003_enforce_catalogue_integrity') in applied
+            else [('tertiary', '0002_programmesubjectreference_tertiary_subj_mapping_kind_ck')]
+        )
+        apps = executor.loader.project_state(tertiary_target).apps
+        for model_name in (
+            'LearnerEducationGoal', 'ProgrammeSubjectReference',
+            'HistoricalAdmissionReference', 'Programme', 'Institution',
+        ):
+            apps.get_model('tertiary', model_name).objects.all().delete()
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def _old_models():
     executor = MigrationExecutor(connection)
     old_targets = [('tertiary', '0002_programmesubjectreference_tertiary_subj_mapping_kind_ck')]
@@ -98,12 +121,24 @@ def test_0003_rejects_existing_cross_release_parent_links():
         executor.migrate([('tertiary', '0003_enforce_catalogue_integrity')])
 
 
-def test_0003_rejects_whitespace_provenance_before_schema_changes():
+@pytest.mark.parametrize(
+    'whitespace',
+    [
+        '\xa0', '\x85', '\u1680', '\u2000', '\u2007', '\u2028', '\u202f',
+        '\u205f', '\u3000',
+    ],
+    ids=[
+        'nbsp', 'next-line', 'ogham-space', 'en-quad', 'figure-space',
+        'line-separator', 'narrow-nbsp', 'medium-mathematical-space',
+        'ideographic-space',
+    ],
+)
+def test_0003_rejects_whitespace_provenance_before_schema_changes(whitespace):
     """Catches preflight accepting blank provenance or running after additive DDL."""
     old_apps = _old_models()
     Institution = old_apps.get_model('tertiary', 'Institution')
     institution = Institution.objects.create(
-        source_scope=' \t ', external_key='MIG-BLANK',
+        source_scope=whitespace, external_key='MIG-BLANK',
         source_url='https://example.ac.ke/source', education_framework='KCSE',
         admission_cycle='2025/2026', effective_date='2025-03-01',
         verification_status='historical', name='Blank Source University',

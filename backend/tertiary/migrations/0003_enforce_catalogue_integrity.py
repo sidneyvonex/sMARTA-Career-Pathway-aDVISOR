@@ -1,6 +1,6 @@
 from django.db import migrations, models
 from django.db.models import F, Value
-from django.db.models.functions import Length, Replace, Trim
+from django.db.models.functions import Length, Replace
 from django.db.models.lookups import GreaterThan
 
 
@@ -10,6 +10,21 @@ PROVENANCE_FIELDS = (
 )
 VALID_STATUSES = {'verified', 'historical', 'unavailable'}
 AUTHORITY = {'unavailable': 0, 'historical': 1, 'verified': 2}
+# Frozen copy of tertiary.models.SEMANTIC_WHITESPACE: Unicode White_Space plus
+# the four additional C0 separators recognized by Python str.strip/isspace.
+SEMANTIC_WHITESPACE = (
+    '\t', '\n', '\v', '\f', '\r', '\x1c', '\x1d', '\x1e', '\x1f', ' ',
+    '\x85', '\xa0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003',
+    '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200a',
+    '\u2028', '\u2029', '\u202f', '\u205f', '\u3000',
+)
+
+
+def has_semantic_content(value):
+    return (
+        isinstance(value, str)
+        and any(character not in SEMANTIC_WHITESPACE for character in value)
+    )
 
 
 def parent_is_coherent(child, parent):
@@ -33,8 +48,7 @@ def preflight_catalogue_integrity(apps, _schema_editor):
         for record in Model.objects.all().iterator():
             missing = [
                 field for field in PROVENANCE_FIELDS
-                if not isinstance(getattr(record, field), str)
-                or not getattr(record, field).strip()
+                if not has_semantic_content(getattr(record, field))
             ]
             if missing or record.verification_status not in VALID_STATUSES:
                 invalid.append(f'{model_name} {record.pk}')
@@ -146,9 +160,9 @@ def clear_choice_identity(apps, _schema_editor):
 
 def has_non_whitespace(field):
     expression = F(field)
-    for whitespace in ('\t', '\n', '\r', '\v', '\f'):
+    for whitespace in SEMANTIC_WHITESPACE:
         expression = Replace(expression, Value(whitespace), Value(''))
-    return GreaterThan(Length(Trim(expression)), 0)
+    return GreaterThan(Length(expression), 0)
 
 
 def provenance_constraints(model_name, prefix):

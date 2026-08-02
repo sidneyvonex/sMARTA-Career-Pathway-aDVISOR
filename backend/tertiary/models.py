@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Value
-from django.db.models.functions import Length, Replace, Trim
+from django.db.models.functions import Length, Replace
 from django.db.models.lookups import GreaterThan
 
 from accounts.models import StudentProfile
@@ -22,6 +22,15 @@ CATALOGUE_PROTECTED_FIELDS = PROVENANCE_FIELDS | PARENT_FIELDS | frozenset({
     'subject_code', 'subject_name', 'mapping_kind', 'notes',
     'requirement_summary',
 })
+# Unicode White_Space plus the four additional C0 separators treated as
+# whitespace by Python str.strip()/str.isspace(). Keep the migration's frozen
+# copy aligned with this explicit semantic set.
+SEMANTIC_WHITESPACE = (
+    '\t', '\n', '\v', '\f', '\r', '\x1c', '\x1d', '\x1e', '\x1f', ' ',
+    '\x85', '\xa0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003',
+    '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200a',
+    '\u2028', '\u2029', '\u202f', '\u205f', '\u3000',
+)
 
 
 def _protected_write_error(fields):
@@ -56,9 +65,9 @@ class ValidatedCatalogueManager(models.Manager.from_queryset(ValidatedCatalogueQ
 
 def _has_non_whitespace(field):
     expression = F(field)
-    for whitespace in ('\t', '\n', '\r', '\v', '\f'):
+    for whitespace in SEMANTIC_WHITESPACE:
         expression = Replace(expression, Value(whitespace), Value(''))
-    return GreaterThan(Length(Trim(expression)), 0)
+    return GreaterThan(Length(expression), 0)
 
 
 def _provenance_constraints(prefix):

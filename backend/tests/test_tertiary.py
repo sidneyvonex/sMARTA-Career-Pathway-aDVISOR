@@ -1,5 +1,6 @@
 import csv
 from datetime import date
+from unittest.mock import Mock, patch
 
 import pytest
 from django.contrib import admin
@@ -9,6 +10,9 @@ from django.core.management.base import CommandError
 from django.db import IntegrityError, connection, transaction
 from rest_framework.test import APIClient
 
+from tertiary.management.commands.import_tertiary_catalogue import (
+    _lock_catalogue_state,
+)
 from tertiary.models import (
     HistoricalAdmissionReference,
     Institution,
@@ -350,7 +354,13 @@ def test_catalogue_database_constraints_reject_provenance_bypass():
             'source_scope', 'external_key', 'source_url',
             'education_framework', 'admission_cycle',
         )
-        for whitespace in ('   ', '\t\t')
+        for whitespace in (
+            '\t', '\n', '\v', '\f', '\r', '\x1c', '\x1d', '\x1e', '\x1f',
+            ' ', '\x85', '\xa0', '\u1680', '\u2000', '\u2001', '\u2002',
+            '\u2003', '\u2004', '\u2005', '\u2006', '\u2007', '\u2008',
+            '\u2009', '\u200a', '\u2028', '\u2029', '\u202f', '\u205f',
+            '\u3000',
+        )
     ],
 )
 def test_catalogue_database_constraints_reject_whitespace_provenance(
@@ -807,7 +817,7 @@ def test_csv_identity_is_type_aware_and_same_type_duplicates_are_rejected(tmp_pa
         call_command('import_tertiary_catalogue', str(path), dry_run=True)
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_csv_referenced_provenance_failure_happens_before_first_write(tmp_path):
     """Catches late immutable updates relying on rollback after earlier writes."""
     referenced = InstitutionFactory(
@@ -852,3 +862,119 @@ def test_csv_referenced_provenance_failure_happens_before_first_write(tmp_path):
 
     assert writes == []
     assert not Institution.objects.filter(external_key='FIRST-VALID').exists()
+
+
+@pytest.mark.django_db
+def test_csv_locking_uses_one_sorted_union_query_per_catalogue_model():
+    """Catches target and dependent rows being locked in deadlock-prone batches."""
+    updated_institution = InstitutionFactory(external_key='UPDATED-INST')
+    other_institution = InstitutionFactory(external_key='OTHER-INST')
+    dependent_programme = ProgrammeFactory(
+        institution=updated_institution,
+        source_scope=updated_institution.source_scope,
+        external_key='DEPENDENT-PROG',
+    )
+    direct_programme = ProgrammeFactory(
+        institution=other_institution,
+        source_scope=other_institution.source_scope,
+        external_key='DIRECT-PROG',
+    )
+    dependent_subject = ProgrammeSubjectReferenceFactory(
+        programme=direct_programme,
+        source_scope=direct_programme.source_scope,
+        external_key='DEPENDENT-SUBJECT',
+    )
+    direct_subject = ProgrammeSubjectReferenceFactory(
+        programme=direct_programme,
+        source_scope=direct_programme.source_scope,
+        external_key='DIRECT-SUBJECT',
+    )
+    dependent_historical = HistoricalAdmissionReferenceFactory(
+        programme=direct_programme,
+        source_scope=direct_programme.source_scope,
+        external_key='DEPENDENT-HISTORICAL',
+    )
+    direct_historical = HistoricalAdmissionReferenceFactory(
+        programme=direct_programme,
+        source_scope=direct_programme.source_scope,
+        external_key='DIRECT-HISTORICAL',
+    )
+    goal = LearnerEducationGoalFactory(institution=updated_institution)
+    by_type = {
+        'institution': [{
+            'source_scope': updated_institution.source_scope,
+            'external_key': updated_institution.external_key,
+        }],
+        'programme': [{
+            'source_scope': direct_programme.source_scope,
+            'external_key': direct_programme.external_key,
+            'parent_external_key': other_institution.external_key,
+        }],
+        'programme_subject_reference': [{
+            'source_scope': direct_subject.source_scope,
+            'external_key': direct_subject.external_key,
+            'parent_external_key': direct_programme.external_key,
+        }],
+        'historical_admission_reference': [{
+            'source_scope': direct_historical.source_scope,
+            'external_key': direct_historical.external_key,
+            'parent_external_key': direct_programme.external_key,
+        }],
+    }
+
+    managers = (
+        Institution.objects, Programme.objects,
+        ProgrammeSubjectReference.objects, HistoricalAdmissionReference.objects,
+        LearnerEducationGoal.objects,
+    )
+    lock_order = Mock()
+    with (
+        patch.object(
+            managers[0], 'select_for_update',
+            wraps=managers[0].select_for_update,
+        ) as institution_lock,
+        patch.object(
+            managers[1], 'select_for_update',
+            wraps=managers[1].select_for_update,
+        ) as programme_lock,
+        patch.object(
+            managers[2], 'select_for_update',
+            wraps=managers[2].select_for_update,
+        ) as subject_lock,
+        patch.object(
+            managers[3], 'select_for_update',
+            wraps=managers[3].select_for_update,
+        ) as historical_lock,
+        patch.object(
+            managers[4], 'select_for_update',
+            wraps=managers[4].select_for_update,
+        ) as goal_lock,
+        transaction.atomic(),
+    ):
+        lock_order.attach_mock(institution_lock, 'institution')
+        lock_order.attach_mock(programme_lock, 'programme')
+        lock_order.attach_mock(subject_lock, 'subject')
+        lock_order.attach_mock(historical_lock, 'historical')
+        lock_order.attach_mock(goal_lock, 'goal')
+        _institutions, programmes, subjects, historical = _lock_catalogue_state(
+            by_type
+        )
+
+    assert institution_lock.call_count == 1
+    assert programme_lock.call_count == 1
+    assert subject_lock.call_count == 1
+    assert historical_lock.call_count == 1
+    assert goal_lock.call_count == 1
+    assert [call[0] for call in lock_order.mock_calls] == [
+        'institution', 'programme', 'subject', 'historical', 'goal',
+    ]
+    assert [record.pk for record in programmes.values()] == sorted({
+        direct_programme.pk, dependent_programme.pk,
+    })
+    assert [record.pk for record in subjects.values()] == sorted({
+        direct_subject.pk, dependent_subject.pk,
+    })
+    assert [record.pk for record in historical.values()] == sorted({
+        direct_historical.pk, dependent_historical.pk,
+    })
+    assert goal.pk is not None

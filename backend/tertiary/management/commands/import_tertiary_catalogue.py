@@ -216,6 +216,30 @@ def _lock_identities(model, identities):
     }
 
 
+def _identity_pks(model, identities):
+    if not identities:
+        return set()
+    candidates = model.objects.filter(
+        source_scope__in={scope for scope, _key in identities},
+        external_key__in={key for _scope, key in identities},
+    ).values_list('pk', 'source_scope', 'external_key')
+    return {
+        pk for pk, source_scope, external_key in candidates
+        if (source_scope, external_key) in identities
+    }
+
+
+def _lock_pks(model, pks):
+    if not pks:
+        return {}
+    return {
+        (record.source_scope, record.external_key): record
+        for record in model.objects.select_for_update().filter(
+            pk__in=pks
+        ).order_by('pk')
+    }
+
+
 def _lock_catalogue_state(by_type):
     institution_targets = {
         _row_identity(row) for row in by_type['institution']
@@ -238,18 +262,23 @@ def _lock_catalogue_state(by_type):
         )
         for row in by_type[record_type]
     }
-    programmes = _lock_identities(
-        Programme, programme_targets | programme_parents
-    )
     updated_institution_ids = [
         institutions[identity].pk
         for identity in institution_targets
         if identity in institutions
     ]
-    for programme in Programme.objects.select_for_update().filter(
-        institution_id__in=updated_institution_ids
-    ).order_by('pk'):
-        programmes[(programme.source_scope, programme.external_key)] = programme
+    # Institution rows are already held. Supported programme writes acquire
+    # their parent institution before the programme, so dependent-ID discovery
+    # cannot race with a child write. Lock the complete PK union exactly once.
+    programme_pks = _identity_pks(
+        Programme, programme_targets | programme_parents
+    )
+    programme_pks.update(
+        Programme.objects.filter(
+            institution_id__in=updated_institution_ids
+        ).values_list('pk', flat=True)
+    )
+    programmes = _lock_pks(Programme, programme_pks)
 
     updated_programme_ids = [
         programmes[identity].pk
@@ -260,23 +289,28 @@ def _lock_catalogue_state(by_type):
         _row_identity(row)
         for row in by_type['programme_subject_reference']
     }
-    subjects = _lock_identities(ProgrammeSubjectReference, subject_targets)
-    for reference in ProgrammeSubjectReference.objects.select_for_update().filter(
-        programme_id__in=updated_programme_ids
-    ).order_by('pk'):
-        subjects[(reference.source_scope, reference.external_key)] = reference
+    # Programme rows are now held, which stabilizes dependent reference IDs.
+    subject_pks = _identity_pks(ProgrammeSubjectReference, subject_targets)
+    subject_pks.update(
+        ProgrammeSubjectReference.objects.filter(
+            programme_id__in=updated_programme_ids
+        ).values_list('pk', flat=True)
+    )
+    subjects = _lock_pks(ProgrammeSubjectReference, subject_pks)
 
     historical_targets = {
         _row_identity(row)
         for row in by_type['historical_admission_reference']
     }
-    historical = _lock_identities(
+    historical_pks = _identity_pks(
         HistoricalAdmissionReference, historical_targets
     )
-    for reference in HistoricalAdmissionReference.objects.select_for_update().filter(
-        programme_id__in=updated_programme_ids
-    ).order_by('pk'):
-        historical[(reference.source_scope, reference.external_key)] = reference
+    historical_pks.update(
+        HistoricalAdmissionReference.objects.filter(
+            programme_id__in=updated_programme_ids
+        ).values_list('pk', flat=True)
+    )
+    historical = _lock_pks(HistoricalAdmissionReference, historical_pks)
 
     goal_filter = Q()
     if updated_institution_ids:
