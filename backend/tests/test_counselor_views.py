@@ -12,7 +12,7 @@ from tests.factories import (
     StudentSubjectFactory, SubjectCombinationFactory, SubjectFactory,
     LearnerEducationGoalFactory,
 )
-from counselors.models import CounselorIntervention
+from counselors.models import CounselorAssignment, CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from guidance.models import PlanMilestone
 from system_admin.models import AuditLog
@@ -431,6 +431,61 @@ class TestCounselorStatsView:
 
 
 class TestCounselorNotesView:
+    def test_list_hides_notes_after_assignment_ends(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        CounselorNoteFactory(
+            counselor=counselor,
+            student=assigned_student.user,
+        )
+        CounselorAssignment.objects.filter(
+            counselor=counselor,
+            student_profile=assigned_student,
+        ).update(is_active=False)
+        _auth(client, counselor)
+
+        response = client.get(reverse('counselor-notes'))
+
+        assert response.status_code == 200
+        assert response.json()['data'] == []
+
+    @pytest.mark.parametrize('method', ['patch', 'delete'])
+    def test_note_mutations_are_denied_after_assignment_ends(
+        self,
+        client,
+        counselor,
+        assigned_student,
+        method,
+    ):
+        note = CounselorNoteFactory(
+            counselor=counselor,
+            student=assigned_student.user,
+            body='Transfer-safe note.',
+        )
+        CounselorAssignment.objects.filter(
+            counselor=counselor,
+            student_profile=assigned_student,
+        ).update(is_active=False)
+        _auth(client, counselor)
+        url = reverse('counselor-note-detail', args=[note.id])
+
+        if method == 'patch':
+            response = client.patch(
+                url,
+                {'body': 'Former counsellor edit.'},
+                content_type='application/json',
+            )
+        else:
+            response = client.delete(url)
+
+        assert response.status_code == 404
+        note.refresh_from_db()
+        assert note.body == 'Transfer-safe note.'
+        assert note.deleted_at is None
+
     def test_list_notes(self, client, counselor, assigned_student):
         CounselorNoteFactory(counselor=counselor, student=assigned_student.user, body='Note 1')
         _auth(client, counselor)

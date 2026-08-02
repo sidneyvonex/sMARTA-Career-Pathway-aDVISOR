@@ -34,6 +34,17 @@ def _get_assigned_profiles(counselor):
     ).select_related('user', 'school')
 
 
+def _active_assignment(counselor, student_id, *, lock=False):
+    assignments = CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile__user_id=student_id,
+        is_active=True,
+    )
+    if lock:
+        assignments = assignments.select_for_update()
+    return assignments.first()
+
+
 class CounselorPlanReviewView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
@@ -329,10 +340,19 @@ class CounselorStatsView(APIView):
             for profile in profiles
         )
         notes = CounselorNote.objects.filter(
-            counselor=request.user, deleted_at__isnull=True,
+            counselor=request.user,
+            deleted_at__isnull=True,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
         ).count()
         follow_ups_due = CounselorIntervention.objects.filter(
             counselor=request.user,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
             status=CounselorIntervention.STATUS_OPEN,
             follow_up_date__lte=timezone.localdate(),
         ).count()
@@ -352,19 +372,23 @@ class CounselorNotesView(APIView):
 
     def get(self, request):
         notes = CounselorNote.objects.filter(
-            counselor=request.user, deleted_at__isnull=True,
-        ).select_related('student')
+            counselor=request.user,
+            deleted_at__isnull=True,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
+        ).select_related('student').distinct()
         return _success(data=CounselorNoteSerializer(notes, many=True).data)
 
+    @transaction.atomic
     def post(self, request):
         serializer = CounselorNoteCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
 
         student_id = serializer.validated_data['student_id']
-        if not CounselorAssignment.objects.filter(
-            counselor=request.user, student_profile__user_id=student_id, is_active=True,
-        ).exists():
+        if _active_assignment(request.user, student_id, lock=True) is None:
             return _error('You can only write notes for your assigned students.')
 
         note = CounselorNote.objects.create(
@@ -383,14 +407,18 @@ class CounselorNotesView(APIView):
 class CounselorNoteDetailView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
-    def _get_note(self, note_id, user):
-        return CounselorNote.objects.get(
+    def _get_note_for_update(self, note_id, user):
+        note = CounselorNote.objects.select_for_update().get(
             pk=note_id, counselor=user, deleted_at__isnull=True,
         )
+        if _active_assignment(user, note.student_id, lock=True) is None:
+            raise CounselorNote.DoesNotExist
+        return note
 
+    @transaction.atomic
     def patch(self, request, note_id):
         try:
-            note = self._get_note(note_id, request.user)
+            note = self._get_note_for_update(note_id, request.user)
         except CounselorNote.DoesNotExist:
             return _error('Note not found.', status.HTTP_404_NOT_FOUND)
 
@@ -419,9 +447,10 @@ class CounselorNoteDetailView(APIView):
         note.save(update_fields=update_fields)
         return _success(data=CounselorNoteSerializer(note).data, message='Note updated.')
 
+    @transaction.atomic
     def delete(self, request, note_id):
         try:
-            note = self._get_note(note_id, request.user)
+            note = self._get_note_for_update(note_id, request.user)
         except CounselorNote.DoesNotExist:
             return _error('Note not found.', status.HTTP_404_NOT_FOUND)
         note.deleted_at = timezone.now()
@@ -435,7 +464,11 @@ class CounselorInterventionsView(APIView):
     def get(self, request):
         interventions = CounselorIntervention.objects.filter(
             counselor=request.user,
-        ).select_related('student')
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
+        ).select_related('student').distinct()
         return _success(
             data=CounselorInterventionSerializer(
                 interventions,
@@ -450,11 +483,7 @@ class CounselorInterventionsView(APIView):
             return _error(serializer.errors)
 
         student_id = serializer.validated_data.pop('student_id')
-        if not CounselorAssignment.objects.filter(
-            counselor=request.user,
-            student_profile__user_id=student_id,
-            is_active=True,
-        ).exists():
+        if _active_assignment(request.user, student_id, lock=True) is None:
             return _error(
                 'You can only create interventions for your assigned students.'
             )
@@ -504,6 +533,13 @@ class CounselorInterventionDetailView(APIView):
                 .get(pk=intervention_id, counselor=request.user)
             )
         except CounselorIntervention.DoesNotExist:
+            return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
+
+        if _active_assignment(
+            request.user,
+            intervention.student_id,
+            lock=True,
+        ) is None:
             return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
 
         was_learner_visible = intervention.learner_visible

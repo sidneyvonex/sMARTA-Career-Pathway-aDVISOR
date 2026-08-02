@@ -6,7 +6,11 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from counselors.models import CounselorIntervention, CounselorNote
+from counselors.models import (
+    CounselorAssignment,
+    CounselorIntervention,
+    CounselorNote,
+)
 from notifications.models import Notification
 from tests.factories import (
     CounselorAssignmentFactory,
@@ -120,6 +124,62 @@ def test_counselor_can_create_and_list_assigned_learner_intervention(
     assert [item['id'] for item in listed.json()['data']] == [
         response.json()['data']['id'],
     ]
+
+
+def test_intervention_list_hides_records_after_assignment_ends(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Review the learner plan.',
+    )
+    CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile=profile,
+    ).update(is_active=False)
+    _auth(client, counselor)
+
+    response = client.get(reverse('counselor-interventions'))
+
+    assert response.status_code == 200
+    assert response.json()['data'] == []
+
+
+def test_intervention_patch_is_denied_after_assignment_ends_without_notification(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Private support action.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile=profile,
+    ).update(is_active=False)
+    _auth(client, counselor)
+
+    response = client.patch(
+        reverse('counselor-intervention-detail', args=[intervention.pk]),
+        {'learner_visible': True},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 404
+    intervention.refresh_from_db()
+    assert intervention.learner_visible is False
+    assert not Notification.objects.filter(
+        type='counselor_intervention',
+    ).exists()
 
 
 def test_visible_intervention_notifies_learner_and_only_approved_parent(
