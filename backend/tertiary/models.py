@@ -63,7 +63,7 @@ class ValidatedCatalogueManager(models.Manager.from_queryset(ValidatedCatalogueQ
 def _has_non_whitespace(field):
     # MySQL ICU's ``\s`` omits the four C0 separators that Python treats as
     # whitespace, so include them explicitly while keeping the SQL tree flat.
-    return models.Q(**{f'{field}__regex': r'[^\s\x1c-\x1f]'})
+    return models.Q(**{f'{field}__regex': r'[^\s\x0b\x1c-\x1f\x85]'})
 
 
 def _provenance_constraints(prefix):

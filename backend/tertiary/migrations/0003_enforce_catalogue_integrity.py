@@ -157,7 +157,7 @@ def clear_choice_identity(apps, _schema_editor):
 
 def has_non_whitespace(field):
     # Keep Python/SQLite and MySQL ICU aligned for the extra C0 separators.
-    return models.Q(**{f'{field}__regex': r'[^\s\x1c-\x1f]'})
+    return models.Q(**{f'{field}__regex': r'[^\s\x0b\x1c-\x1f\x85]'})
 
 
 def provenance_constraints(model_name, prefix):
