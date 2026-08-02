@@ -24,8 +24,17 @@ function goalErrorMessage(error: unknown): string {
   if (status === 404) return 'That item no longer exists.'
   if (status >= 500) return 'Server error. Please try again in a moment.'
   const message = axiosError.response.data?.message
-  return typeof message === 'string'
-    ? message
+  const flatten = (value: unknown): string[] => {
+    if (typeof value === 'string' && value.trim()) return [value.trim()]
+    if (Array.isArray(value)) return value.flatMap(flatten)
+    if (value && typeof value === 'object') {
+      return Object.values(value).flatMap(flatten)
+    }
+    return []
+  }
+  const details = flatten(message)
+  return details.length > 0
+    ? details.join(' ')
     : 'Something went wrong. Please try again.'
 }
 

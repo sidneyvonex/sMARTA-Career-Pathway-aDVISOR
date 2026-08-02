@@ -100,12 +100,12 @@ describe('SubjectList', () => {
     expect(screen.getByText('Mathematics')).toBeInTheDocument()
   })
 
-  it('renders a remove button per subject', () => {
+  it('renders an archive button per subject', () => {
     const subjects = [
       { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade: 9 as const, category: 'Core' as const, is_active: true }, continuity_code: 'MTH', academic_grade: 9 as const, academic_year: 2026, is_active: true, ended_at: null, created_at: '' },
     ]
     render(<SubjectList enrolledSubjects={subjects} onRemove={() => {}} />, { wrapper: Wrapper })
-    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument()
   })
 
   it('identifies an enrolled subject retired from the current catalogue', () => {
@@ -153,8 +153,8 @@ describe('GradeHistory', () => {
     expect(screen.getByText('Term 1')).toBeInTheDocument()
     expect(screen.getByText('2026')).toBeInTheDocument()
     expect(screen.getByText(/meeting expectation/i)).toBeInTheDocument()
-    expect(screen.getByText('School record')).toBeInTheDocument()
-    expect(screen.getByText('Verified')).toBeInTheDocument()
+    expect(screen.getByText('School entered')).toBeInTheDocument()
+    expect(screen.getByText('School verified')).toBeInTheDocument()
   })
 
   it('distinguishes learner-entered evidence that has not been verified', () => {
@@ -173,7 +173,7 @@ describe('GradeHistory', () => {
     ]
     render(<GradeHistory grades={grades} />, { wrapper: Wrapper })
     expect(screen.getByText('Learner entered')).toBeInTheDocument()
-    expect(screen.getByText('Not verified')).toBeInTheDocument()
+    expect(screen.getByText('Not school verified')).toBeInTheDocument()
   })
 
   it('shows empty state when no grades', () => {

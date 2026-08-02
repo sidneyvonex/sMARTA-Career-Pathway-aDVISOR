@@ -135,4 +135,32 @@ describe('academic goal API', () => {
       'Only an active academic goal can be closed.',
     )).toBeInTheDocument()
   })
+
+  it('flattens field validation feedback into the mutation toast', async () => {
+    server.use(
+      http.patch('/api/v1/students/academic-goals/7/', () => HttpResponse.json(
+        {
+          data: null,
+          error: true,
+          message: {
+            target_term: ['Target period must be later than the current evidence period.'],
+            target_level: ['Target level cannot be lower than the current level.'],
+          },
+        },
+        { status: 400 },
+      )),
+    )
+    const { result } = renderHook(() => useAcademicGoalMutations(), { wrapper })
+
+    await act(async () => {
+      await expect(result.current.update.mutateAsync({
+        goalId: 7,
+        data: { target_term: 1 },
+      })).rejects.toBeTruthy()
+    })
+
+    expect(await screen.findByText(
+      'Target period must be later than the current evidence period. Target level cannot be lower than the current level.',
+    )).toBeInTheDocument()
+  })
 })

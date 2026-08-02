@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
+import toast from 'react-hot-toast'
 
-import { studentsApi, type AcademicGrade, type ProgressEvidence } from '../../api/students'
+import {
+  studentsApi,
+  type AcademicGrade,
+  type ProgressEvidence,
+  type StudentSubject,
+  type Subject,
+} from '../../api/students'
 import { tertiaryApi } from '../../api/tertiary'
 import { academicGoalKeys } from '../../hooks/useAcademicGoalMutations'
 import { educationGoalKeys } from '../../hooks/useEducationGoalMutations'
@@ -13,9 +21,24 @@ import EducationGoalPreview from './EducationGoalPreview'
 import GradeEntryForm from './GradeEntryForm'
 import GradeHistory from './GradeHistory'
 import ProgressSubjectCard from './ProgressSubjectCard'
+import SubjectList from './SubjectList'
 
 
 type FilterValue = 'all' | string
+
+
+function actionErrorMessage(error: unknown): string {
+  const axiosError = error as AxiosError<{ message?: unknown }>
+  if (!axiosError.response) return 'Connection error. Please check your internet.'
+  const status = axiosError.response.status
+  if (status === 403) return "You don't have permission to do that."
+  if (status === 404) return 'That item no longer exists.'
+  if (status >= 500) return 'Server error. Please try again in a moment.'
+  const message = axiosError.response.data?.message
+  return typeof message === 'string' && message.trim()
+    ? message
+    : 'Something went wrong. Please try again.'
+}
 
 
 function matchesFilters(
@@ -30,6 +53,7 @@ function matchesFilters(
 
 
 export default function AcademicProgressDashboard() {
+  const queryClient = useQueryClient()
   const [academicGrade, setAcademicGrade] = useState<FilterValue>('all')
   const [year, setYear] = useState<FilterValue>('all')
   const [recordOpen, setRecordOpen] = useState(false)
@@ -51,10 +75,44 @@ export default function AcademicProgressDashboard() {
     queryKey: ['my-subjects'],
     queryFn: () => studentsApi.getMySubjects().then((response) => response.data.data),
   })
+  const profileQ = useQuery({
+    queryKey: ['student-profile'],
+    queryFn: () => studentsApi.getProfile().then((response) => response.data.data),
+  })
+  const catalogQ = useQuery({
+    queryKey: ['subjects-catalog', profileQ.data?.grade],
+    queryFn: () => studentsApi.getSubjects(profileQ.data!.grade).then((response) => response.data.data),
+    enabled: profileQ.data !== undefined,
+  })
   const gradesQ = useQuery({
     queryKey: ['grades', activeSubjectId],
     queryFn: () => studentsApi.getGrades(activeSubjectId!).then((response) => response.data.data),
     enabled: activeSubjectId !== null,
+  })
+  const refreshAcademicEvidence = () => {
+    queryClient.invalidateQueries({ queryKey: ['my-subjects'] })
+    queryClient.invalidateQueries({ queryKey: ['students', 'academic-progress'] })
+    queryClient.invalidateQueries({ queryKey: academicGoalKeys.all })
+  }
+  const enroll = useMutation({
+    mutationFn: (subject: Subject) => studentsApi.enrollSubject(subject.id)
+      .then((response) => ({ response, subject })),
+    onSuccess: ({ response, subject }) => {
+      toast.success(`${subject.name} added to your subjects.`)
+      setActiveSubjectId(response.data.data.id)
+      refreshAcademicEvidence()
+    },
+    onError: (error) => toast.error(actionErrorMessage(error)),
+  })
+  const archive = useMutation({
+    mutationFn: (subject: StudentSubject) => studentsApi.removeSubject(subject.id)
+      .then((response) => ({ response, subject })),
+    onSuccess: ({ subject }) => {
+      toast.success(`${subject.subject.name} removed.`)
+      if (activeSubjectId === subject.id) setActiveSubjectId(null)
+      refreshAcademicEvidence()
+    },
+    onError: (error) => toast.error(actionErrorMessage(error)),
   })
 
   const progress = progressQ.data
@@ -72,7 +130,10 @@ export default function AcademicProgressDashboard() {
     return <LoadingSkeleton label="Loading academic progress" rows={6} variant="page" />
   }
 
-  if (progressQ.isError || goalsQ.isError || educationGoalsQ.isError || subjectsQ.isError) {
+  if (
+    progressQ.isError || goalsQ.isError || educationGoalsQ.isError ||
+    subjectsQ.isError || profileQ.isError || catalogQ.isError
+  ) {
     return (
       <ErrorState
         title="Academic progress could not load"
@@ -83,6 +144,8 @@ export default function AcademicProgressDashboard() {
           goalsQ.refetch()
           educationGoalsQ.refetch()
           subjectsQ.refetch()
+          profileQ.refetch()
+          if (profileQ.data) catalogQ.refetch()
         }}
         secondaryAction={{ label: 'Return to dashboard', to: '/' }}
       />
@@ -92,6 +155,10 @@ export default function AcademicProgressDashboard() {
   if (!progress) return null
 
   const subjects = subjectsQ.data ?? []
+  const enrolledSubjectIds = new Set(subjects.map((item) => item.subject.id))
+  const availableSubjects = (catalogQ.data ?? []).filter(
+    (subject) => !enrolledSubjectIds.has(subject.id),
+  )
   const openRecordPanel = () => {
     setActiveSubjectId((current) => current ?? subjects[0]?.id ?? null)
     setRecordOpen(true)
@@ -113,12 +180,56 @@ export default function AcademicProgressDashboard() {
         </div>
       </header>
 
+      <section className="progress-panel progress-subject-management" aria-labelledby="manage-subjects-title">
+        <div className="progress-section-heading">
+          <div>
+            <h2 id="manage-subjects-title">Manage subjects</h2>
+            <p>Keep your active subjects current. Archiving preserves their recorded history.</p>
+          </div>
+        </div>
+        {subjectsQ.isLoading || profileQ.isLoading || catalogQ.isLoading ? (
+          <LoadingSkeleton label="Loading subject management" rows={2} variant="list" />
+        ) : (
+          <div className="progress-subject-management__grid">
+            <div>
+              <h3>Active subjects</h3>
+              <SubjectList
+                enrolledSubjects={subjects}
+                onRemove={(subject) => archive.mutate(subject)}
+                disabled={archive.isPending || enroll.isPending}
+              />
+            </div>
+            <div>
+              <h3>Add a subject</h3>
+              {availableSubjects.length > 0 ? (
+                <div className="subject-picker">
+                  {availableSubjects.map((subject) => (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      className="subject-picker__button"
+                      onClick={() => enroll.mutate(subject)}
+                      disabled={archive.isPending || enroll.isPending}
+                      aria-label={`Add ${subject.name}`}
+                    >
+                      <span aria-hidden="true">+</span> {subject.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="progress-panel__empty">All current catalogue subjects are active.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
       {progress.subjects.length === 0 ? (
         <>
           <EmptyState
             title="Start your academic evidence"
             description="Record a term result to begin building an explainable subject progress view."
-            action={subjectsQ.isLoading
+            action={subjectsQ.isLoading || subjects.length === 0
               ? undefined
               : { label: 'Record your first result', onClick: openRecordPanel }}
           />
@@ -248,7 +359,7 @@ export default function AcademicProgressDashboard() {
                         actionLabel="Retry grade history"
                       />
                     ) : (
-                      <GradeHistory grades={gradesQ.data ?? []} />
+                      <GradeHistory grades={gradesQ.data ?? []} studentSubjectId={activeSubjectId} />
                     )}
                   </div>
                 </>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
@@ -10,6 +10,7 @@ import type { ProgressAssessment, ProgressEvidence, SubjectProgress } from '../a
 import { getBaseNavItems } from '../components/shell/navItems'
 import GradeEntryForm from '../components/students/GradeEntryForm'
 import GradesPage from '../pages/GradesPage'
+import { academicGoalFixture } from './msw/handlers'
 import { server } from './msw/server'
 
 
@@ -135,6 +136,7 @@ describe('flagged My Progress dashboard', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   it('summarises every readiness status with explainable evidence and an accessible trend table', async () => {
@@ -222,6 +224,101 @@ describe('flagged My Progress dashboard', () => {
     expect(await screen.findByText('Academic goal created.')).toBeInTheDocument()
   })
 
+  it('supports academic-target readiness, update, confirmation, close, and lifecycle history', async () => {
+    const activeReady = academicGoalFixture({ id: 12, continuity_code: 'MTH' })
+    const activeWaiting = academicGoalFixture({
+      id: 13,
+      continuity_code: 'ENG',
+      ready_for_achievement: false,
+      readiness_evidence: null,
+    })
+    let goals = [
+      activeReady,
+      activeWaiting,
+      academicGoalFixture({
+        id: 14,
+        continuity_code: 'BIO',
+        status: 'achieved',
+        achieved_at: '2026-08-01T10:00:00Z',
+      }),
+      academicGoalFixture({
+        id: 15,
+        continuity_code: 'CHE',
+        status: 'closed',
+        closed_at: '2026-08-01T10:00:00Z',
+      }),
+    ]
+    server.use(
+      http.get('/api/v1/students/progress/', () => progressResponse()),
+      http.get('/api/v1/students/academic-goals/', () => HttpResponse.json({
+        data: goals, error: null, message: '',
+      })),
+      http.patch('/api/v1/students/academic-goals/12/', async ({ request }) => {
+        const body = await request.json() as Record<string, unknown>
+        await delay(80)
+        goals = goals.map((goal) => goal.id === 12
+          ? { ...goal, action_plan: body.action_plan as string }
+          : goal)
+        return HttpResponse.json({
+          data: goals.find((goal) => goal.id === 12),
+          error: null,
+          message: 'Academic goal updated.',
+        })
+      }),
+      http.post('/api/v1/students/academic-goals/12/confirm-achievement/', () => {
+        goals = goals.map((goal) => goal.id === 12
+          ? { ...goal, status: 'achieved' as const, achieved_at: '2026-08-02T10:00:00Z' }
+          : goal)
+        return HttpResponse.json({
+          data: goals.find((goal) => goal.id === 12),
+          error: null,
+          message: 'Academic goal achieved.',
+        })
+      }),
+      http.delete('/api/v1/students/academic-goals/13/', () => {
+        goals = goals.map((goal) => goal.id === 13
+          ? { ...goal, status: 'closed' as const, closed_at: '2026-08-02T10:00:00Z' }
+          : goal)
+        return HttpResponse.json({
+          data: goals.find((goal) => goal.id === 13),
+          error: null,
+          message: 'Academic goal closed.',
+        })
+      }),
+    )
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    renderPage()
+    expect(await screen.findByText('Ready to confirm achievement')).toBeInTheDocument()
+    expect(screen.getByText('Waiting for later evidence')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Target history' })).toBeInTheDocument()
+    expect(screen.getByText('Achieved')).toBeInTheDocument()
+    expect(screen.getByText('Closed')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit Mathematics target' }))
+    await user.clear(screen.getByLabelText('Action plan'))
+    await user.type(screen.getByLabelText('Action plan'), 'Attend weekly support sessions.')
+    await user.click(screen.getByRole('button', { name: 'Update target' }))
+    expect(screen.getByRole('button', { name: 'Updating target…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(await screen.findByText('Academic goal updated.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Confirm Mathematics achieved' }))
+    expect(confirm).toHaveBeenCalledWith(
+      'Confirm that Mathematics has achieved this target using the latest qualifying evidence?',
+    )
+    expect(await screen.findByText('Academic goal achieved.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close English target' }))
+    expect(confirm).toHaveBeenCalledWith(
+      'Close the English target? It will remain in target history.',
+    )
+    expect(await screen.findByText('Academic goal closed.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getAllByText('Achieved')).toHaveLength(2))
+    expect(screen.getAllByText('Closed')).toHaveLength(2)
+  })
+
   it('previews education goals without presenting admission claims', async () => {
     server.use(http.get('/api/v1/students/progress/', () => progressResponse()))
 
@@ -297,12 +394,16 @@ describe('flagged My Progress dashboard', () => {
 
   it('refreshes the progress summary after saving new grade evidence', async () => {
     let progressRequests = 0
+    let goalRequests = 0
     server.use(http.get('/api/v1/students/progress/', () => {
       progressRequests += 1
       return progressResponse(progressRequests === 1 ? progressFixture : {
         ...progressFixture,
         overall: { status: 'strong', label: 'Strong', subject_continuity_codes: ['MTH'] },
       })
+    }), http.get('/api/v1/students/academic-goals/', () => {
+      goalRequests += 1
+      return HttpResponse.json({ data: [], error: null, message: '' })
     }))
     const user = userEvent.setup()
 
@@ -314,6 +415,112 @@ describe('flagged My Progress dashboard', () => {
 
     expect(await within(summary).findByText('Strong')).toBeInTheDocument()
     expect(progressRequests).toBe(2)
+    await waitFor(() => expect(goalRequests).toBe(2))
+  })
+
+  it('preserves subject enrolment and archive management on the unified page', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    renderPage()
+    expect(await screen.findByRole('heading', { name: 'Manage subjects' })).toBeInTheDocument()
+
+    await user.click(await screen.findByRole('button', { name: 'Add English' }))
+    expect(await screen.findByText('English added to your subjects.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Archive Mathematics' }))
+    expect(confirm).toHaveBeenCalledWith(
+      'Archive Mathematics? Its existing grade history will be preserved.',
+    )
+    expect(await screen.findByText('Mathematics removed.')).toBeInTheDocument()
+  })
+
+  it('offers subject enrolment instead of a dead-end record action when none are active', async () => {
+    server.use(
+      http.get('/api/v1/students/my-subjects/', () => HttpResponse.json({
+        data: [], error: null, message: '',
+      })),
+      http.get('/api/v1/students/progress/', () => progressResponse({
+        ...progressFixture,
+        subjects: [],
+        overall: {
+          status: 'insufficient_evidence',
+          label: 'Insufficient evidence',
+          subject_continuity_codes: [],
+        },
+      })),
+    )
+
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Manage subjects' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Add Mathematics' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Record your first result' })).not.toBeInTheDocument()
+  })
+
+  it('edits and deletes only mutable evidence and refreshes goal readiness', async () => {
+    let goalRequests = 0
+    let updateRequests = 0
+    let deleteRequests = 0
+    server.use(
+      http.get('/api/v1/students/academic-goals/', () => {
+        goalRequests += 1
+        return HttpResponse.json({ data: [], error: null, message: '' })
+      }),
+      http.get('/api/v1/students/my-subjects/:id/grades/', () => HttpResponse.json({
+        data: [
+          {
+            id: 20, term: 1, year: 2026, level: 'ME1', source: 'learner',
+            verified_by: null, verified_school: null, verified_at: null,
+            created_at: '2026-06-14T10:00:00Z', updated_at: '2026-06-14T10:00:00Z',
+          },
+          {
+            id: 21, term: 2, year: 2026, level: 'EE2', source: 'learner',
+            verified_by: null, verified_school: 3, verified_at: null,
+            created_at: '2026-07-14T10:00:00Z', updated_at: '2026-07-14T10:00:00Z',
+          },
+        ],
+        error: null,
+        message: '',
+      })),
+      http.put('/api/v1/students/my-subjects/:subjectId/grades/:gradeId/', async ({ request }) => {
+        updateRequests += 1
+        const body = await request.json() as Record<string, unknown>
+        return HttpResponse.json({
+          data: {
+            id: 20, term: body.term, year: body.year, level: body.level,
+            source: 'learner', verified_by: null, verified_school: null, verified_at: null,
+            created_at: '2026-06-14T10:00:00Z', updated_at: '2026-08-02T10:00:00Z',
+          },
+          error: null,
+          message: 'Grade updated.',
+        })
+      }),
+      http.delete('/api/v1/students/my-subjects/:subjectId/grades/:gradeId/', () => {
+        deleteRequests += 1
+        return HttpResponse.json({ data: null, error: null, message: 'Grade deleted.' })
+      }),
+    )
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Record a result' }))
+    expect(await screen.findByRole('button', { name: 'Edit Term 1 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Term 1 2026' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Term 2 2026' })).not.toBeInTheDocument()
+    expect(screen.getByText('Verification removed; school provenance retained')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit Term 1 2026' }))
+    await user.selectOptions(screen.getByLabelText('Edit level for Term 1 2026'), 'EE1')
+    await user.click(screen.getByRole('button', { name: 'Save grade changes' }))
+    expect(await screen.findByText('Grade updated.')).toBeInTheDocument()
+    expect(updateRequests).toBe(1)
+
+    await user.click(screen.getByRole('button', { name: 'Delete Term 1 2026' }))
+    expect(await screen.findByText('Grade entry removed.')).toBeInTheDocument()
+    expect(deleteRequests).toBe(1)
+    await waitFor(() => expect(goalRequests).toBeGreaterThanOrEqual(3))
   })
 
   it('uses the term-specific grade-saved toast after a successful save', async () => {

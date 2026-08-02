@@ -104,7 +104,8 @@ function LegacyGradesPage() {
             {subjectsQ.isLoading ? <p>Loading…</p> : (
               <SubjectList
                 enrolledSubjects={enrolled}
-                onRemove={(id) => removeMutation.mutate(id)}
+                onRemove={(subject) => removeMutation.mutate(subject.id)}
+                disabled={removeMutation.isPending}
               />
             )}
           </section>

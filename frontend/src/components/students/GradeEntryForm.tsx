@@ -8,6 +8,7 @@ import {
   GRADE_LEVEL_LABELS,
   GRADE_LEVEL_ORDER,
 } from '../../api/students'
+import { academicGoalKeys } from '../../hooks/useAcademicGoalMutations'
 
 interface Props {
   studentSubjectId: number
@@ -41,6 +42,7 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
       toast.success(`Grade saved for Term ${term}.`)
       queryClient.invalidateQueries({ queryKey: ['grades', studentSubjectId] })
       queryClient.invalidateQueries({ queryKey: ['students', 'academic-progress'] })
+      queryClient.invalidateQueries({ queryKey: academicGoalKeys.all })
     },
     onError: (error) => toast.error(gradeErrorMessage(error)),
   })
