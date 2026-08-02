@@ -1,6 +1,9 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from django.urls import reverse
+from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
     AcademicGoalFactory, CBCGradeFactory,
@@ -276,6 +279,56 @@ class TestCounselorStudentDetailView:
         assert data['education_goals'][0]['id'] == education_goal.id
         assert data['education_goals'][0]['institution']['source_url']
         assert 'private_notes' not in data
+
+    def test_detail_queries_stay_bounded_with_representative_progress_context(
+        self,
+        counselor,
+        assigned_student,
+    ):
+        for index in range(5):
+            enrollment = StudentSubjectFactory(
+                student_profile=assigned_student,
+                subject=SubjectFactory(code=f'CQRY{index}9', grade=9),
+            )
+            evidence = CBCGradeFactory(
+                student_subject=enrollment,
+                term=1,
+                year=2026,
+                level='ME1',
+            )
+            AcademicGoalFactory(
+                learner=assigned_student,
+                current_evidence=evidence,
+                created_by=assigned_student.user,
+            )
+        LearnerEducationGoalFactory(learner=assigned_student)
+        LearnerEducationGoalFactory(
+            learner=assigned_student,
+            kind='alternative',
+            priority=1,
+        )
+        LearnerEducationGoalFactory(
+            learner=assigned_student,
+            kind='alternative',
+            priority=2,
+        )
+        api_client = APIClient()
+        api_client.force_authenticate(counselor)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = api_client.get(
+                reverse(
+                    'counselor-student-detail',
+                    args=[assigned_student.user_id],
+                )
+            )
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert len(data['academic_progress']['subjects']) == 5
+        assert len(data['academic_goals']) == 5
+        assert len(data['education_goals']) == 3
+        assert len(captured) <= 17
 
     def test_returns_attention_evidence_choices_plan_and_interventions(
         self,

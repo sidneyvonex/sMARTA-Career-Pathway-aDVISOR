@@ -1,4 +1,6 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 from tests.factories import (
     AcademicGoalFactory, LearnerEducationGoalFactory,
@@ -425,6 +427,50 @@ class TestParentChildDetailView:
         assert data['education_goals'][0]['id'] == education_goal.id
         assert data['parent_visible_notes'] == []
         assert 'Safeguarding note' not in str(data)
+
+    def test_detail_queries_stay_bounded_with_representative_progress_context(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        for index in range(5):
+            enrollment = StudentSubjectFactory(
+                student_profile=profile,
+                subject=SubjectFactory(code=f'PQRY{index}9', grade=9),
+            )
+            evidence = CBCGradeFactory(
+                student_subject=enrollment,
+                term=1,
+                year=2026,
+                level='ME1',
+            )
+            AcademicGoalFactory(
+                learner=profile,
+                current_evidence=evidence,
+                created_by=student,
+            )
+        LearnerEducationGoalFactory(learner=profile)
+        LearnerEducationGoalFactory(
+            learner=profile,
+            kind='alternative',
+            priority=1,
+        )
+        LearnerEducationGoalFactory(
+            learner=profile,
+            kind='alternative',
+            priority=2,
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(parent)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get(self._url(student.id))
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert len(data['academic_progress']['subjects']) == 5
+        assert len(data['academic_goals']) == 5
+        assert len(data['education_goals']) == 3
+        assert len(captured) <= 13
 
 
 class TestRIASECParentNotification:

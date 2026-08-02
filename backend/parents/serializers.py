@@ -318,7 +318,11 @@ class ChildDetailSerializer(serializers.Serializer):
         return ChildProfileSerializer(profile).data
 
     def get_subjects(self, profile):
-        subjects = profile.enrolled_subjects.all()
+        subjects = getattr(
+            profile,
+            'support_enrolments',
+            profile.enrolled_subjects.all(),
+        )
         return ChildSubjectSerializer(subjects, many=True).data
 
     def get_assessment(self, profile):
@@ -329,7 +333,11 @@ class ChildDetailSerializer(serializers.Serializer):
         return AssessmentResultSerializer(assessment).data
 
     def get_academic_readiness(self, profile):
-        enrollments = list(profile.enrolled_subjects.all())
+        enrollments = list(getattr(
+            profile,
+            'support_enrolments',
+            profile.enrolled_subjects.all(),
+        ))
         grade_counts = [len(list(item.grades.all())) for item in enrollments]
         total_subjects = len(enrollments)
         subjects_with_evidence = sum(count > 0 for count in grade_counts)

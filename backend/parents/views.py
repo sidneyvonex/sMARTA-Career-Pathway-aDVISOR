@@ -14,8 +14,10 @@ from counselors.models import (
 )
 from guidance.models import LearnerCombinationChoice
 from riasec.models import RIASECAssessment
-from students.models import StudentSubject
-from students.role_support import academic_support_context
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolment_queryset,
+)
 from parents.models import ParentStudentLink
 from system_admin.utils import log_action
 from parents.serializers import (
@@ -82,9 +84,8 @@ class ParentChildDetailView(APIView):
                 .prefetch_related(
                     Prefetch(
                         'enrolled_subjects',
-                        queryset=StudentSubject.objects
-                        .select_related('subject')
-                        .prefetch_related('grades'),
+                        queryset=academic_support_enrolment_queryset(),
+                        to_attr='support_enrolments',
                     ),
                     Prefetch(
                         'riasec_assessments',

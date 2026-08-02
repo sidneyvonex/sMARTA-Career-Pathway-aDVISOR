@@ -2,7 +2,6 @@ import re
 from datetime import date
 
 from django.conf import settings
-from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -14,8 +13,11 @@ from accounts.response import _error
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
-from students.models import CBCGrade, StudentSubject, GRADE_LEVEL_CHOICES
-from students.role_support import academic_support_context
+from students.models import GRADE_LEVEL_CHOICES
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolments,
+)
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
 from .pdf_builder import build_student_report
@@ -40,8 +42,12 @@ class StudentReportView(APIView):
         if not self._has_access(request.user, student, profile):
             return _error("You don't have permission to do that.", 403)
 
-        subjects_data = self._get_subjects_data(profile)
-        support_context = academic_support_context(profile)
+        support_enrolments = academic_support_enrolments(profile)
+        subjects_data = self._get_subjects_data(profile, support_enrolments)
+        support_context = academic_support_context(
+            profile,
+            enrolments=support_enrolments,
+        )
         riasec_data, recommendations_data = self._get_riasec_data(profile)
 
         if not subjects_data and riasec_data is None:
@@ -184,20 +190,9 @@ class StudentReportView(APIView):
             ).exists()
         return False
 
-    def _get_subjects_data(self, profile):
-        enrollments = (
-            StudentSubject.objects
-            .filter(student_profile=profile)
-            .select_related('subject')
-            .prefetch_related(
-                Prefetch(
-                    'grades',
-                    queryset=CBCGrade.objects.select_related(
-                        'framework', 'verified_school'
-                    ),
-                )
-            )
-        )
+    def _get_subjects_data(self, profile, enrollments=None):
+        if enrollments is None:
+            enrollments = academic_support_enrolments(profile)
         subjects = []
         for enrollment in enrollments:
             grades = [

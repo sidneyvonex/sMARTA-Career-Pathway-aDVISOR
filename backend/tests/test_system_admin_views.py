@@ -1,4 +1,6 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 from tests.factories import (
     AssessmentFrameworkFactory,
@@ -351,6 +353,20 @@ class TestAcademicSourceMetadataView:
         )
         assert entry.details['previous_status'] == 'retired'
         assert entry.details['status'] == 'active'
+
+    def test_metadata_queries_stay_bounded_as_source_records_grow(self):
+        for _index in range(5):
+            AssessmentFrameworkFactory()
+            institution = InstitutionFactory()
+            ProgrammeFactory(institution=institution)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get('/api/v1/system-admin/source-metadata/')
+
+        assert response.status_code == 200
+        assert len(response.data['data']['assessment_frameworks']) >= 5
+        assert len(response.data['data']['tertiary_sources']) >= 10
+        assert len(captured) <= 3
 
     def test_source_metadata_requires_system_admin(self):
         client = APIClient()

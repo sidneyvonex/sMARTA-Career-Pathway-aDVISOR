@@ -1,5 +1,7 @@
 import io
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from pypdf import PdfReader
 from rest_framework.test import APIClient
 from django.utils import timezone
@@ -11,6 +13,7 @@ from tests.factories import (
     CounselorAssignmentFactory, SchoolFactory, SchoolAdminFactory,
     ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
     StudentSubjectFactory, CBCGradeFactory, AcademicGoalFactory,
+    SubjectFactory,
     LearnerEducationGoalFactory,
     RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
     RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
@@ -605,6 +608,58 @@ class TestStudentReportViewEdgeCases:
         assert exported_grade['framework']['version'] == grade.framework.version
         assert exported_grade['verified_school'] == 'Evidence School'
         assert exported_grade['source'] == 'school'
+
+    def test_report_assembly_queries_stay_bounded_as_progress_records_grow(
+        self,
+        monkeypatch,
+    ):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        for index in range(5):
+            enrollment = StudentSubjectFactory(
+                student_profile=profile,
+                subject=SubjectFactory(code=f'RQRY{index}9', grade=9),
+            )
+            evidence = CBCGradeFactory(
+                student_subject=enrollment,
+                term=1,
+                year=2026,
+                level='ME1',
+            )
+            AcademicGoalFactory(
+                learner=profile,
+                current_evidence=evidence,
+                created_by=student,
+            )
+        LearnerEducationGoalFactory(learner=profile)
+        LearnerEducationGoalFactory(
+            learner=profile,
+            kind='alternative',
+            priority=1,
+        )
+        LearnerEducationGoalFactory(
+            learner=profile,
+            kind='alternative',
+            priority=2,
+        )
+        captured_report = {}
+
+        def capture_report(data):
+            captured_report.update(data)
+            return b'%PDF-1.4 test'
+
+        monkeypatch.setattr('reports.views.build_student_report', capture_report)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get(
+                f'/api/v1/reports/student/{student.id}/pdf/'
+            )
+
+        assert response.status_code == 200
+        assert len(captured_report['subjects']) == 5
+        assert len(captured_report['academic_goals']) == 5
+        assert len(captured_report['education_goals']) == 3
+        assert len(captured) <= 13
 
     def test_invalid_student_id_returns_404(self):
         # <int:student_id> URL converter rejects non-numeric IDs at routing level.

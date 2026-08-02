@@ -9,9 +9,11 @@ from accounts.response import _success, _error
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
-from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
-from students.role_support import academic_support_context
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolments,
+)
 from system_admin.utils import log_action
 from notifications.models import Notification
 from parents.models import ParentStudentLink
@@ -184,16 +186,15 @@ class CounselorStudentDetailView(APIView):
         if latest_assessment:
             riasec_result = AssessmentResultSerializer(latest_assessment).data
 
-        grades_qs = CBCGrade.objects.filter(
-            student_subject__student_profile=profile,
-        ).select_related('student_subject__subject')
+        support_enrolments = academic_support_enrolments(profile)
         grades = [
             {
-                'subject_name': g.student_subject.subject.name,
-                'subject_code': g.student_subject.subject.code,
+                'subject_name': enrollment.subject.name,
+                'subject_code': enrollment.subject.code,
                 **CBCGradeSerializer(g).data,
             }
-            for g in grades_qs
+            for enrollment in support_enrolments
+            for g in enrollment.grades.all()
         ]
 
         notes_count = CounselorNote.objects.filter(
@@ -273,7 +274,10 @@ class CounselorStudentDetailView(APIView):
             student_id=student_id,
         ).select_related('student')
 
-        support_context = academic_support_context(profile)
+        support_context = academic_support_context(
+            profile,
+            enrolments=support_enrolments,
+        )
         return _success(data={
             'student': student_data,
             'riasec_result': riasec_result,
