@@ -7,6 +7,13 @@ from django.utils import timezone
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.fixture(autouse=True)
+def restore_leaf_migrations():
+    yield
+    executor = MigrationExecutor(connection)
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_membership_backfill_preserves_profile_state_and_academic_evidence():
     """Catches a transfer rollout dropping legacy links or grade history."""
     executor = MigrationExecutor(connection)

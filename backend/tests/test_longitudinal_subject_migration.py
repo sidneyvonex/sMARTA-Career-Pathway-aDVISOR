@@ -9,6 +9,13 @@ from django.db.migrations.exceptions import IrreversibleError
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.fixture(autouse=True)
+def restore_leaf_migrations():
+    yield
+    executor = MigrationExecutor(connection)
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_longitudinal_subject_backfill_preserves_identity_and_earliest_evidence_year():
     executor = MigrationExecutor(connection)
     old_targets = [
@@ -39,8 +46,24 @@ def test_longitudinal_subject_backfill_preserves_identity_and_earliest_evidence_
         school_membership_status='not_applicable',
         grade=10,
     )
-    english_nine = Subject.objects.get(code='ENG9')
-    english_ten = Subject.objects.get(code='ENG10')
+    english_nine, _ = Subject.objects.get_or_create(
+        code='ENG9',
+        defaults={
+            'name': 'English Grade 9',
+            'grade': 9,
+            'category': 'Core',
+            'is_active': True,
+        },
+    )
+    english_ten, _ = Subject.objects.get_or_create(
+        code='ENG10',
+        defaults={
+            'name': 'English Grade 10',
+            'grade': 10,
+            'category': 'Core',
+            'is_active': True,
+        },
+    )
     evidenced = StudentSubject.objects.create(
         student_profile=profile,
         subject=english_nine,
@@ -52,7 +75,20 @@ def test_longitudinal_subject_backfill_preserves_identity_and_earliest_evidence_
     StudentSubject.objects.filter(pk=no_evidence.pk).update(
         created_at=datetime(2024, 2, 3, tzinfo=timezone.utc)
     )
-    junior_framework = AssessmentFramework.objects.get(scope='junior_school', status='active')
+    junior_framework = AssessmentFramework.objects.filter(
+        scope='junior_school',
+        status='active',
+    ).first()
+    if junior_framework is None:
+        junior_framework = AssessmentFramework.objects.create(
+            code='CBC-JUNIOR-SCHOOL',
+            version='migration-test',
+            title='Migration test junior school framework',
+            scope='junior_school',
+            source_url='https://kicd.ac.ke/curriculum-reform/',
+            effective_date='2026-01-01',
+            status='active',
+        )
     CBCGrade.objects.create(
         student_subject=evidenced,
         framework=junior_framework,

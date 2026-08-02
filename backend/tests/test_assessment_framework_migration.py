@@ -8,6 +8,13 @@ from django.db.migrations.executor import MigrationExecutor
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+@pytest.fixture(autouse=True)
+def restore_leaf_migrations():
+    yield
+    executor = MigrationExecutor(connection)
+    executor.migrate(executor.loader.graph.leaf_nodes())
+
+
 def test_pilot_framework_seed_and_existing_grade_backfill_preserve_evidence():
     """Catches invented ranges or destructive changes to migrated grade evidence."""
     executor = MigrationExecutor(connection)

@@ -14,9 +14,10 @@ import accounts.models as account_models
 from accounts.serializers import StudentRegistrationSerializer
 from notifications.models import Notification
 from system_admin.models import AuditLog
-from students.models import CBCGrade
+from students.models import AssessmentFramework, CBCGrade
 from students.views import CBCGradeDetailView
 from tests.factories import (
+    AssessmentFrameworkFactory,
     CBCGradeFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
@@ -684,6 +685,14 @@ class TestMembershipVerificationSafety:
         monkeypatch,
     ):
         """Catches learner deletion committing from a stale pre-verification read."""
+        if not AssessmentFramework.objects.filter(
+            scope='junior_school',
+            status='active',
+        ).exists():
+            AssessmentFrameworkFactory(
+                scope='junior_school',
+                status='active',
+            )
         school = SchoolFactory()
         admin = SchoolAdminFactory(school=school)
         profile = StudentProfileFactory(
