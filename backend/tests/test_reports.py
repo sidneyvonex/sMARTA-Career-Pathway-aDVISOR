@@ -15,6 +15,7 @@ from tests.factories import (
     RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
     RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
     SubjectCombinationFactory,
+    StudentSchoolMembershipFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -284,6 +285,20 @@ class TestPDFBuilder:
         assert 'advisory only' in normalized
         assert 'eligibility probability' not in normalized.lower()
 
+    def test_pdf_labels_retained_provenance_as_removed_verification(self):
+        data = self._make_data()
+        data['subjects'][0]['grades'][0].update({
+            'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'},
+            'source': 'school',
+            'verified_school': 'Starehe Boys Centre',
+            'verified_at': None,
+        })
+
+        normalized = ' '.join(_extract_pdf_text(build_student_report(data)).split())
+
+        assert 'Previously verified by Starehe Boys Centre; verification removed' in normalized
+        assert 'Verified by Starehe Boys Centre' not in normalized
+
 
 # ---------------------------------------------------------------------------
 # Task 2: StudentReportView — Permissions + Data Assembly
@@ -357,6 +372,24 @@ class TestStudentReportViewPermissions:
         self.profile.save(update_fields=['school', 'mode', 'school_membership_status'])
         self.client.force_authenticate(admin)
         response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
+        assert response.status_code == 403
+
+    def test_school_admin_cannot_download_when_ended_membership_conflicts_with_stale_profile(self):
+        school = SchoolFactory()
+        admin = SchoolAdminFactory(school=school)
+        self.profile.school = school
+        self.profile.mode = 'school_linked'
+        self.profile.school_membership_status = 'active'
+        self.profile.save(update_fields=['school', 'mode', 'school_membership_status'])
+        StudentSchoolMembershipFactory(
+            student_profile=self.profile,
+            school=school,
+            status='ended',
+        )
+        self.client.force_authenticate(admin)
+
+        response = self.client.get(f'/api/v1/reports/student/{self.student.id}/pdf/')
+
         assert response.status_code == 403
 
     def test_school_admin_different_school_cannot_download(self):

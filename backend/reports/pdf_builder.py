@@ -202,10 +202,14 @@ def build_student_report(data):
                         f"{grade_framework.get('version', '')}; "
                         f"{str(g.get('source') or 'learner').title()}-entered"
                     )
-                    if g.get('verified_school'):
+                    if g.get('verified_school') and g.get('verified_at'):
                         provenance += f"; Verified by {g['verified_school']}"
-                        if g.get('verified_at'):
-                            provenance += f" on {g['verified_at']}"
+                        provenance += f" on {g['verified_at']}"
+                    elif g.get('verified_school'):
+                        provenance += (
+                            f"; Previously verified by {g['verified_school']}; "
+                            'verification removed'
+                        )
                     grade_rows.append([
                         f"Term {g['term']}",
                         str(g['year']),

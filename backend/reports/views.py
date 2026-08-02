@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from accounts.models import User, StudentProfile
+from accounts.models import User, StudentProfile, StudentSchoolMembership
 from accounts.permissions import IsEmailVerified
 from accounts.response import _error
 from counselors.models import CounselorAssignment
@@ -159,6 +159,17 @@ class StudentReportView(APIView):
                 counselor=user, student_profile=profile, is_active=True,
             ).exists()
         if user.role == 'school_admin':
+            memberships = list(
+                StudentSchoolMembership.objects
+                .filter(student_profile=profile)
+                .values_list('school_id', 'status')
+            )
+            if memberships:
+                return any(
+                    school_id == user.school_id
+                    and membership_status == StudentSchoolMembership.STATUS_ACTIVE
+                    for school_id, membership_status in memberships
+                )
             return (
                 profile.mode == 'school_linked'
                 and profile.school_membership_status == 'active'

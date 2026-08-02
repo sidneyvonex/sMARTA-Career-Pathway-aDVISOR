@@ -542,15 +542,31 @@ class SchoolStudentsView(APIView):
             return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
 
         has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
+        membership_history = StudentSchoolMembership.objects.filter(
+            student_profile=OuterRef('pk')
+        )
+        active_school_membership = membership_history.filter(
+            school=school,
+            status=StudentSchoolMembership.STATUS_ACTIVE,
+        )
 
         profiles = (
-            StudentProfile.objects.filter(
-                school=school,
-                mode='school_linked',
-                school_membership_status='active',
-            )
+            StudentProfile.objects
             .select_related('user')
-            .annotate(has_assessment=Exists(has_assessment))
+            .annotate(
+                has_assessment=Exists(has_assessment),
+                has_membership_history=Exists(membership_history),
+                has_active_school_membership=Exists(active_school_membership),
+            )
+            .filter(
+                Q(has_active_school_membership=True)
+                | Q(
+                    has_membership_history=False,
+                    school=school,
+                    mode='school_linked',
+                    school_membership_status='active',
+                )
+            )
             .prefetch_related(
                 Prefetch(
                     'counselor_assignments',
@@ -600,11 +616,9 @@ class SchoolStudentsView(APIView):
                 None,
             )
             has_active_membership = (
-                p.school_membership_status == 'active'
-                and (
-                    current_membership is None
-                    or current_membership.status == StudentSchoolMembership.STATUS_ACTIVE
-                )
+                current_membership.status == StudentSchoolMembership.STATUS_ACTIVE
+                if memberships
+                else p.school_membership_status == 'active'
             )
             academic_evidence = []
             if has_active_membership:

@@ -187,9 +187,11 @@ export default function SchoolStudentsPage() {
                   </span>
                   <small>{evidence.framework.code} {evidence.framework.version}</small>
                   <small>
-                    {evidence.verified_school
+                    {evidence.verified_school && evidence.verified_at
                       ? `Verified by ${evidence.verified_school.name}`
-                      : 'Learner-entered evidence'}
+                      : evidence.verified_school
+                        ? `Previously verified by ${evidence.verified_school.name}; verification removed`
+                        : `${evidence.source === 'school' ? 'School' : 'Learner'}-entered evidence`}
                   </small>
                   {evidence.can_verify && (
                     <button

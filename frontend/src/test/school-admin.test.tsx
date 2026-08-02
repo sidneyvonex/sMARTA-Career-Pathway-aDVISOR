@@ -364,6 +364,50 @@ describe('SchoolStudentsPage', () => {
     expect(screen.getByRole('button', { name: 'Verify Mathematics Term 2' })).toBeInTheDocument()
   })
 
+  it('labels retained school provenance as previously verified after removal', async () => {
+    server.use(
+      http.get('/api/v1/school-admin/students/', () => HttpResponse.json({
+        data: [{
+          id: 20,
+          first_name: 'Jane',
+          last_name: 'Muthoni',
+          email: 'jane@student.co.ke',
+          grade: 9,
+          photo_url: null,
+          quiz_status: 'done',
+          school_membership_status: 'active',
+          counselor_id: null,
+          counselor_name: null,
+          membership: { id: 51, status: 'active', record_source: 'learner_request', requested_at: '2026-01-10T08:00:00Z', started_at: '2026-01-11T08:00:00Z', ended_at: null },
+          transfer: { previous_membership_count: 0 },
+          academic_evidence: [{
+            id: 301,
+            continuity_code: 'MTH',
+            subject_name: 'Mathematics',
+            academic_grade: 9,
+            term: 1,
+            year: 2026,
+            level: 'ME1',
+            framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+            source: 'school',
+            verified_school: { id: 9, name: 'Previous School' },
+            verified_at: null,
+            can_verify: true,
+            can_remove_verification: false,
+          }],
+        }],
+        error: null,
+        message: '',
+      })),
+    )
+    renderPage()
+
+    expect(await screen.findByText(
+      'Previously verified by Previous School; verification removed',
+    )).toBeInTheDocument()
+    expect(screen.queryByText('Verified by Previous School')).not.toBeInTheDocument()
+  })
+
   it('shows a retryable error when the student query fails', async () => {
     server.use(
       http.get('/api/v1/school-admin/students/', () => HttpResponse.json({}, { status: 500 })),

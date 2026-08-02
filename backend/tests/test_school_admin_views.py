@@ -345,6 +345,76 @@ class TestSchoolStudentsView:
         previous_response = previous_client.get('/api/v1/school-admin/students/')
         assert previous_response.data['data'] == []
 
+    def test_removed_verification_retains_provenance_without_reporting_current_verification(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        grade = CBCGradeFactory(
+            student_subject=StudentSubjectFactory(student_profile=profile),
+        )
+        verification_url = (
+            f'/api/v1/school-admin/students/{profile.user_id}/grades/'
+            f'{grade.id}/verification/'
+        )
+
+        assert self.client.put(
+            verification_url, {'verified': True}, format='json'
+        ).status_code == 200
+        assert self.client.put(
+            verification_url, {'verified': False}, format='json'
+        ).status_code == 200
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['verified_school']['id'] == self.school.id
+        assert evidence['verified_at'] is None
+        assert evidence['can_verify'] is True
+        assert evidence['can_remove_verification'] is False
+
+    def test_ended_membership_overrides_stale_active_profile(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='ended',
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        assert response.data['data'] == []
+
+    def test_active_membership_overrides_stale_profile_fields(self):
+        profile = StudentProfileFactory(
+            school=None,
+            mode='self_guided',
+            school_membership_status='not_applicable',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        assert [student['id'] for student in response.data['data']] == [
+            profile.user_id
+        ]
+
     def test_list_query_count_is_bounded_for_academic_evidence(self):
         for index in range(4):
             profile = StudentProfileFactory(
