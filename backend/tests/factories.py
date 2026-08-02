@@ -23,6 +23,13 @@ from guidance.models import (
     SchoolOffering,
     SubjectCombination,
 )
+from tertiary.models import (
+    HistoricalAdmissionReference,
+    Institution,
+    LearnerEducationGoal,
+    Programme,
+    ProgrammeSubjectReference,
+)
 
 User = get_user_model()
 
@@ -224,6 +231,85 @@ class AcademicGoalFactory(factory.django.DjangoModelFactory):
     target_academic_grade = 10
     action_plan = 'Practise twice each week and review feedback.'
     created_by = factory.LazyAttribute(lambda goal: goal.learner.user)
+
+
+class InstitutionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Institution
+
+    source_scope = 'kuccps-2025-catalogue'
+    external_key = factory.Sequence(lambda n: f'INST-{n:04d}')
+    name = factory.Sequence(lambda n: f'Test University {n}')
+    institution_type = Institution.TYPE_UNIVERSITY
+    county = 'Nairobi'
+    website_url = 'https://example.ac.ke/'
+    source_url = 'https://students.kuccps.net/institutions/'
+    education_framework = 'KCSE'
+    admission_cycle = '2025/2026'
+    effective_date = date(2025, 3, 1)
+    verification_status = Institution.VERIFICATION_HISTORICAL
+
+
+class ProgrammeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Programme
+
+    institution = factory.SubFactory(InstitutionFactory)
+    source_scope = factory.LazyAttribute(lambda o: o.institution.source_scope)
+    external_key = factory.Sequence(lambda n: f'PROG-{n:04d}')
+    code = factory.Sequence(lambda n: f'P{n:04d}')
+    name = factory.Sequence(lambda n: f'Test Programme {n}')
+    description = 'Exploratory programme catalogue entry.'
+    source_url = 'https://students.kuccps.net/programmes/'
+    education_framework = 'KCSE'
+    admission_cycle = '2025/2026'
+    effective_date = date(2025, 3, 1)
+    verification_status = Programme.VERIFICATION_HISTORICAL
+
+
+class ProgrammeSubjectReferenceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ProgrammeSubjectReference
+
+    programme = factory.SubFactory(ProgrammeFactory)
+    source_scope = factory.LazyAttribute(lambda o: o.programme.source_scope)
+    external_key = factory.Sequence(lambda n: f'SUBJ-{n:04d}')
+    subject_code = factory.Sequence(lambda n: f'SUB-{n:04d}')
+    subject_name = factory.Sequence(lambda n: f'Reference Subject {n}')
+    mapping_kind = ProgrammeSubjectReference.KIND_EXPLORATORY_ALIGNMENT
+    notes = 'For exploration only; this is not an eligibility decision.'
+    source_url = 'https://students.kuccps.net/programmes/'
+    education_framework = 'KCSE'
+    admission_cycle = '2025/2026'
+    effective_date = date(2025, 3, 1)
+    verification_status = ProgrammeSubjectReference.VERIFICATION_HISTORICAL
+
+
+class HistoricalAdmissionReferenceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = HistoricalAdmissionReference
+
+    programme = factory.SubFactory(ProgrammeFactory)
+    source_scope = factory.LazyAttribute(lambda o: o.programme.source_scope)
+    external_key = factory.Sequence(lambda n: f'HIST-{n:04d}')
+    requirement_summary = 'Historical KCSE requirement retained for reference only.'
+    source_url = 'https://students.kuccps.net/programmes/'
+    education_framework = 'KCSE'
+    admission_cycle = '2025/2026'
+    effective_date = date(2025, 3, 1)
+    verification_status = HistoricalAdmissionReference.VERIFICATION_HISTORICAL
+
+
+class LearnerEducationGoalFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = LearnerEducationGoal
+
+    learner = factory.SubFactory(StudentProfileFactory)
+    institution = factory.SubFactory(InstitutionFactory)
+    programme = None
+    kind = LearnerEducationGoal.KIND_PRIMARY
+    priority = 1
+    created_by = factory.LazyAttribute(lambda o: o.learner.user)
 
 
 class RIASECAssessmentFactory(factory.django.DjangoModelFactory):

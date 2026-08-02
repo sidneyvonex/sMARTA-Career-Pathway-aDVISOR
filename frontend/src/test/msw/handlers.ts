@@ -1,6 +1,7 @@
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 
 import type { AcademicGoal, AcademicGoalEvidenceSnapshot } from '../../api/students'
+import type { EducationGoal, Institution, ProgrammeDetail } from '../../api/tertiary'
 
 const BASE = '/api/v1/auth'
 
@@ -64,6 +65,78 @@ export function academicGoalFixture(overrides: Partial<AcademicGoal> = {}): Acad
     closed_at: null,
     created_at: '2026-08-01T10:00:00Z',
     updated_at: '2026-08-01T10:00:00Z',
+    ...overrides,
+  }
+}
+
+const institutionFixture: Institution = {
+  id: 1,
+  name: 'University of Nairobi',
+  institution_type: 'university',
+  county: 'Nairobi',
+  website_url: 'https://uonbi.ac.ke/',
+  source_scope: 'kuccps-2025',
+  external_key: 'UON',
+  source_url: 'https://students.kuccps.net/',
+  education_framework: 'KCSE',
+  admission_cycle: '2025/2026',
+  effective_date: '2025-03-01',
+  verification_status: 'historical',
+}
+
+const programmeFixture: ProgrammeDetail = {
+  id: 10,
+  institution: institutionFixture,
+  code: 'BSC-CS',
+  name: 'BSc Computer Science',
+  description: 'Programme catalogue entry.',
+  source_scope: 'kuccps-2025',
+  external_key: 'UON-CS',
+  source_url: 'https://students.kuccps.net/',
+  education_framework: 'KCSE',
+  admission_cycle: '2025/2026',
+  effective_date: '2025-03-01',
+  verification_status: 'historical',
+  subject_references: [{
+    id: 20,
+    subject_code: 'MAT',
+    subject_name: 'Mathematics',
+    mapping_kind: 'historical_requirement',
+    notes: 'Historical reference only.',
+    advisory_label: 'Exploration reference only; this does not determine admission.',
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-MAT',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }],
+  historical_admission_references: [{
+    id: 30,
+    requirement_summary: 'Historical KCSE reference only.',
+    reference_status: 'historical_reference',
+    reference_only: true,
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-HIST',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }],
+}
+
+function educationGoalFixture(overrides: Partial<EducationGoal> = {}): EducationGoal {
+  return {
+    id: 40,
+    institution: institutionFixture,
+    programme: programmeFixture,
+    kind: 'alternative',
+    priority: 1,
+    created_by: 1,
+    created_at: '2026-08-02T09:00:00Z',
+    updated_at: '2026-08-02T09:00:00Z',
     ...overrides,
   }
 }
@@ -319,6 +392,54 @@ export const handlers = [
       message: 'Academic goal achieved.',
     })
   }),
+
+  http.get('/api/v1/tertiary/institutions/', () => HttpResponse.json({
+    data: [institutionFixture], error: null, message: '',
+  })),
+
+  http.get('/api/v1/tertiary/programmes/', () => HttpResponse.json({
+    data: [programmeFixture], error: null, message: '',
+  })),
+
+  http.get('/api/v1/tertiary/programmes/:programmeId/', () => HttpResponse.json({
+    data: programmeFixture, error: null, message: '',
+  })),
+
+  http.get('/api/v1/students/education-goals/', () => HttpResponse.json({
+    data: [educationGoalFixture()], error: null, message: '',
+  })),
+
+  http.post('/api/v1/students/education-goals/', async ({ request }) => {
+    const body = await request.json() as {
+      institution: number; programme?: number | null; kind: EducationGoal['kind']; priority: 1 | 2
+    }
+    await delay(80)
+    return HttpResponse.json({
+      data: educationGoalFixture({
+        kind: body.kind,
+        priority: body.priority,
+        programme: body.programme === null ? null : programmeFixture,
+      }),
+      error: null,
+      message: 'Education goal saved.',
+    }, { status: 201 })
+  }),
+
+  http.patch('/api/v1/students/education-goals/:goalId/', async ({ params, request }) => {
+    const body = await request.json() as { programme?: number | null }
+    return HttpResponse.json({
+      data: educationGoalFixture({
+        id: Number(params.goalId),
+        programme: body.programme === null ? null : programmeFixture,
+      }),
+      error: null,
+      message: 'Education goal updated.',
+    })
+  }),
+
+  http.delete('/api/v1/students/education-goals/:goalId/', () => HttpResponse.json({
+    data: null, error: null, message: 'Education goal removed.',
+  })),
 
   http.get('/api/v1/students/dashboard/', () => {
     return HttpResponse.json({

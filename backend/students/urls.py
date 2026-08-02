@@ -1,4 +1,5 @@
 from django.urls import path
+from tertiary.views import EducationGoalDetailView, EducationGoalListCreateView
 from .views import (
     AcademicGoalConfirmAchievementView,
     AcademicGoalDetailView,
@@ -23,6 +24,16 @@ from parents.views import (
 )
 
 urlpatterns = [
+    path(
+        'education-goals/',
+        EducationGoalListCreateView.as_view(),
+        name='education-goal-list',
+    ),
+    path(
+        'education-goals/<int:goal_id>/',
+        EducationGoalDetailView.as_view(),
+        name='education-goal-detail',
+    ),
     path(
         'school-memberships/',
         StudentSchoolMembershipListCreateView.as_view(),

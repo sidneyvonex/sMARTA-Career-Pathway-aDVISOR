@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'system_admin',
     'reports',
     'guidance',
+    'tertiary',
 ]
 
 MIDDLEWARE = [

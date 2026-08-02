@@ -20,4 +20,5 @@ urlpatterns = [
     path('api/v1/system-admin/', include('system_admin.urls')),
     path('api/v1/reports/', include('reports.urls')),
     path('api/v1/guidance/', include('guidance.urls')),
+    path('api/v1/tertiary/', include('tertiary.urls')),
 ]
