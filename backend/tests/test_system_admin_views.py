@@ -407,6 +407,7 @@ class TestAcademicSourceMetadataView:
 
         assert response.status_code == 403
 
+
 class TestSchoolListView:
     def setup_method(self):
         self.client = APIClient()

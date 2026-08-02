@@ -104,18 +104,33 @@ class TestPDFBuilder:
                     'label': 'On track',
                     'rule_code': 'otherwise_me_on_track',
                     'explanation': 'The available academic evidence is meeting expectation.',
-                    'suggested_action': 'Continue practising and record the next available evidence.',
+                    'suggested_action': (
+                        'Continue practising and record the next available evidence.'
+                    ),
                     'evidence_confidence': 'school_verified',
                     'records_used': [],
                     'evidence': [],
                     'decision_inputs': {},
                 }],
-                'advisory_disclaimer': 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+                'advisory_disclaimer': (
+                    'Academic progress is advisory only. It does not determine '
+                    'official CBE placement or admission.'
+                ),
             },
             'academic_goals': [{
                 'continuity_code': 'MAT',
-                'current_level': {'code': 'ME1', 'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'}},
-                'target_level': {'code': 'ME2', 'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'}},
+                'current_level': {
+                    'code': 'ME1',
+                    'framework': {
+                        'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026',
+                    },
+                },
+                'target_level': {
+                    'code': 'ME2',
+                    'framework': {
+                        'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026',
+                    },
+                },
                 'target_term': 3,
                 'target_year': 2026,
                 'action_plan': 'Practise twice each week.',

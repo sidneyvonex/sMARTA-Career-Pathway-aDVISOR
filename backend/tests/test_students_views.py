@@ -282,7 +282,9 @@ class TestMySubjectListView:
         assert response.status_code == 400
         assert StudentSubject.objects.filter(pk=ss.pk).exists()
 
-    def test_remove_subject_with_confirm_archives_enrollment_and_preserves_grades(self, verified_profile):
+    def test_remove_subject_with_confirm_archives_enrollment_and_preserves_grades(
+        self, verified_profile,
+    ):
         ss = StudentSubjectFactory(student_profile=verified_profile,
                                    subject=Subject.objects.get(code='AGR9'))
         grade = CBCGradeFactory(student_subject=ss, term=1, year=2026, level='ME1')

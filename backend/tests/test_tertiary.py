@@ -116,7 +116,9 @@ def test_catalogue_search_and_filters_are_bounded_and_exactly_scoped():
 
 @pytest.mark.django_db
 def test_goal_crud_is_learner_owned_and_supports_institution_only():
-    """Catches forced programme selection, cross-learner disclosure, or destructive ownership gaps."""
+    """Catches forced programme selection, cross-learner disclosure, or
+    destructive ownership gaps.
+    """
     institution = InstitutionFactory()
     owner_client, owner = auth_client()
     created = owner_client.post(GOALS_URL, goal_payload(institution), format='json')
@@ -127,7 +129,9 @@ def test_goal_crud_is_learner_owned_and_supports_institution_only():
     other_client, _ = auth_client()
     goal_id = created.data['data']['id']
     assert other_client.get(GOALS_URL).data['data'] == []
-    assert other_client.patch(f'{GOALS_URL}{goal_id}/', {'priority': 2}, format='json').status_code == 404
+    assert other_client.patch(
+        f'{GOALS_URL}{goal_id}/', {'priority': 2}, format='json'
+    ).status_code == 404
     assert other_client.delete(f'{GOALS_URL}{goal_id}/').status_code == 404
 
     assert owner_client.delete(f'{GOALS_URL}{goal_id}/').status_code == 200
@@ -269,7 +273,10 @@ def test_reference_models_reject_decision_fields_and_limit_mapping_kinds():
     """Catches accidental admission-decision schema and unsupported mapping semantics."""
     model_fields = {
         field.name
-        for model in (Institution, Programme, ProgrammeSubjectReference, HistoricalAdmissionReference)
+        for model in (
+            Institution, Programme, ProgrammeSubjectReference,
+            HistoricalAdmissionReference,
+        )
         for field in model._meta.get_fields()
     }
     assert not {'eligibility', 'eligible', 'ineligible', 'probability', 'cbc_score'} & model_fields
@@ -603,8 +610,14 @@ def test_goal_update_recomputes_identity_and_rejects_choice_conflict():
     assert conflict.data['message'] == (
         'That institution or programme is already saved as another education goal.'
     )
-    assert LearnerEducationGoal.objects.get(pk=created_primary['id']).institution_id == first.pk
-    assert LearnerEducationGoal.objects.get(pk=created_alternative['id']).institution_id == second.pk
+    assert (
+        LearnerEducationGoal.objects.get(pk=created_primary['id']).institution_id
+        == first.pk
+    )
+    assert (
+        LearnerEducationGoal.objects.get(pk=created_alternative['id']).institution_id
+        == second.pk
+    )
 
 
 @pytest.mark.django_db
