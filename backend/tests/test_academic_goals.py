@@ -1091,10 +1091,14 @@ def test_goal_creation_uses_grade_definition_id_after_definition_code_reuse():
 @pytest.mark.django_db
 def test_goal_creation_falls_back_to_code_only_for_legacy_missing_grade_snapshot():
     """Catches removal of the explicit compatibility path for pre-snapshot evidence."""
+    from students.evidence import rewrite_grade_definition_snapshot_for_history
+
     profile, _enrollment, grade = learner_with_evidence(level='ME2')
     definition = target_level(grade.framework, 'ME2')
-    CBCGrade._base_manager.filter(pk=grade.pk).update(
-        level_definition_id_snapshot=None,
+    rewrite_grade_definition_snapshot_for_history(
+        grade_id=grade.id,
+        definition_id=None,
+        audit_reason='Legacy evidence pre-dates definition snapshots.',
     )
     grade.refresh_from_db()
     client = APIClient()
@@ -1111,14 +1115,18 @@ def test_goal_creation_falls_back_to_code_only_for_legacy_missing_grade_snapshot
 @pytest.mark.django_db
 def test_goal_creation_rejects_grade_snapshot_from_another_framework():
     """Catches accepting a stable definition ID that contradicts its stored framework."""
+    from students.evidence import rewrite_grade_definition_snapshot_for_history
+
     profile, _enrollment, grade = learner_with_evidence(level='ME2')
     other_framework = AssessmentFramework.objects.get(
         scope='junior_school',
         status=AssessmentFramework.STATUS_ACTIVE,
     )
     other_definition = target_level(other_framework, 'ME2')
-    CBCGrade._base_manager.filter(pk=grade.pk).update(
-        level_definition_id_snapshot=other_definition.id,
+    rewrite_grade_definition_snapshot_for_history(
+        grade_id=grade.id,
+        definition_id=other_definition.id,
+        audit_reason='Legacy framework migration produced a mismatched snapshot.',
     )
     grade.refresh_from_db()
     client = APIClient()

@@ -3,7 +3,9 @@ from django.apps import apps
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Value
 from rest_framework.test import APIClient
+from students.models import AssessmentFramework, PerformanceLevelDefinition
 
 from tests.factories import (
     AssessmentFrameworkFactory,
@@ -16,6 +18,21 @@ from tests.factories import (
     SubjectFactory,
     VerifiedUserFactory,
 )
+
+
+def activate_complete_framework(framework):
+    """Create the fixed CBE definition set, then use the public activation path."""
+    for code, rank in (
+        ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+        ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+    ):
+        PerformanceLevelDefinitionFactory(
+            framework=framework,
+            code=code,
+            rank=rank,
+        )
+    framework.activate()
+    return framework
 
 
 def test_grade_admin_makes_all_verification_provenance_read_only():
@@ -85,6 +102,249 @@ def test_verified_evidence_rejects_queryset_bypasses(operation, message):
             type(grade).objects.filter(pk=grade.pk).delete()
 
     assert type(grade).objects.filter(pk=grade.pk).exists()
+
+
+@pytest.mark.django_db
+def test_verified_evidence_rejects_base_manager_identity_update():
+    """Catches Django's base manager bypassing verified-evidence locks."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+
+    with pytest.raises(ValidationError, match='bulk persistence'):
+        type(grade)._base_manager.filter(pk=grade.pk).update(level='EE1')
+
+    grade.refresh_from_db()
+    assert grade.level == 'ME1'
+
+
+@pytest.mark.django_db
+def test_verified_evidence_rejects_base_manager_delete():
+    """Catches the generated base manager bypassing verified deletion locks."""
+    verifier = SchoolAdminFactory()
+    grade = CBCGradeFactory(
+        verified_by=verifier,
+        verified_at='2026-07-30T10:00:00Z',
+    )
+
+    with pytest.raises(ValidationError, match='verified evidence'):
+        type(grade)._base_manager.filter(pk=grade.pk).delete()
+
+    assert type(grade).objects.filter(pk=grade.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+@pytest.mark.parametrize('field, value', [
+    ('level', 'EE1'),
+    ('level_definition_id_snapshot', None),
+])
+def test_grade_managers_reject_identity_and_snapshot_updates(
+    manager_name,
+    field,
+    value,
+):
+    """Catches any ordinary manager mutating evidence identity or its snapshot."""
+    grade = CBCGradeFactory()
+    manager = getattr(type(grade), manager_name)
+
+    with pytest.raises(ValidationError, match='bulk persistence'):
+        manager.filter(pk=grade.pk).update(**{field: value})
+
+    grade.refresh_from_db()
+    assert grade.level == 'ME1'
+    assert grade.level_definition_id_snapshot is not None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+def test_grade_managers_reject_bulk_deletion(manager_name):
+    """Catches unverified history deletion through a default or base queryset."""
+    grade = CBCGradeFactory()
+    manager = getattr(type(grade), manager_name)
+
+    with pytest.raises(ValidationError, match='bulk deletion'):
+        manager.filter(pk=grade.pk).delete()
+
+    assert type(grade).objects.filter(pk=grade.pk).exists()
+
+
+@pytest.mark.django_db
+def test_unverified_evidence_allows_instance_edit():
+    """Catches turning the verified-evidence guard into an edit lock."""
+    grade = CBCGradeFactory()
+    grade.level = 'EE1'
+    grade.save(update_fields=['level'])
+    grade.refresh_from_db()
+
+    assert grade.level == 'EE1'
+    assert grade.level_definition_id_snapshot == PerformanceLevelDefinition.objects.get(
+        framework=grade.framework,
+        code='EE1',
+    ).id
+
+
+@pytest.mark.django_db
+def test_unverified_evidence_allows_instance_delete():
+    """Catches turning the verified-evidence guard into a deletion lock."""
+    grade = CBCGradeFactory()
+    grade_id = grade.id
+
+    grade.delete()
+    assert not type(grade).objects.filter(pk=grade_id).exists()
+
+
+@pytest.mark.django_db
+def test_history_snapshot_rewrite_requires_audited_reason_and_is_narrow():
+    """Catches raw-manager compatibility rewrites outside the named history path."""
+    from students.evidence import rewrite_grade_definition_snapshot_for_history
+
+    grade = CBCGradeFactory()
+    original_level = grade.level
+    original_framework_id = grade.framework_id
+
+    with pytest.raises(ValidationError, match='audit reason'):
+        rewrite_grade_definition_snapshot_for_history(
+            grade_id=grade.id,
+            definition_id=None,
+            audit_reason='  ',
+        )
+
+    rewrite_grade_definition_snapshot_for_history(
+        grade_id=grade.id,
+        definition_id=None,
+        audit_reason='Legacy import omitted definition snapshot.',
+    )
+    grade.refresh_from_db()
+
+    assert grade.level_definition_id_snapshot is None
+    assert grade.level == original_level
+    assert grade.framework_id == original_framework_id
+
+
+@pytest.mark.django_db
+def test_incomplete_framework_rejects_direct_active_create():
+    """Catches direct persistence of an incomplete active framework."""
+    incomplete = AssessmentFrameworkFactory.build(
+        status=AssessmentFramework.STATUS_ACTIVE,
+    )
+
+    with pytest.raises(ValidationError, match='EE1–BE2'):
+        AssessmentFramework.objects.create(
+            code=incomplete.code,
+            version=incomplete.version,
+            title=incomplete.title,
+            scope=incomplete.scope,
+            source_url=incomplete.source_url,
+            effective_date=incomplete.effective_date,
+            status=incomplete.status,
+        )
+
+    assert not AssessmentFramework.objects.filter(code=incomplete.code).exists()
+
+
+@pytest.mark.django_db
+def test_incomplete_framework_rejects_direct_model_activation():
+    """Catches an incomplete draft changing status through model save."""
+    model_framework = AssessmentFrameworkFactory()
+    model_framework.status = AssessmentFramework.STATUS_ACTIVE
+    with pytest.raises(ValidationError, match='EE1–BE2'):
+        model_framework.save(update_fields=['status'])
+
+    model_framework.refresh_from_db()
+    assert model_framework.status == AssessmentFramework.STATUS_DRAFT
+
+
+@pytest.mark.django_db
+def test_incomplete_framework_admin_form_rejects_activation():
+    """Catches admin surfacing readiness failures only after form submission."""
+    from students.admin import AssessmentFrameworkAdmin
+
+    admin_framework = AssessmentFrameworkFactory()
+    framework_admin = AssessmentFrameworkAdmin(
+        type(admin_framework),
+        AdminSite(),
+    )
+    form_class = framework_admin.get_form(request=None, obj=admin_framework)
+    form = form_class(
+        data={
+            'code': admin_framework.code,
+            'version': admin_framework.version,
+            'title': admin_framework.title,
+            'scope': admin_framework.scope,
+            'source_url': admin_framework.source_url,
+            'effective_date': admin_framework.effective_date.isoformat(),
+            'status': AssessmentFramework.STATUS_ACTIVE,
+        },
+        instance=admin_framework,
+    )
+
+    assert form.is_valid() is False
+    assert 'EE1–BE2' in form.non_field_errors().as_text()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+def test_framework_managers_reject_bulk_activation(manager_name):
+    """Catches queryset and bulk-manager activation bypasses."""
+    manager = getattr(AssessmentFramework, manager_name)
+    framework = AssessmentFrameworkFactory()
+
+    with pytest.raises(ValidationError, match='bulk activation'):
+        manager.filter(pk=framework.pk).update(
+            status=AssessmentFramework.STATUS_ACTIVE,
+        )
+
+    with pytest.raises(ValidationError, match='bulk activation'):
+        manager.filter(pk=framework.pk).update(
+            status=Value(AssessmentFramework.STATUS_ACTIVE),
+        )
+
+    framework.status = AssessmentFramework.STATUS_ACTIVE
+    with pytest.raises(ValidationError, match='bulk activation'):
+        manager.bulk_update([framework], fields=['status'])
+
+    with pytest.raises(ValidationError, match='bulk activation'):
+        manager.bulk_create([
+            AssessmentFrameworkFactory.build(
+                status=AssessmentFramework.STATUS_ACTIVE,
+            )
+        ])
+
+    with pytest.raises(ValidationError, match='bulk activation'):
+        manager.bulk_create([
+            AssessmentFrameworkFactory.build(
+                status=Value(AssessmentFramework.STATUS_ACTIVE),
+            )
+        ])
+
+    framework.refresh_from_db()
+    assert framework.status == AssessmentFramework.STATUS_DRAFT
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('manager_name', ['objects', '_base_manager'])
+def test_framework_managers_allow_non_activation_bulk_status_updates(manager_name):
+    """Catches bulk guards unnecessarily blocking safe draft/retired transitions."""
+    manager = getattr(AssessmentFramework, manager_name)
+    framework = AssessmentFrameworkFactory()
+    framework.status = AssessmentFramework.STATUS_RETIRED
+
+    manager.bulk_update([framework], fields=['status'])
+
+    framework.refresh_from_db()
+    assert framework.status == AssessmentFramework.STATUS_RETIRED
+
+
+@pytest.mark.django_db
+def test_complete_framework_activates_through_the_supported_model_path():
+    """Catches readiness enforcement blocking a complete, deliberate activation."""
+    framework = activate_complete_framework(AssessmentFrameworkFactory())
+
+    framework.refresh_from_db()
+    assert framework.status == AssessmentFramework.STATUS_ACTIVE
 
 
 @pytest.mark.django_db
@@ -162,12 +422,12 @@ def test_framework_code_and_version_are_unique_together():
 @pytest.mark.django_db
 def test_only_one_active_framework_exists_per_scope():
     """Catches ambiguous active evidence interpretation within one scope."""
-    first = AssessmentFrameworkFactory(status='active')
+    first = activate_complete_framework(AssessmentFrameworkFactory())
 
     with pytest.raises(IntegrityError), transaction.atomic():
-        AssessmentFrameworkFactory(scope=first.scope, status='active')
+        activate_complete_framework(AssessmentFrameworkFactory(scope=first.scope))
 
-    AssessmentFrameworkFactory(scope='experimental_scope', status='active')
+    activate_complete_framework(AssessmentFrameworkFactory(scope='experimental_scope'))
 
 
 @pytest.mark.django_db
@@ -507,3 +767,14 @@ def test_grade_rejects_framework_without_selected_level_definition():
             framework=framework,
             level='ME1',
         )
+
+
+@pytest.mark.django_db
+def test_grade_identity_change_rejects_framework_without_matching_definition():
+    """Catches an identity update persisting without its required definition snapshot."""
+    grade = CBCGradeFactory()
+    incomplete_framework = AssessmentFrameworkFactory(scope=grade.framework.scope)
+    grade.framework = incomplete_framework
+
+    with pytest.raises(ValidationError, match='performance level definition'):
+        grade.save(update_fields=['framework'])

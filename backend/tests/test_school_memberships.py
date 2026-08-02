@@ -692,7 +692,6 @@ class TestMembershipVerificationSafety:
         ).exists():
             framework = AssessmentFrameworkFactory(
                 scope='junior_school',
-                status='active',
             )
             for code, rank in (
                 ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
@@ -703,6 +702,7 @@ class TestMembershipVerificationSafety:
                     code=code,
                     rank=rank,
                 )
+            framework.activate()
         school = SchoolFactory()
         admin = SchoolAdminFactory(school=school)
         profile = StudentProfileFactory(

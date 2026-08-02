@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 import re
 
 from django.core.exceptions import ValidationError
@@ -33,6 +34,7 @@ GRADE_LEVEL_POINTS = {
 GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
 _ACADEMIC_GOAL_LIFECYCLE_TRANSITION = object()
 _CBC_GRADE_VERIFICATION_TRANSITION = object()
+logger = logging.getLogger(__name__)
 
 
 class AcademicGoalHistoryDeletionError(ValidationError):
@@ -47,6 +49,62 @@ class AcademicGoalHistoryDeletionError(ValidationError):
 def set_academic_goal_evidence_null(collector, field, sub_objs, using):
     """Preserve SET_NULL semantics without exposing a public queryset bypass."""
     collector.add_field_update(field, None, list(sub_objs))
+
+
+class AssessmentFrameworkQuerySet(models.QuerySet):
+    @staticmethod
+    def _bulk_activation_error():
+        return ValidationError(
+            'Assessment framework bulk activation is disabled; activate a '
+            'complete framework through its supported model path.'
+        )
+
+    def update(self, **kwargs):
+        if 'status' in kwargs:
+            status = kwargs['status']
+            if (
+                not isinstance(status, str)
+                or status == AssessmentFramework.STATUS_ACTIVE
+            ):
+                raise self._bulk_activation_error()
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        objs = tuple(objs)
+        if 'status' not in fields:
+            return super().bulk_update(objs, fields, batch_size=batch_size)
+        if any(
+            not isinstance(obj.status, str)
+            or obj.status == AssessmentFramework.STATUS_ACTIVE
+            for obj in objs
+        ):
+            raise self._bulk_activation_error()
+
+        # Django implements bulk_update through QuerySet.update(Case(...)).
+        # This locally constructed base queryset is intentionally not exposed;
+        # it can only write the pre-validated non-active status values above.
+        raw_queryset = models.QuerySet(
+            model=self.model,
+            query=self.query.chain(),
+            using=self.db,
+            hints=self._hints,
+        )
+        return raw_queryset.bulk_update(objs, fields, batch_size=batch_size)
+
+    def bulk_create(self, objs, **kwargs):
+        if any(
+            not isinstance(obj.status, str)
+            or obj.status == AssessmentFramework.STATUS_ACTIVE
+            for obj in objs
+        ):
+            raise self._bulk_activation_error()
+        return super().bulk_create(objs, **kwargs)
+
+
+class AssessmentFrameworkManager(
+    models.Manager.from_queryset(AssessmentFrameworkQuerySet)
+):
+    pass
 
 
 class AssessmentFramework(models.Model):
@@ -73,8 +131,11 @@ class AssessmentFramework(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = AssessmentFrameworkManager()
+
     class Meta:
         ordering = ['scope', '-effective_date', 'code', 'version']
+        base_manager_name = 'objects'
         constraints = [
             models.UniqueConstraint(
                 fields=['code', 'version'],
@@ -92,12 +153,32 @@ class AssessmentFramework(models.Model):
 
     def validate_activation_readiness(self):
         expected = GRADE_LEVEL_POINTS
-        actual = dict(self.level_definitions.values_list('code', 'rank'))
+        actual = (
+            dict(self.level_definitions.values_list('code', 'rank'))
+            if self.pk is not None
+            else {}
+        )
         if actual != expected:
             raise ValidationError(
                 'Assessment framework activation requires the complete '
                 'EE1–BE2 definition set with ranks 8–1.'
             )
+
+    def clean(self):
+        super().clean()
+        if self.status == self.STATUS_ACTIVE:
+            self.validate_activation_readiness()
+
+    def save(self, *args, **kwargs):
+        if self.status == self.STATUS_ACTIVE:
+            self.validate_activation_readiness()
+        return super().save(*args, **kwargs)
+
+    def activate(self):
+        """Activate only after the fixed CBE definition set is present."""
+        self.status = self.STATUS_ACTIVE
+        self.save(update_fields=['status', 'updated_at'])
+        return self
 
 
 class PerformanceLevelDefinition(models.Model):
@@ -299,7 +380,9 @@ class CBCGradeQuerySet(models.QuerySet):
 
     def update(self, **kwargs):
         if set(kwargs) & self.PROTECTED_EVIDENCE_FIELDS:
-            raise self._bulk_persistence_error()
+            if self.exists():
+                raise self._bulk_persistence_error()
+            return 0
         return super().update(**kwargs)
 
     def bulk_update(self, objs, fields, batch_size=None):
@@ -325,6 +408,39 @@ class CBCGradeQuerySet(models.QuerySet):
 
 class CBCGradeManager(models.Manager.from_queryset(CBCGradeQuerySet)):
     pass
+
+
+class CBCGradeHistoryManager(CBCGradeManager):
+    def rewrite_definition_snapshot(
+        self,
+        *,
+        grade_id,
+        definition_id,
+        audit_reason,
+    ):
+        """Apply a documented legacy snapshot correction without raw queryset access."""
+        if not isinstance(audit_reason, str) or not audit_reason.strip():
+            raise ValidationError(
+                'A nonblank audit reason is required for history snapshot rewrites.'
+            )
+        if grade_id is None:
+            raise ValidationError('History snapshot rewrites require an existing grade.')
+
+        raw_query = models.QuerySet(model=self.model, using=self.db)
+        updated = raw_query.filter(pk=grade_id).update(
+            level_definition_id_snapshot=definition_id,
+        )
+        if updated != 1:
+            raise self.model.DoesNotExist(
+                'CBC grade history record was not found for snapshot rewrite.'
+            )
+        logger.info(
+            'Rewriting CBC grade definition snapshot for legacy history: '
+            'grade_id=%s audit_reason=%s',
+            grade_id,
+            audit_reason,
+        )
+        return updated
 
 
 class CBCGrade(models.Model):
@@ -386,10 +502,12 @@ class CBCGrade(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = CBCGradeManager()
+    history = CBCGradeHistoryManager()
 
     class Meta:
         unique_together = ('student_subject', 'term', 'year')
         ordering = ['year', 'term']
+        base_manager_name = 'objects'
         constraints = [
             models.CheckConstraint(
                 check=(

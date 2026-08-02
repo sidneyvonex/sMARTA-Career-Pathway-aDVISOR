@@ -1,5 +1,21 @@
 from django.utils import timezone
 
+from .models import CBCGrade
+
+
+def rewrite_grade_definition_snapshot_for_history(
+    *,
+    grade_id,
+    definition_id,
+    audit_reason,
+):
+    """Narrow compatibility transition for legacy evidence snapshot repairs."""
+    return CBCGrade.history.rewrite_definition_snapshot(
+        grade_id=grade_id,
+        definition_id=definition_id,
+        audit_reason=audit_reason,
+    )
+
 
 def transition_grade_verification(
     grade,

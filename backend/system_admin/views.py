@@ -311,11 +311,12 @@ class AcademicSourceMetadataStatusView(APIView):
                     if record_type == 'assessment_framework':
                         if new_status == AssessmentFramework.STATUS_ACTIVE:
                             try:
-                                record.validate_activation_readiness()
+                                record.activate()
                             except ValidationError as exc:
                                 return _error(exc.messages[0])
-                        record.status = new_status
-                        record.save(update_fields=['status', 'updated_at'])
+                        else:
+                            record.status = new_status
+                            record.save(update_fields=['status', 'updated_at'])
                         action = 'assessment_framework_status_changed'
                     else:
                         record.verification_status = new_status
