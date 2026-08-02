@@ -490,14 +490,20 @@ class CounselorInterventionsView(APIView):
 class CounselorInterventionDetailView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
+    @transaction.atomic
     def patch(self, request, intervention_id):
         try:
-            intervention = CounselorIntervention.objects.select_related(
-                'student'
-            ).get(pk=intervention_id, counselor=request.user)
+            intervention = (
+                CounselorIntervention.objects
+                .select_for_update()
+                .select_related('student')
+                .get(pk=intervention_id, counselor=request.user)
+            )
         except CounselorIntervention.DoesNotExist:
             return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
 
+        was_learner_visible = intervention.learner_visible
+        was_parent_visible = intervention.parent_visible
         serializer = CounselorInterventionSerializer(
             intervention,
             data=request.data,
@@ -505,7 +511,35 @@ class CounselorInterventionDetailView(APIView):
         )
         if not serializer.is_valid():
             return _error(serializer.errors)
-        serializer.save()
+        intervention = serializer.save()
+
+        if not was_learner_visible and intervention.learner_visible:
+            Notification.objects.create(
+                user=intervention.student,
+                type='counselor_intervention',
+                message='Your counsellor recorded a new support action.',
+            )
+        if not was_parent_visible and intervention.parent_visible:
+            parent_ids = (
+                ParentStudentLink.objects
+                .filter(
+                    student=intervention.student,
+                    status=ParentStudentLink.STATUS_ACTIVE,
+                )
+                .values_list('parent_id', flat=True)
+                .distinct()
+            )
+            Notification.objects.bulk_create([
+                Notification(
+                    user_id=parent_id,
+                    type='counselor_intervention',
+                    message=(
+                        'A learner-approved support action is available for '
+                        f'{intervention.student.first_name}.'
+                    ),
+                )
+                for parent_id in parent_ids
+            ])
         return _success(
             data=CounselorInterventionSerializer(intervention).data,
             message='Intervention updated.',
