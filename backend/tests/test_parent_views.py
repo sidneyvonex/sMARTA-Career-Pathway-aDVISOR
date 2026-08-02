@@ -464,6 +464,50 @@ class TestParentChildDetailView:
         assert grade['verified_at'] is not None
         assert 'verified_by' not in grade
 
+    def test_detail_redacts_verifier_identity_from_recursive_progress_evidence(self):
+        """Catches parent progress disclosing a staff verifier through shared data."""
+        parent = ParentFactory()
+        school = SchoolFactory(name='Progress Provenance School')
+        verifier = SchoolAdminFactory(school=school)
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        evidence = CBCGradeFactory(
+            student_subject=enrollment,
+            source='learner',
+            verified_by=verifier,
+            verified_school=school,
+            verified_at=timezone.now(),
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        response = self.client.get(self._url(student.id))
+
+        assert response.status_code == 200
+        progress = response.json()['data']['academic_progress']
+        for rows in (
+            progress['subjects'][0]['records_used'],
+            progress['subjects'][0]['evidence'],
+        ):
+            row = rows[0]
+            assert row['id'] == evidence.id
+            assert row['source'] == 'learner'
+            assert row['verified_school'] == school.id
+            assert row['verified_at'] is not None
+            assert 'verified_by' not in row
+
+        def has_verifier_identity(value):
+            if isinstance(value, dict):
+                return 'verified_by' in value or any(
+                    has_verifier_identity(item) for item in value.values()
+                )
+            if isinstance(value, list):
+                return any(has_verifier_identity(item) for item in value)
+            return False
+
+        assert not has_verifier_identity(progress)
+
     def test_detail_queries_stay_bounded_with_representative_progress_context(self):
         parent = ParentFactory()
         student = VerifiedUserFactory(role='student')

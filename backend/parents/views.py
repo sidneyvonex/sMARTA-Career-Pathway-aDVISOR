@@ -27,6 +27,19 @@ from parents.serializers import (
 )
 
 
+def _redact_staff_verifier_identity(value):
+    """Remove staff IDs from a parent-facing progress payload at any depth."""
+    if isinstance(value, dict):
+        return {
+            key: _redact_staff_verifier_identity(item)
+            for key, item in value.items()
+            if key != 'verified_by'
+        }
+    if isinstance(value, list):
+        return [_redact_staff_verifier_identity(item) for item in value]
+    return value
+
+
 class ParentChildrenView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsParent]
 
@@ -131,9 +144,13 @@ class ParentChildDetailView(APIView):
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', status.HTTP_404_NOT_FOUND)
 
+        support_context = academic_support_context(profile)
+        support_context['academic_progress'] = _redact_staff_verifier_identity(
+            support_context['academic_progress']
+        )
         data = {
             **ChildDetailSerializer(profile).data,
-            **academic_support_context(profile),
+            **support_context,
         }
         return _success(data=data)
 
