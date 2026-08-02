@@ -8,6 +8,7 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from counselors.models import CounselorAssignment
+from notifications.models import Notification
 from students.admin import AcademicGoalAdmin
 from students.models import (
     AcademicGoal,
@@ -21,6 +22,7 @@ from tests.factories import (
     CounselorAssignmentFactory,
     CounselorFactory,
     PerformanceLevelDefinitionFactory,
+    ParentStudentLinkFactory,
     StudentProfileFactory,
     StudentSubjectFactory,
     SubjectFactory,
@@ -262,6 +264,11 @@ def test_later_evidence_derives_readiness_but_achievement_requires_confirmation(
     client.force_authenticate(profile.user)
     created = client.post(GOALS_URL, create_payload(grade), format='json')
     goal_id = created.data['data']['id']
+    approved = ParentStudentLinkFactory(student=profile.user, status='active')
+    pending = ParentStudentLinkFactory(
+        student=profile.user,
+        status='pending_learner',
+    )
     later = CBCGradeFactory(
         student_subject=enrollment,
         framework=grade.framework,
@@ -292,6 +299,11 @@ def test_later_evidence_derives_readiness_but_achievement_requires_confirmation(
     assert goal.status == AcademicGoal.STATUS_ACHIEVED
     assert goal.achieved_at is not None
     assert goal.active_identity is None
+    recipients = set(Notification.objects.filter(
+        type='academic_goal_achieved',
+    ).values_list('user_id', flat=True))
+    assert recipients == {profile.user_id, approved.parent_id}
+    assert pending.parent_id not in recipients
 
 
 @pytest.mark.django_db

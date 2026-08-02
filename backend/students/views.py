@@ -37,6 +37,7 @@ from guidance.serializers import (
 )
 from notifications.models import Notification
 from notifications.serializers import NotificationSerializer
+from parents.models import ParentStudentLink
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment
@@ -1087,6 +1088,26 @@ class AcademicGoalConfirmAchievementView(APIView):
             return _error(
                 messages,
                 status.HTTP_409_CONFLICT,
+            )
+        Notification.objects.create(
+            user=goal.learner.user,
+            type='academic_goal_achieved',
+            message=(
+                f'Your {goal.continuity_code} academic goal was confirmed achieved.'
+            ),
+        )
+        parent_ids = ParentStudentLink.objects.filter(
+            student=goal.learner.user,
+            status=ParentStudentLink.STATUS_ACTIVE,
+        ).values_list('parent_id', flat=True)
+        for parent_id in parent_ids:
+            Notification.objects.create(
+                user_id=parent_id,
+                type='academic_goal_achieved',
+                message=(
+                    f'{goal.learner.user.first_name} confirmed an academic goal '
+                    'achievement.'
+                ),
             )
         return _success(
             data=_serialize_academic_goals(goal),

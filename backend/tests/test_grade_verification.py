@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from students.models import CBCGrade
+from notifications.models import Notification
 from system_admin.models import AuditLog
 from tests.factories import (
     CBCGradeFactory,
@@ -126,6 +127,12 @@ class TestSchoolGradeVerification:
         assert self.grade.verified_by == self.admin
         assert self.grade.verified_at is not None
         assert response.data['data']['verified_by'] == self.admin.id
+        notification = Notification.objects.get(
+            user=self.profile.user,
+            type='grade_verification_changed',
+        )
+        assert self.grade.student_subject.subject.name in notification.message
+        assert self.school.name in notification.message
 
     def test_school_admin_can_remove_verification(self):
         self.grade.verified_by = self.admin
@@ -223,6 +230,10 @@ class TestSchoolGradeVerification:
             action='grade_verified',
             target_type='grade',
             target_id=self.grade.id,
+        ).count() == 1
+        assert Notification.objects.filter(
+            user=self.profile.user,
+            type='grade_verification_changed',
         ).count() == 1
 
     def test_grade_at_another_school_is_not_accessible(self):

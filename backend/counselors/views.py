@@ -13,6 +13,8 @@ from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
 from students.role_support import academic_support_context
 from system_admin.utils import log_action
+from notifications.models import Notification
+from parents.models import ParentStudentLink
 from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorIntervention, CounselorNote
 from .serializers import (
@@ -437,6 +439,7 @@ class CounselorInterventionsView(APIView):
             ).data
         )
 
+    @transaction.atomic
     def post(self, request):
         serializer = CounselorInterventionCreateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -457,6 +460,26 @@ class CounselorInterventionsView(APIView):
             student_id=student_id,
             **serializer.validated_data,
         )
+        if intervention.learner_visible:
+            Notification.objects.create(
+                user=intervention.student,
+                type='counselor_intervention',
+                message='Your counsellor recorded a new support action.',
+            )
+        if intervention.parent_visible:
+            parent_ids = ParentStudentLink.objects.filter(
+                student=intervention.student,
+                status=ParentStudentLink.STATUS_ACTIVE,
+            ).values_list('parent_id', flat=True)
+            for parent_id in parent_ids:
+                Notification.objects.create(
+                    user_id=parent_id,
+                    type='counselor_intervention',
+                    message=(
+                        'A learner-approved support action is available for '
+                        f'{intervention.student.first_name}.'
+                    ),
+                )
         return _success(
             data=CounselorInterventionSerializer(intervention).data,
             message='Intervention saved.',

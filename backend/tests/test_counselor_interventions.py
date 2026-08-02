@@ -6,10 +6,12 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from counselors.models import CounselorIntervention, CounselorNote
+from notifications.models import Notification
 from tests.factories import (
     CounselorAssignmentFactory,
     CounselorFactory,
     CounselorNoteFactory,
+    ParentStudentLinkFactory,
     SchoolFactory,
     StudentProfileFactory,
     VerifiedUserFactory,
@@ -117,6 +119,62 @@ def test_counselor_can_create_and_list_assigned_learner_intervention(
     assert [item['id'] for item in listed.json()['data']] == [
         response.json()['data']['id'],
     ]
+
+
+def test_visible_intervention_notifies_learner_and_only_approved_parent(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    approved = ParentStudentLinkFactory(student=profile.user, status='active')
+    pending = ParentStudentLinkFactory(
+        student=profile.user,
+        status='pending_learner',
+    )
+    _auth(client, counselor)
+
+    response = client.post(
+        reverse('counselor-interventions'),
+        {
+            'student_id': profile.user_id,
+            'category': 'academic_evidence',
+            'action_agreed': 'Bring the latest mathematics evidence.',
+            'learner_visible': True,
+            'parent_visible': True,
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 201
+    recipients = set(Notification.objects.filter(
+        type='counselor_intervention',
+    ).values_list('user_id', flat=True))
+    assert recipients == {profile.user_id, approved.parent_id}
+    assert pending.parent_id not in recipients
+
+
+def test_private_intervention_sends_no_notification(client, intervention_context):
+    counselor, profile = intervention_context
+    parent_link = ParentStudentLinkFactory(student=profile.user, status='active')
+    _auth(client, counselor)
+
+    response = client.post(
+        reverse('counselor-interventions'),
+        {
+            'student_id': profile.user_id,
+            'category': 'academic_evidence',
+            'action_agreed': 'Private counselor action.',
+            'learner_visible': False,
+            'parent_visible': False,
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 201
+    assert not Notification.objects.filter(
+        user_id__in=[profile.user_id, parent_link.parent_id],
+        type='counselor_intervention',
+    ).exists()
 
 
 def test_counselor_cannot_create_intervention_for_unassigned_learner(

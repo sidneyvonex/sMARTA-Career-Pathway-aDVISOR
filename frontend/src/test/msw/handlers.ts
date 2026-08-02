@@ -763,6 +763,13 @@ export const handlers = [
           read: true,
           created_at: '2026-06-15T09:00:00Z',
         },
+        {
+          id: 3,
+          type: 'grade_verification_changed',
+          message: 'Mathematics evidence was verified by Starehe Boys Centre.',
+          read: true,
+          created_at: '2026-06-14T09:00:00Z',
+        },
       ],
       error: null,
       message: '',

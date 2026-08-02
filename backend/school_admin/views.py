@@ -216,7 +216,10 @@ class SchoolGradeVerificationView(APIView):
             try:
                 grade = (
                     CBCGrade.objects.select_for_update()
-                    .select_related('student_subject__student_profile')
+                    .select_related(
+                        'student_subject__student_profile',
+                        'student_subject__subject',
+                    )
                     .get(
                         pk=grade_id,
                         student_subject__student_profile=profile,
@@ -279,6 +282,15 @@ class SchoolGradeVerificationView(APIView):
                         'source': grade.source,
                     },
                     ip_address=ip_address,
+                )
+                Notification.objects.create(
+                    user=profile.user,
+                    type='grade_verification_changed',
+                    message=(
+                        f'{grade.student_subject.subject.name} evidence was '
+                        f'{"verified" if should_verify else "unverified"} by '
+                        f'{school.name}.'
+                    ),
                 )
 
         return _success(
@@ -883,7 +895,11 @@ class SchoolMembershipDecisionView(APIView):
             )
             Notification.objects.create(
                 user=profile.user,
-                type='school_membership_decided',
+                type=(
+                    'school_transfer_decided'
+                    if previous_school_id is not None
+                    else 'school_membership_decided'
+                ),
                 message=(
                     f'Your school link to {school.name} is now '
                     f'{membership_status}.'

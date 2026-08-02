@@ -442,7 +442,7 @@ class TestSchoolMembershipTransferDecisions:
         assert audit.details['previous_school_id'] == self.old_school.id
         notification = Notification.objects.get(
             user=self.profile.user,
-            type='school_membership_decided',
+            type='school_transfer_decided',
         )
         assert self.target_school.name in notification.message
 

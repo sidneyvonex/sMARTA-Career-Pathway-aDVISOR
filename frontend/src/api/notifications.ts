@@ -5,6 +5,12 @@ export type NotificationType =
   | 'counselor_note'
   | 'parent_linked'
   | 'counselor_assigned'
+  | 'child_assessment_complete'
+  | 'school_membership_decided'
+  | 'grade_verification_changed'
+  | 'school_transfer_decided'
+  | 'counselor_intervention'
+  | 'academic_goal_achieved'
 
 export interface Notification {
   id: number
