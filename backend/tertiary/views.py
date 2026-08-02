@@ -117,7 +117,7 @@ def _locked_learner(user):
 
 
 def _locked_goal(learner, goal_id):
-    goal = LearnerEducationGoal.objects.select_for_update().filter(
+    goal = LearnerEducationGoal.objects.filter(
         pk=goal_id, learner=learner
     ).first()
     if goal is None:

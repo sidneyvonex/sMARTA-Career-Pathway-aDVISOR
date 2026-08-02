@@ -1,4 +1,7 @@
 from django.db import migrations, models
+from django.db.models import F, Value
+from django.db.models.functions import Length, Replace, Trim
+from django.db.models.lookups import GreaterThan
 
 
 PROVENANCE_FIELDS = (
@@ -28,7 +31,11 @@ def preflight_catalogue_integrity(apps, _schema_editor):
     for model_name in model_names:
         Model = apps.get_model('tertiary', model_name)
         for record in Model.objects.all().iterator():
-            missing = [field for field in PROVENANCE_FIELDS if not getattr(record, field)]
+            missing = [
+                field for field in PROVENANCE_FIELDS
+                if not isinstance(getattr(record, field), str)
+                or not getattr(record, field).strip()
+            ]
             if missing or record.verification_status not in VALID_STATUSES:
                 invalid.append(f'{model_name} {record.pk}')
     if invalid:
@@ -82,7 +89,19 @@ def preflight_catalogue_integrity(apps, _schema_editor):
     Goal = apps.get_model('tertiary', 'LearnerEducationGoal')
     seen = {}
     duplicates = []
-    for goal in Goal.objects.order_by('learner_id', 'pk').iterator():
+    mismatches = []
+    for goal in Goal.objects.select_related('programme').order_by(
+        'learner_id', 'pk'
+    ).iterator():
+        if (
+            goal.programme_id is not None
+            and goal.programme.institution_id != goal.institution_id
+        ):
+            mismatches.append(
+                f'goal {goal.pk} programme {goal.programme_id} institution '
+                f'{goal.programme.institution_id} selected institution '
+                f'{goal.institution_id}'
+            )
         programme = goal.programme_id if goal.programme_id is not None else 'none'
         identity = f'institution:{goal.institution_id}:programme:{programme}'
         key = (goal.learner_id, identity)
@@ -92,6 +111,12 @@ def preflight_catalogue_integrity(apps, _schema_editor):
             )
         else:
             seen[key] = goal.pk
+    if mismatches:
+        joined = '; '.join(mismatches[:10])
+        raise RuntimeError(
+            'Cannot migrate incoherent education goals; repair these links first: '
+            f'{joined}.'
+        )
     if duplicates:
         joined = '; '.join(duplicates[:10])
         raise RuntimeError(
@@ -119,6 +144,13 @@ def clear_choice_identity(apps, _schema_editor):
     Goal.objects.update(choice_identity=None)
 
 
+def has_non_whitespace(field):
+    expression = F(field)
+    for whitespace in ('\t', '\n', '\r', '\v', '\f'):
+        expression = Replace(expression, Value(whitespace), Value(''))
+    return GreaterThan(Length(Trim(expression)), 0)
+
+
 def provenance_constraints(model_name, prefix):
     operations = []
     for field, suffix in (
@@ -131,7 +163,7 @@ def provenance_constraints(model_name, prefix):
         operations.append(migrations.AddConstraint(
             model_name=model_name,
             constraint=models.CheckConstraint(
-                check=~models.Q(**{field: ''}),
+                check=has_non_whitespace(field),
                 name=f'{prefix}_{suffix}_nonempty_ck',
             ),
         ))

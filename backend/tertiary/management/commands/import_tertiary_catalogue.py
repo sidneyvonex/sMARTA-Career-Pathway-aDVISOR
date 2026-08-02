@@ -5,6 +5,7 @@ from pathlib import Path
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from tertiary.models import (
     HistoricalAdmissionReference,
@@ -157,6 +158,7 @@ def _validate_rows(path):
                             'education_framework KCSE and verification_status historical.'
                         )
                 _validate_model_fields(row, row_number)
+                row['_row_number'] = row_number
                 rows.append(row)
         except (csv.Error, UnicodeError) as exc:
             raise CommandError(f'Malformed CSV: {exc}') from exc
@@ -196,6 +198,228 @@ def _assert_parent_coherence(row, parent, label):
         )
 
 
+def _row_identity(row):
+    return row['source_scope'], row['external_key']
+
+
+def _lock_identities(model, identities):
+    if not identities:
+        return {}
+    records = model.objects.select_for_update().filter(
+        source_scope__in={scope for scope, _key in identities},
+        external_key__in={key for _scope, key in identities},
+    ).order_by('pk')
+    return {
+        (record.source_scope, record.external_key): record
+        for record in records
+        if (record.source_scope, record.external_key) in identities
+    }
+
+
+def _lock_catalogue_state(by_type):
+    institution_targets = {
+        _row_identity(row) for row in by_type['institution']
+    }
+    institution_parents = {
+        (row['source_scope'], row['parent_external_key'])
+        for row in by_type['programme']
+    }
+    institutions = _lock_identities(
+        Institution, institution_targets | institution_parents
+    )
+
+    programme_targets = {
+        _row_identity(row) for row in by_type['programme']
+    }
+    programme_parents = {
+        (row['source_scope'], row['parent_external_key'])
+        for record_type in (
+            'programme_subject_reference', 'historical_admission_reference',
+        )
+        for row in by_type[record_type]
+    }
+    programmes = _lock_identities(
+        Programme, programme_targets | programme_parents
+    )
+    updated_institution_ids = [
+        institutions[identity].pk
+        for identity in institution_targets
+        if identity in institutions
+    ]
+    for programme in Programme.objects.select_for_update().filter(
+        institution_id__in=updated_institution_ids
+    ).order_by('pk'):
+        programmes[(programme.source_scope, programme.external_key)] = programme
+
+    updated_programme_ids = [
+        programmes[identity].pk
+        for identity in programme_targets
+        if identity in programmes
+    ]
+    subject_targets = {
+        _row_identity(row)
+        for row in by_type['programme_subject_reference']
+    }
+    subjects = _lock_identities(ProgrammeSubjectReference, subject_targets)
+    for reference in ProgrammeSubjectReference.objects.select_for_update().filter(
+        programme_id__in=updated_programme_ids
+    ).order_by('pk'):
+        subjects[(reference.source_scope, reference.external_key)] = reference
+
+    historical_targets = {
+        _row_identity(row)
+        for row in by_type['historical_admission_reference']
+    }
+    historical = _lock_identities(
+        HistoricalAdmissionReference, historical_targets
+    )
+    for reference in HistoricalAdmissionReference.objects.select_for_update().filter(
+        programme_id__in=updated_programme_ids
+    ).order_by('pk'):
+        historical[(reference.source_scope, reference.external_key)] = reference
+
+    goal_filter = Q()
+    if updated_institution_ids:
+        goal_filter |= Q(institution_id__in=updated_institution_ids)
+    if updated_programme_ids:
+        goal_filter |= Q(programme_id__in=updated_programme_ids)
+    if goal_filter:
+        list(
+            Institution._meta.apps.get_model(
+                'tertiary', 'LearnerEducationGoal'
+            ).objects.select_for_update().filter(goal_filter).order_by('pk')
+        )
+    return institutions, programmes, subjects, historical
+
+
+def _assign(instance, values):
+    for field, value in values.items():
+        setattr(instance, field, value)
+
+
+def _validate_instance(instance, row, *, exclude=()):
+    try:
+        instance.full_clean(
+            exclude=set(exclude), validate_unique=False,
+            validate_constraints=False,
+        )
+    except ValidationError as exc:
+        raise CommandError(
+            f"Row {row['_row_number']}: {instance._meta.verbose_name} "
+            f'failed semantic validation: {exc}'
+        ) from exc
+
+
+def _prepare_catalogue(by_type):
+    locked = _lock_catalogue_state(by_type)
+    locked_institutions, locked_programmes, locked_subjects, locked_historical = locked
+    prospective_institutions = {}
+    prepared_institutions = []
+    for row in by_type['institution']:
+        identity = _row_identity(row)
+        instance = locked_institutions.get(identity) or Institution(
+            source_scope=identity[0], external_key=identity[1]
+        )
+        _assign(instance, {
+            'name': row['name'], 'institution_type': row['institution_type'],
+            'county': row['county'], 'website_url': row['website_url'],
+            **_provenance(row),
+        })
+        _validate_instance(instance, row)
+        prospective_institutions[identity] = instance
+        prepared_institutions.append((row, instance))
+
+    prospective_programmes = {}
+    prepared_programmes = []
+    for row in by_type['programme']:
+        identity = _row_identity(row)
+        parent_identity = (row['source_scope'], row['parent_external_key'])
+        parent = prospective_institutions.get(parent_identity) or locked_institutions.get(
+            parent_identity
+        )
+        if parent is None:
+            raise CommandError(
+                f"Programme {row['external_key']}: parent institution not found."
+            )
+        _assert_parent_coherence(row, parent, 'Programme')
+        instance = locked_programmes.get(identity) or Programme(
+            source_scope=identity[0], external_key=identity[1]
+        )
+        _assign(instance, {
+            'institution': parent, 'code': row['code'], 'name': row['name'],
+            'description': row['description'], **_provenance(row),
+        })
+        _validate_instance(instance, row, exclude={'institution'})
+        prospective_programmes[identity] = instance
+        prepared_programmes.append((row, instance, parent))
+
+    prepared_subjects = []
+    for row in by_type['programme_subject_reference']:
+        identity = _row_identity(row)
+        parent_identity = (row['source_scope'], row['parent_external_key'])
+        parent = prospective_programmes.get(parent_identity) or locked_programmes.get(
+            parent_identity
+        )
+        if parent is None:
+            raise CommandError(
+                f"Reference {row['external_key']}: parent programme not found."
+            )
+        _assert_parent_coherence(row, parent, 'Reference')
+        instance = locked_subjects.get(identity) or ProgrammeSubjectReference(
+            source_scope=identity[0], external_key=identity[1]
+        )
+        _assign(instance, {
+            'programme': parent, 'subject_code': row['subject_code'],
+            'subject_name': row['subject_name'], 'mapping_kind': row['mapping_kind'],
+            'notes': row['description'], **_provenance(row),
+        })
+        _validate_instance(instance, row, exclude={'programme'})
+        prepared_subjects.append((row, instance, parent))
+
+    prepared_historical = []
+    for row in by_type['historical_admission_reference']:
+        identity = _row_identity(row)
+        parent_identity = (row['source_scope'], row['parent_external_key'])
+        parent = prospective_programmes.get(parent_identity) or locked_programmes.get(
+            parent_identity
+        )
+        if parent is None:
+            raise CommandError(
+                f"Reference {row['external_key']}: parent programme not found."
+            )
+        _assert_parent_coherence(row, parent, 'Reference')
+        instance = locked_historical.get(identity) or HistoricalAdmissionReference(
+            source_scope=identity[0], external_key=identity[1]
+        )
+        _assign(instance, {
+            'programme': parent,
+            'requirement_summary': row['requirement_summary'],
+            **_provenance(row),
+        })
+        _validate_instance(instance, row, exclude={'programme'})
+        prepared_historical.append((row, instance, parent))
+
+    return (
+        prepared_institutions, prepared_programmes,
+        prepared_subjects, prepared_historical,
+    )
+
+
+def _persist_catalogue(prepared):
+    institutions, programmes, subjects, historical = prepared
+    for _row, instance in institutions:
+        instance.save()
+    for _row, instance, parent in programmes:
+        instance.institution = parent
+        instance.save()
+    for _row, instance, parent in subjects:
+        instance.programme = parent
+        instance.save()
+    for _row, instance, parent in historical:
+        instance.programme = parent
+        instance.save()
+
+
 class Command(BaseCommand):
     help = 'Import the documented, source-scoped tertiary catalogue CSV without network access.'
 
@@ -210,78 +434,10 @@ class Command(BaseCommand):
             record_type: [row for row in rows if row['record_type'] == record_type]
             for record_type in RECORD_TYPES
         }
-        imported_institutions = {
-            (row['source_scope'], row['external_key']): row
-            for row in by_type['institution']
-        }
-        imported_programmes = {
-            (row['source_scope'], row['external_key']): row
-            for row in by_type['programme']
-        }
-        for row in by_type['programme']:
-            parent = (row['source_scope'], row['parent_external_key'])
-            parent_record = imported_institutions.get(parent) or Institution.objects.filter(
-                source_scope=parent[0], external_key=parent[1]
-            ).first()
-            if parent_record is None:
-                raise CommandError(f"Programme {row['external_key']}: parent institution not found.")
-            _assert_parent_coherence(row, parent_record, 'Programme')
-        for record_type in ('programme_subject_reference', 'historical_admission_reference'):
-            for row in by_type[record_type]:
-                parent = (row['source_scope'], row['parent_external_key'])
-                parent_record = imported_programmes.get(parent) or Programme.objects.filter(
-                    source_scope=parent[0], external_key=parent[1]
-                ).first()
-                if parent_record is None:
-                    raise CommandError(f"Reference {row['external_key']}: parent programme not found.")
-                _assert_parent_coherence(row, parent_record, 'Reference')
-
         try:
             with transaction.atomic():
-                for row in by_type['institution']:
-                    Institution.objects.update_or_create(
-                        source_scope=row['source_scope'], external_key=row['external_key'],
-                        defaults={
-                            'name': row['name'], 'institution_type': row['institution_type'],
-                            'county': row['county'], 'website_url': row['website_url'],
-                            **_provenance(row),
-                        },
-                    )
-                for row in by_type['programme']:
-                    institution = Institution.objects.get(
-                        source_scope=row['source_scope'], external_key=row['parent_external_key']
-                    )
-                    Programme.objects.update_or_create(
-                        source_scope=row['source_scope'], external_key=row['external_key'],
-                        defaults={
-                            'institution': institution, 'code': row['code'], 'name': row['name'],
-                            'description': row['description'], **_provenance(row),
-                        },
-                    )
-                for row in by_type['programme_subject_reference']:
-                    programme = Programme.objects.get(
-                        source_scope=row['source_scope'], external_key=row['parent_external_key']
-                    )
-                    ProgrammeSubjectReference.objects.update_or_create(
-                        source_scope=row['source_scope'], external_key=row['external_key'],
-                        defaults={
-                            'programme': programme, 'subject_code': row['subject_code'],
-                            'subject_name': row['subject_name'], 'mapping_kind': row['mapping_kind'],
-                            'notes': row['description'], **_provenance(row),
-                        },
-                    )
-                for row in by_type['historical_admission_reference']:
-                    programme = Programme.objects.get(
-                        source_scope=row['source_scope'], external_key=row['parent_external_key']
-                    )
-                    HistoricalAdmissionReference.objects.update_or_create(
-                        source_scope=row['source_scope'], external_key=row['external_key'],
-                        defaults={
-                            'programme': programme,
-                            'requirement_summary': row['requirement_summary'],
-                            **_provenance(row),
-                        },
-                    )
+                prepared = _prepare_catalogue(by_type)
+                _persist_catalogue(prepared)
                 if options['dry_run']:
                     transaction.set_rollback(True)
         except (ValidationError, IntegrityError) as exc:

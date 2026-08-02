@@ -1,5 +1,5 @@
 import pytest
-from django.db import connection
+from django.db import OperationalError, connection
 from django.db.migrations.executor import MigrationExecutor
 
 
@@ -96,3 +96,83 @@ def test_0003_rejects_existing_cross_release_parent_links():
     executor = MigrationExecutor(connection)
     with pytest.raises(RuntimeError, match='parent coherence.*Programme'):
         executor.migrate([('tertiary', '0003_enforce_catalogue_integrity')])
+
+
+def test_0003_rejects_whitespace_provenance_before_schema_changes():
+    """Catches preflight accepting blank provenance or running after additive DDL."""
+    old_apps = _old_models()
+    Institution = old_apps.get_model('tertiary', 'Institution')
+    institution = Institution.objects.create(
+        source_scope=' \t ', external_key='MIG-BLANK',
+        source_url='https://example.ac.ke/source', education_framework='KCSE',
+        admission_cycle='2025/2026', effective_date='2025-03-01',
+        verification_status='historical', name='Blank Source University',
+        institution_type='university', county='Nairobi', website_url='',
+    )
+
+    executor = MigrationExecutor(connection)
+    with pytest.raises(
+        RuntimeError, match=rf'provenance.*Institution {institution.pk}'
+    ):
+        executor.migrate([('tertiary', '0003_enforce_catalogue_integrity')])
+
+    with pytest.raises(OperationalError), connection.cursor() as cursor:
+        cursor.execute(
+            'SELECT choice_identity FROM tertiary_learnereducationgoal LIMIT 1'
+        )
+
+
+def test_0003_rejects_existing_goal_programme_institution_mismatch():
+    """Catches migration preserving an education goal linked across institutions."""
+    old_apps = _old_models()
+    User = old_apps.get_model('accounts', 'User')
+    StudentProfile = old_apps.get_model('accounts', 'StudentProfile')
+    Institution = old_apps.get_model('tertiary', 'Institution')
+    Programme = old_apps.get_model('tertiary', 'Programme')
+    Goal = old_apps.get_model('tertiary', 'LearnerEducationGoal')
+    user = User.objects.create(
+        email='goal-mismatch@example.com', first_name='Goal', last_name='Mismatch',
+        role='student', county='kiambu', is_email_verified=True,
+    )
+    learner = StudentProfile.objects.create(
+        user=user, mode='self_guided',
+        school_membership_status='not_applicable', grade=10,
+    )
+    common = {
+        'source_scope': 'migration-source',
+        'source_url': 'https://example.ac.ke/source',
+        'education_framework': 'KCSE', 'admission_cycle': '2025/2026',
+        'effective_date': '2025-03-01', 'verification_status': 'historical',
+        'institution_type': 'university', 'county': 'Nairobi', 'website_url': '',
+    }
+    selected = Institution.objects.create(
+        external_key='SELECTED', name='Selected University', **common,
+    )
+    programme_parent = Institution.objects.create(
+        external_key='PROGRAMME-PARENT', name='Programme Parent', **common,
+    )
+    programme = Programme.objects.create(
+        institution=programme_parent, source_scope='migration-source',
+        external_key='MISMATCHED-PROGRAMME',
+        source_url='https://example.ac.ke/source', education_framework='KCSE',
+        admission_cycle='2025/2026', effective_date='2025-03-01',
+        verification_status='historical', code='MIS', name='Mismatch',
+        description='',
+    )
+    goal = Goal.objects.create(
+        learner=learner, institution=selected, programme=programme,
+        kind='primary', priority=1, created_by=user,
+    )
+
+    executor = MigrationExecutor(connection)
+    detail = (
+        rf'goal {goal.pk}.*programme {programme.pk}.*institution '
+        rf'{programme_parent.pk}.*selected institution {selected.pk}'
+    )
+    with pytest.raises(RuntimeError, match=detail):
+        executor.migrate([('tertiary', '0003_enforce_catalogue_integrity')])
+
+    with pytest.raises(OperationalError), connection.cursor() as cursor:
+        cursor.execute(
+            'SELECT choice_identity FROM tertiary_learnereducationgoal LIMIT 1'
+        )

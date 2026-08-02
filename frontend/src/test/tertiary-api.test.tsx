@@ -50,13 +50,14 @@ describe('tertiary exploration API', () => {
       institution: 1, kind: 'primary', priority: 1,
     })
     const patched = await tertiaryApi.updateEducationGoal(omitted.data.data.id, {
-      institution: 2, programme: null, kind: 'alternative', priority: 2,
+      institution: 2, kind: 'alternative', priority: 2,
     })
     const noInstitutions = await tertiaryApi.getInstitutions({ county: 'Mombasa' })
     const noProgrammes = await tertiaryApi.getProgrammes({ framework: 'CBE' })
 
     expect(omitted.data.data.programme).toBeNull()
     expect(patched.data.data.institution.id).toBe(2)
+    expect(patched.data.data.programme).toBeNull()
     expect(patched.data.data.kind).toBe('alternative')
     expect(patched.data.data.priority).toBe(2)
     expect(noInstitutions.data.data).toEqual([])

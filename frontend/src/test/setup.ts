@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
+import { resetEducationGoalState } from './msw/handlers'
 import { server } from './msw/server'
 
 // Mock virtual:pwa-register — only exists at build time via vite-plugin-pwa
@@ -23,5 +24,8 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  resetEducationGoalState()
+  server.resetHandlers()
+})
 afterAll(() => server.close())

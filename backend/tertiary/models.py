@@ -1,5 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import F, Value
+from django.db.models.functions import Length, Replace, Trim
+from django.db.models.lookups import GreaterThan
 
 from accounts.models import StudentProfile
 
@@ -51,13 +54,20 @@ class ValidatedCatalogueManager(models.Manager.from_queryset(ValidatedCatalogueQ
     pass
 
 
+def _has_non_whitespace(field):
+    expression = F(field)
+    for whitespace in ('\t', '\n', '\r', '\v', '\f'):
+        expression = Replace(expression, Value(whitespace), Value(''))
+    return GreaterThan(Length(Trim(expression)), 0)
+
+
 def _provenance_constraints(prefix):
     return [
-        models.CheckConstraint(check=~models.Q(source_scope=''), name=f'{prefix}_scope_nonempty_ck'),
-        models.CheckConstraint(check=~models.Q(external_key=''), name=f'{prefix}_key_nonempty_ck'),
-        models.CheckConstraint(check=~models.Q(source_url=''), name=f'{prefix}_url_nonempty_ck'),
-        models.CheckConstraint(check=~models.Q(education_framework=''), name=f'{prefix}_frame_nonempty_ck'),
-        models.CheckConstraint(check=~models.Q(admission_cycle=''), name=f'{prefix}_cycle_nonempty_ck'),
+        models.CheckConstraint(check=_has_non_whitespace('source_scope'), name=f'{prefix}_scope_nonempty_ck'),
+        models.CheckConstraint(check=_has_non_whitespace('external_key'), name=f'{prefix}_key_nonempty_ck'),
+        models.CheckConstraint(check=_has_non_whitespace('source_url'), name=f'{prefix}_url_nonempty_ck'),
+        models.CheckConstraint(check=_has_non_whitespace('education_framework'), name=f'{prefix}_frame_nonempty_ck'),
+        models.CheckConstraint(check=_has_non_whitespace('admission_cycle'), name=f'{prefix}_cycle_nonempty_ck'),
         models.CheckConstraint(
             check=models.Q(verification_status__in=['verified', 'historical', 'unavailable']),
             name=f'{prefix}_verification_ck',
@@ -456,24 +466,63 @@ class LearnerEducationGoal(models.Model):
     def clean(self):
         super().clean()
         if self.programme_id and self.institution_id:
-            programme_institution_id = (
-                self.programme.institution_id
-                if 'programme' in self._state.fields_cache
-                else Programme.objects.filter(pk=self.programme_id).values_list(
-                    'institution_id', flat=True
-                ).first()
-            )
+            programme_institution_id = Programme.objects.filter(
+                pk=self.programme_id
+            ).values_list('institution_id', flat=True).first()
             if programme_institution_id != self.institution_id:
                 raise ValidationError(
                     {'programme': 'The programme must belong to the selected institution.'}
                 )
 
     def save(self, *args, **kwargs):
-        self.choice_identity = education_choice_identity(
-            self.institution_id, self.programme_id
-        )
         update_fields = kwargs.get('update_fields')
-        if update_fields is not None and {'institution', 'programme'} & set(update_fields):
-            kwargs['update_fields'] = set(update_fields) | {'choice_identity'}
-        self.full_clean(validate_unique=False, validate_constraints=False)
-        return super().save(*args, **kwargs)
+        normalized_update_fields = (
+            None if update_fields is None else set(update_fields)
+        )
+        with transaction.atomic():
+            stored = None
+            if self.pk:
+                stored = type(self).objects.filter(pk=self.pk).values(
+                    'learner_id', 'institution_id', 'programme_id'
+                ).first()
+            relation_fields = {
+                'learner_id': {'learner', 'learner_id'},
+                'institution_id': {'institution', 'institution_id'},
+                'programme_id': {'programme', 'programme_id'},
+            }
+            if stored is not None and normalized_update_fields is not None:
+                for attname, accepted_names in relation_fields.items():
+                    if not normalized_update_fields.intersection(accepted_names):
+                        setattr(self, attname, stored[attname])
+
+            learner_ids = {self.learner_id}
+            if stored is not None:
+                learner_ids.add(stored['learner_id'])
+            list(StudentProfile.objects.select_for_update().filter(
+                pk__in=sorted(learner_ids)
+            ).order_by('pk'))
+            self.institution = Institution.objects.select_for_update().get(
+                pk=self.institution_id
+            )
+            if self.programme_id:
+                self.programme = Programme.objects.select_for_update().get(
+                    pk=self.programme_id
+                )
+            if self.pk:
+                locked = type(self).objects.select_for_update().filter(
+                    pk=self.pk
+                ).values('learner_id', 'institution_id', 'programme_id').first()
+                if locked != stored:
+                    raise ValidationError(
+                        'Education goal changed concurrently; reload it and try again.'
+                    )
+            self.choice_identity = education_choice_identity(
+                self.institution_id, self.programme_id
+            )
+            if normalized_update_fields is not None:
+                relation_names = relation_fields['institution_id'] | relation_fields['programme_id']
+                if normalized_update_fields.intersection(relation_names):
+                    normalized_update_fields.add('choice_identity')
+                kwargs['update_fields'] = normalized_update_fields
+            self.full_clean(validate_unique=False, validate_constraints=False)
+            return super().save(*args, **kwargs)

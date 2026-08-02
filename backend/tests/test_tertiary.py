@@ -2,6 +2,7 @@ import csv
 from datetime import date
 
 import pytest
+from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -341,6 +342,32 @@ def test_catalogue_database_constraints_reject_provenance_bypass():
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('field', 'whitespace'),
+    [
+        (field, whitespace)
+        for field in (
+            'source_scope', 'external_key', 'source_url',
+            'education_framework', 'admission_cycle',
+        )
+        for whitespace in ('   ', '\t\t')
+    ],
+)
+def test_catalogue_database_constraints_reject_whitespace_provenance(
+    field, whitespace,
+):
+    """Catches direct database writes storing semantically blank provenance."""
+    institution = InstitutionFactory()
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic(), connection.cursor() as cursor:
+            cursor.execute(
+                f'UPDATE tertiary_institution SET {field} = %s WHERE id = %s',
+                [whitespace, institution.pk],
+            )
+
+
+@pytest.mark.django_db
 def test_catalogue_manager_rejects_protected_bulk_write_bypasses():
     """Catches ORM bulk paths silently rewriting sourced identity or semantics."""
     institution = InstitutionFactory()
@@ -571,20 +598,119 @@ def test_goal_update_recomputes_identity_and_rejects_choice_conflict():
 
 
 @pytest.mark.django_db
-def test_goal_partial_model_save_persists_recomputed_choice_identity():
-    """Catches update_fields persisting a new choice with its old unique identity."""
-    goal = LearnerEducationGoalFactory()
-    replacement = InstitutionFactory()
+@pytest.mark.parametrize(
+    ('update_field', 'relation'),
+    [
+        ('institution', 'institution'),
+        ('institution_id', 'institution'),
+        ('programme', 'programme'),
+        ('programme_id', 'programme'),
+    ],
+)
+@pytest.mark.django_db
+def test_goal_partial_model_save_keeps_relation_and_choice_identity_aligned(
+    update_field, relation,
+):
+    """Catches supported FK update spellings leaving a stale unique identity."""
+    institution = InstitutionFactory()
+    goal = LearnerEducationGoalFactory(institution=institution)
+    if relation == 'institution':
+        replacement = InstitutionFactory()
+        setattr(goal, update_field, replacement if update_field == relation else replacement.pk)
+        expected_programme = 'none'
+    else:
+        replacement = ProgrammeFactory(institution=institution)
+        setattr(goal, update_field, replacement if update_field == relation else replacement.pk)
+        expected_programme = replacement.pk
 
-    goal.institution = replacement
-    goal.save(update_fields=['institution'])
+    goal.save(update_fields=[update_field])
     goal.refresh_from_db()
 
+    expected_institution = replacement.pk if relation == 'institution' else institution.pk
+    assert goal.institution_id == expected_institution
+    assert goal.programme_id == (None if expected_programme == 'none' else expected_programme)
     assert goal.choice_identity == (
-        f'institution:{replacement.pk}:programme:none'
+        f'institution:{expected_institution}:programme:{expected_programme}'
     )
     with pytest.raises(ValidationError, match='validated instance saves'):
         LearnerEducationGoal.objects.filter(pk=goal.pk).update(kind='alternative')
+
+
+@pytest.mark.django_db
+def test_goal_partial_save_rejects_unpersisted_mixed_relation_state():
+    """Catches identity being derived from a related field excluded from update_fields."""
+    original_institution = InstitutionFactory()
+    original_programme = ProgrammeFactory(institution=original_institution)
+    replacement_institution = InstitutionFactory()
+    replacement_programme = ProgrammeFactory(institution=replacement_institution)
+    goal = LearnerEducationGoalFactory(
+        institution=original_institution, programme=original_programme,
+    )
+    original_identity = goal.choice_identity
+    goal.institution_id = replacement_institution.pk
+    goal.programme_id = replacement_programme.pk
+
+    with pytest.raises(ValidationError, match='selected institution'):
+        goal.save(update_fields=['institution_id'])
+
+    goal.refresh_from_db()
+    assert goal.institution_id == original_institution.pk
+    assert goal.programme_id == original_programme.pk
+    assert goal.choice_identity == original_identity
+
+
+@pytest.mark.django_db
+def test_goal_attname_partial_save_cannot_bypass_duplicate_choice_identity():
+    """Catches an FK attname update evading the learner choice unique constraint."""
+    learner = StudentProfileFactory()
+    duplicate_institution = InstitutionFactory()
+    existing = LearnerEducationGoalFactory(
+        learner=learner, institution=duplicate_institution,
+        created_by=learner.user,
+    )
+    candidate = LearnerEducationGoalFactory(
+        learner=learner, institution=InstitutionFactory(),
+        kind='alternative', priority=1, created_by=learner.user,
+    )
+    candidate.institution_id = duplicate_institution.pk
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            candidate.save(update_fields=['institution_id'])
+
+    existing.refresh_from_db()
+    candidate.refresh_from_db()
+    assert candidate.institution_id != existing.institution_id
+
+
+@pytest.mark.django_db
+def test_goal_model_and_admin_save_reject_stale_cached_programmes():
+    """Catches a cached programme surviving reassignment to another institution."""
+    original_institution = InstitutionFactory()
+    replacement_institution = InstitutionFactory()
+    programme = ProgrammeFactory(institution=original_institution)
+    cached_programme = Programme.objects.get(pk=programme.pk)
+    learner = StudentProfileFactory()
+    model_goal = LearnerEducationGoalFactory.build(
+        institution=original_institution, programme=cached_programme,
+        learner=learner, created_by=learner.user,
+    )
+    admin_goal = LearnerEducationGoalFactory.build(
+        institution=original_institution, programme=cached_programme,
+        learner=learner, created_by=learner.user,
+    )
+    programme.institution = replacement_institution
+    programme.source_scope = replacement_institution.source_scope
+    programme.education_framework = replacement_institution.education_framework
+    programme.admission_cycle = replacement_institution.admission_cycle
+    programme.save()
+
+    with pytest.raises(ValidationError, match='selected institution'):
+        model_goal.save()
+
+    model_admin = admin.site._registry[LearnerEducationGoal]
+    with pytest.raises(ValidationError, match='selected institution'):
+        model_admin.save_model(None, admin_goal, None, False)
 
 
 @pytest.mark.django_db
@@ -679,3 +805,50 @@ def test_csv_identity_is_type_aware_and_same_type_duplicates_are_rejected(tmp_pa
     write_catalogue(path, rows)
     with pytest.raises(CommandError, match='duplicate'):
         call_command('import_tertiary_catalogue', str(path), dry_run=True)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_csv_referenced_provenance_failure_happens_before_first_write(tmp_path):
+    """Catches late immutable updates relying on rollback after earlier writes."""
+    referenced = InstitutionFactory(
+        source_scope='kuccps-2025', external_key='REFERENCED',
+        source_url='https://example.ac.ke/original',
+    )
+    ProgrammeFactory(
+        institution=referenced, source_scope=referenced.source_scope,
+        education_framework=referenced.education_framework,
+        admission_cycle=referenced.admission_cycle,
+        verification_status=referenced.verification_status,
+    )
+    common = {
+        'record_type': 'institution', 'source_scope': 'kuccps-2025',
+        'source_url': 'https://example.ac.ke/source',
+        'education_framework': 'KCSE', 'admission_cycle': '2025/2026',
+        'effective_date': '2025-03-01', 'verification_status': 'historical',
+        'institution_type': 'university', 'county': 'Nairobi',
+        'website_url': 'https://example.ac.ke/',
+    }
+    rows = [
+        {**common, 'external_key': 'FIRST-VALID', 'name': 'First Valid'},
+        {
+            **common, 'external_key': referenced.external_key,
+            'name': referenced.name,
+            'source_url': 'https://example.ac.ke/changed',
+        },
+    ]
+    path = tmp_path / 'late-referenced-change.csv'
+    write_catalogue(path, rows)
+    writes = []
+
+    def capture_tertiary_writes(execute, sql, params, many, context):
+        statement = sql.lstrip().upper()
+        if statement.startswith(('INSERT', 'UPDATE', 'DELETE')) and 'tertiary_' in sql:
+            writes.append(sql)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(capture_tertiary_writes):
+        with pytest.raises(CommandError, match='cannot be changed once referenced'):
+            call_command('import_tertiary_catalogue', str(path))
+
+    assert writes == []
+    assert not Institution.objects.filter(external_key='FIRST-VALID').exists()

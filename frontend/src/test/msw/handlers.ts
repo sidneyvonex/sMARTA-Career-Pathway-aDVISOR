@@ -141,6 +141,14 @@ function educationGoalFixture(overrides: Partial<EducationGoal> = {}): Education
   }
 }
 
+let educationGoalState: EducationGoal[] = []
+
+export function resetEducationGoalState() {
+  educationGoalState = [educationGoalFixture()]
+}
+
+resetEducationGoalState()
+
 export const handlers = [
   http.post(`${BASE}/login/`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }
@@ -439,7 +447,7 @@ export const handlers = [
   })),
 
   http.get('/api/v1/students/education-goals/', () => HttpResponse.json({
-    data: [educationGoalFixture()], error: null, message: '',
+    data: educationGoalState.map(goal => ({ ...goal })), error: null, message: '',
   })),
 
   http.post('/api/v1/students/education-goals/', async ({ request }) => {
@@ -447,17 +455,20 @@ export const handlers = [
       institution: number; programme?: number | null; kind: EducationGoal['kind']; priority: 1 | 2
     }
     await delay(80)
-    return HttpResponse.json({
-      data: educationGoalFixture({
+    const goal = educationGoalFixture({
+      id: Math.max(0, ...educationGoalState.map(item => item.id)) + 1,
+      institution: { ...institutionFixture, id: body.institution },
+      kind: body.kind,
+      priority: body.priority,
+      programme: body.programme == null ? null : {
+        ...programmeFixture,
+        id: body.programme,
         institution: { ...institutionFixture, id: body.institution },
-        kind: body.kind,
-        priority: body.priority,
-        programme: body.programme == null ? null : {
-          ...programmeFixture,
-          id: body.programme,
-          institution: { ...institutionFixture, id: body.institution },
-        },
-      }),
+      },
+    })
+    educationGoalState.push(goal)
+    return HttpResponse.json({
+      data: goal,
       error: null,
       message: 'Education goal saved.',
     }, { status: 201 })
@@ -470,30 +481,50 @@ export const handlers = [
       kind: EducationGoal['kind']
       priority: 1 | 2
     }>
+    const id = Number(params.goalId)
+    const current = educationGoalState.find(goal => goal.id === id)
+      ?? educationGoalFixture({ id })
     const institution = {
-      ...institutionFixture,
-      id: body.institution ?? institutionFixture.id,
+      ...current.institution,
+      id: body.institution ?? current.institution.id,
     }
+    const programmeId = body.programme
+    const programme = !Object.prototype.hasOwnProperty.call(body, 'programme')
+      ? current.programme
+      : programmeId == null
+        ? null
+        : {
+            ...programmeFixture,
+            id: programmeId,
+            institution,
+          }
+    const updated = educationGoalFixture({
+      ...current,
+      id,
+      institution,
+      kind: body.kind ?? current.kind,
+      priority: body.priority ?? current.priority,
+      programme,
+    })
+    educationGoalState = [
+      ...educationGoalState.filter(goal => goal.id !== id),
+      updated,
+    ]
     return HttpResponse.json({
-      data: educationGoalFixture({
-        id: Number(params.goalId),
-        institution,
-        kind: body.kind ?? 'alternative',
-        priority: body.priority ?? 1,
-        programme: body.programme === null ? null : {
-          ...programmeFixture,
-          id: body.programme ?? programmeFixture.id,
-          institution,
-        },
-      }),
+      data: updated,
       error: null,
       message: 'Education goal updated.',
     })
   }),
 
-  http.delete('/api/v1/students/education-goals/:goalId/', () => HttpResponse.json({
-    data: null, error: null, message: 'Education goal removed.',
-  })),
+  http.delete('/api/v1/students/education-goals/:goalId/', ({ params }) => {
+    educationGoalState = educationGoalState.filter(
+      goal => goal.id !== Number(params.goalId)
+    )
+    return HttpResponse.json({
+      data: null, error: null, message: 'Education goal removed.',
+    })
+  }),
 
   http.get('/api/v1/students/dashboard/', () => {
     return HttpResponse.json({
