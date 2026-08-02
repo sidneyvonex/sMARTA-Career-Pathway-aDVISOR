@@ -414,6 +414,44 @@ class TestSchoolStudentsView:
         assert [student['id'] for student in response.data['data']] == [
             profile.user_id
         ]
+        student = response.data['data'][0]
+        assert student['school_membership_status'] == 'active'
+        assert student['school'] == {
+            'id': self.school.id,
+            'name': self.school.name,
+        }
+
+    def test_foreign_revoked_provenance_cannot_be_verified_by_current_school(self):
+        previous_school = SchoolFactory()
+        previous_admin = SchoolAdminFactory(school=previous_school)
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        grade = CBCGradeFactory(
+            student_subject=StudentSubjectFactory(student_profile=profile),
+            verified_by=previous_admin,
+            verified_school=previous_school,
+            verified_at=timezone.now(),
+        )
+        grade.verified_by = None
+        grade.verified_at = None
+        grade.save(update_fields=['verified_by', 'verified_at'])
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['verified_school']['id'] == previous_school.id
+        assert evidence['verified_at'] is None
+        assert evidence['can_verify'] is False
+        assert evidence['can_remove_verification'] is False
 
     def test_list_query_count_is_bounded_for_academic_evidence(self):
         for index in range(4):

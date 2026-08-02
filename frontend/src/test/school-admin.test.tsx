@@ -354,6 +354,43 @@ describe('SchoolStudentsPage', () => {
     await waitFor(() => expect(assignedIds).toEqual([21]))
   })
 
+  it('enables school actions from an authoritative active membership despite stale profile status', async () => {
+    server.use(
+      http.get('/api/v1/school-admin/students/', () => HttpResponse.json({
+        data: [{
+          id: 20,
+          first_name: 'Jane',
+          last_name: 'Muthoni',
+          email: 'jane@student.co.ke',
+          grade: 9,
+          photo_url: null,
+          quiz_status: 'done',
+          school_membership_status: 'not_applicable',
+          school: { id: 1, name: 'Starehe Boys Centre' },
+          counselor_id: null,
+          counselor_name: null,
+          membership: { id: 51, status: 'active', record_source: 'learner_request', requested_at: '2026-01-10T08:00:00Z', started_at: '2026-01-11T08:00:00Z', ended_at: null },
+          transfer: { previous_membership_count: 0 },
+          academic_evidence: [],
+        }],
+        error: null,
+        message: '',
+      })),
+    )
+    renderPage()
+
+    expect(await screen.findByRole('checkbox', {
+      name: 'Select Jane Muthoni',
+    })).toBeEnabled()
+    expect(screen.getByRole('combobox', {
+      name: 'Assign counsellor for Jane Muthoni',
+    })).toBeEnabled()
+    expect(screen.getByRole('button', {
+      name: 'Download report for Jane Muthoni',
+    })).toBeEnabled()
+    expect(screen.getByText('School approved')).toBeInTheDocument()
+  })
+
   it('shows transfer-safe provenance and only valid verification controls', async () => {
     renderPage()
 
@@ -376,6 +413,7 @@ describe('SchoolStudentsPage', () => {
           photo_url: null,
           quiz_status: 'done',
           school_membership_status: 'active',
+          school: { id: 1, name: 'Starehe Boys Centre' },
           counselor_id: null,
           counselor_name: null,
           membership: { id: 51, status: 'active', record_source: 'learner_request', requested_at: '2026-01-10T08:00:00Z', started_at: '2026-01-11T08:00:00Z', ended_at: null },
@@ -406,6 +444,9 @@ describe('SchoolStudentsPage', () => {
       'Previously verified by Previous School; verification removed',
     )).toBeInTheDocument()
     expect(screen.queryByText('Verified by Previous School')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', {
+      name: 'Verify Mathematics Term 1',
+    })).not.toBeInTheDocument()
   })
 
   it('shows a retryable error when the student query fails', async () => {

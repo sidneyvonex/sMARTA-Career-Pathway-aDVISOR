@@ -395,6 +395,43 @@ class TestStudentReportViewPermissions:
 
         assert response.status_code == 403
 
+    def test_active_membership_supplies_authoritative_report_school(
+        self,
+        monkeypatch,
+    ):
+        stale_school = SchoolFactory(name='Stale Profile School')
+        current_school = SchoolFactory(name='Current Membership School')
+        admin = SchoolAdminFactory(school=current_school)
+        self.profile.school = stale_school
+        self.profile.mode = 'self_guided'
+        self.profile.school_membership_status = 'not_applicable'
+        self.profile.save(update_fields=[
+            'school',
+            'mode',
+            'school_membership_status',
+        ])
+        StudentSchoolMembershipFactory(
+            student_profile=self.profile,
+            school=current_school,
+            status='active',
+        )
+        captured = {}
+
+        def capture_report(data):
+            captured.update(data)
+            return b'%PDF-1.4 test'
+
+        monkeypatch.setattr('reports.views.build_student_report', capture_report)
+        self.client.force_authenticate(admin)
+
+        response = self.client.get(
+            f'/api/v1/reports/student/{self.student.id}/pdf/'
+        )
+
+        assert response.status_code == 200
+        assert captured['school_name'] == 'Current Membership School'
+        assert captured['school_membership_status'] == 'active'
+
     def test_school_admin_different_school_cannot_download(self):
         admin = SchoolAdminFactory()
         self.client.force_authenticate(admin)

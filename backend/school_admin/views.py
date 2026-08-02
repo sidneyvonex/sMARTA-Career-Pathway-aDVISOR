@@ -552,7 +552,7 @@ class SchoolStudentsView(APIView):
 
         profiles = (
             StudentProfile.objects
-            .select_related('user')
+            .select_related('user', 'school')
             .annotate(
                 has_assessment=Exists(has_assessment),
                 has_membership_history=Exists(membership_history),
@@ -615,10 +615,23 @@ class SchoolStudentsView(APIView):
                 ),
                 None,
             )
+            if memberships:
+                authoritative_membership_status = (
+                    current_membership.status
+                    if current_membership is not None
+                    else StudentSchoolMembership.STATUS_ENDED
+                )
+                authoritative_school = (
+                    current_membership.school
+                    if current_membership is not None
+                    else None
+                )
+            else:
+                authoritative_membership_status = p.school_membership_status
+                authoritative_school = p.school
             has_active_membership = (
-                current_membership.status == StudentSchoolMembership.STATUS_ACTIVE
-                if memberships
-                else p.school_membership_status == 'active'
+                authoritative_membership_status
+                == StudentSchoolMembership.STATUS_ACTIVE
             )
             academic_evidence = []
             if has_active_membership:
@@ -651,7 +664,13 @@ class SchoolStudentsView(APIView):
                                 if grade.verified_at is not None
                                 else None
                             ),
-                            'can_verify': not verified,
+                            'can_verify': (
+                                not verified
+                                and (
+                                    grade.verified_school_id is None
+                                    or grade.verified_school_id == school.id
+                                )
+                            ),
                             'can_remove_verification': (
                                 verified and grade.verified_school_id == school.id
                             ),
@@ -665,7 +684,15 @@ class SchoolStudentsView(APIView):
                 'grade': p.grade,
                 'photo_url': p.photo_url,
                 'quiz_status': 'done' if p.has_assessment else 'pending',
-                'school_membership_status': p.school_membership_status,
+                'school_membership_status': authoritative_membership_status,
+                'school': (
+                    {
+                        'id': authoritative_school.id,
+                        'name': authoritative_school.name,
+                    }
+                    if authoritative_school is not None
+                    else None
+                ),
                 'counselor_id': active_assignment.counselor_id if active_assignment else None,
                 'counselor_name': (
                     f'{active_assignment.counselor.first_name} {active_assignment.counselor.last_name}'

@@ -13,6 +13,10 @@ import '../../styles/school-admin.css'
 
 type Filter = 'all' | 'assigned' | 'unassigned' | 'assessed' | 'pending' | 'pending_link'
 
+function membershipStatus(student: SchoolStudent) {
+  return student.membership?.status ?? student.school_membership_status
+}
+
 export default function SchoolStudentsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -134,12 +138,12 @@ export default function SchoolStudentsPage() {
     if (!matchesSearch) return false
     if (filter === 'assigned') return student.counselor_id !== null
     if (filter === 'unassigned') return (
-      student.school_membership_status === 'active'
+      membershipStatus(student) === 'active'
       && student.counselor_id === null
     )
     if (filter === 'assessed') return student.quiz_status === 'done'
     if (filter === 'pending') return student.quiz_status === 'pending'
-    if (filter === 'pending_link') return student.school_membership_status === 'pending'
+    if (filter === 'pending_link') return membershipStatus(student) === 'pending'
     return true
   })
 
@@ -158,7 +162,7 @@ export default function SchoolStudentsPage() {
       render: student => {
         const name = `${student.first_name} ${student.last_name}`
         const canBulkAssign = (
-          student.school_membership_status === 'active'
+          membershipStatus(student) === 'active'
           && student.counselor_id === null
         )
         return (
@@ -180,51 +184,60 @@ export default function SchoolStudentsPage() {
                   {student.transfer.previous_membership_count === 1 ? '' : 's'}
                 </span>
               )}
-              {student.academic_evidence?.map(evidence => (
-                <div className="admin-evidence" key={evidence.id}>
-                  <span>
-                    {evidence.subject_name} · Term {evidence.term} {evidence.year} · {evidence.level}
-                  </span>
-                  <small>{evidence.framework.code} {evidence.framework.version}</small>
-                  <small>
-                    {evidence.verified_school && evidence.verified_at
-                      ? `Verified by ${evidence.verified_school.name}`
-                      : evidence.verified_school
-                        ? `Previously verified by ${evidence.verified_school.name}; verification removed`
-                        : `${evidence.source === 'school' ? 'School' : 'Learner'}-entered evidence`}
-                  </small>
-                  {evidence.can_verify && (
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      aria-label={`Verify ${evidence.subject_name} Term ${evidence.term}`}
-                      disabled={verificationMutation.isPending}
-                      onClick={() => verificationMutation.mutate({
-                        studentId: student.id,
-                        gradeId: evidence.id,
-                        verified: true,
-                      })}
-                    >
-                      {verificationMutation.isPending ? 'Saving…' : 'Verify'}
-                    </button>
-                  )}
-                  {evidence.can_remove_verification && (
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      aria-label={`Remove verification for ${evidence.subject_name} Term ${evidence.term}`}
-                      disabled={verificationMutation.isPending}
-                      onClick={() => verificationMutation.mutate({
-                        studentId: student.id,
-                        gradeId: evidence.id,
-                        verified: false,
-                      })}
-                    >
-                      Remove verification
-                    </button>
-                  )}
-                </div>
-              ))}
+              {student.academic_evidence?.map(evidence => {
+                const canVerify = (
+                  evidence.can_verify
+                  && (
+                    evidence.verified_school === null
+                    || evidence.verified_school.id === student.school?.id
+                  )
+                )
+                return (
+                  <div className="admin-evidence" key={evidence.id}>
+                    <span>
+                      {evidence.subject_name} · Term {evidence.term} {evidence.year} · {evidence.level}
+                    </span>
+                    <small>{evidence.framework.code} {evidence.framework.version}</small>
+                    <small>
+                      {evidence.verified_school && evidence.verified_at
+                        ? `Verified by ${evidence.verified_school.name}`
+                        : evidence.verified_school
+                          ? `Previously verified by ${evidence.verified_school.name}; verification removed`
+                          : `${evidence.source === 'school' ? 'School' : 'Learner'}-entered evidence`}
+                    </small>
+                    {canVerify && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        aria-label={`Verify ${evidence.subject_name} Term ${evidence.term}`}
+                        disabled={verificationMutation.isPending}
+                        onClick={() => verificationMutation.mutate({
+                          studentId: student.id,
+                          gradeId: evidence.id,
+                          verified: true,
+                        })}
+                      >
+                        {verificationMutation.isPending ? 'Saving…' : 'Verify'}
+                      </button>
+                    )}
+                    {evidence.can_remove_verification && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        aria-label={`Remove verification for ${evidence.subject_name} Term ${evidence.term}`}
+                        disabled={verificationMutation.isPending}
+                        onClick={() => verificationMutation.mutate({
+                          studentId: student.id,
+                          gradeId: evidence.id,
+                          verified: false,
+                        })}
+                      >
+                        Remove verification
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )
@@ -233,20 +246,23 @@ export default function SchoolStudentsPage() {
     {
       key: 'status',
       label: 'Status',
-      render: student => (
-        <div className="admin-status-stack">
-          <span className={`status-badge status-badge--${student.school_membership_status === 'active' ? 'assessed' : 'pending'}`}>
-            {student.school_membership_status === 'active'
-              ? 'School approved'
-              : student.school_membership_status === 'pending'
-                ? 'Link pending'
-                : 'Link rejected'}
-          </span>
-          <span>
-            Grade {student.grade} · {student.quiz_status === 'done' ? 'Assessed' : 'Assessment pending'}
-          </span>
-        </div>
-      ),
+      render: student => {
+        const status = membershipStatus(student)
+        return (
+          <div className="admin-status-stack">
+            <span className={`status-badge status-badge--${status === 'active' ? 'assessed' : 'pending'}`}>
+              {status === 'active'
+                ? 'School approved'
+                : status === 'pending'
+                  ? 'Link pending'
+                  : 'Link rejected'}
+            </span>
+            <span>
+              Grade {student.grade} · {student.quiz_status === 'done' ? 'Assessed' : 'Assessment pending'}
+            </span>
+          </div>
+        )
+      },
     },
     {
       key: 'assignment',
@@ -266,7 +282,7 @@ export default function SchoolStudentsPage() {
                 })
               }
             }}
-            disabled={assignMutation.isPending || student.school_membership_status !== 'active'}
+            disabled={assignMutation.isPending || membershipStatus(student) !== 'active'}
           >
             <option value="">Choose counsellor</option>
             {counselors.map(counselor => (
@@ -287,7 +303,7 @@ export default function SchoolStudentsPage() {
           type="button"
           className="btn-ghost"
           onClick={() => downloadReport(student.id)}
-          disabled={downloadingId === student.id || student.school_membership_status !== 'active'}
+          disabled={downloadingId === student.id || membershipStatus(student) !== 'active'}
           aria-label={`Download report for ${student.first_name} ${student.last_name}`}
         >
           {downloadingId === student.id ? 'Generating…' : 'Download PDF'}

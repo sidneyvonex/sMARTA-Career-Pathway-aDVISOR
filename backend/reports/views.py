@@ -2,6 +2,7 @@ import re
 from datetime import date
 
 from django.conf import settings
+from django.db.models import Exists, OuterRef, Subquery
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -35,11 +36,39 @@ class StudentReportView(APIView):
             return _error('Student not found.', 404)
 
         try:
-            profile = StudentProfile.objects.select_related('school').get(user=student)
+            membership_history = StudentSchoolMembership.objects.filter(
+                student_profile=OuterRef('pk'),
+            )
+            active_membership = membership_history.filter(
+                status=StudentSchoolMembership.STATUS_ACTIVE,
+            ).order_by('pk')
+            profile = (
+                StudentProfile.objects
+                .select_related('school')
+                .annotate(
+                    report_has_membership_history=Exists(membership_history),
+                    report_active_school_id=Subquery(
+                        active_membership.values('school_id')[:1]
+                    ),
+                    report_active_school_name=Subquery(
+                        active_membership.values('school__name')[:1]
+                    ),
+                    report_active_membership_status=Subquery(
+                        active_membership.values('status')[:1]
+                    ),
+                )
+                .get(user=student)
+            )
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', 404)
 
-        if not self._has_access(request.user, student, profile):
+        membership_context = self._membership_context(profile)
+        if not self._has_access(
+            request.user,
+            student,
+            profile,
+            membership_context,
+        ):
             return _error("You don't have permission to do that.", 403)
 
         support_enrolments = academic_support_enrolments(profile)
@@ -80,7 +109,8 @@ class StudentReportView(APIView):
         data = {
             'student_name': f'{student.first_name} {student.last_name}'.strip(),
             'grade': profile.grade,
-            'school_name': profile.school.name if profile.school else None,
+            'school_name': membership_context['school_name'],
+            'school_membership_status': membership_context['status'],
             'county': (student.county or '').replace('_', ' ').title() if student.county else None,
             'email': student.email,
             'mode': profile.mode,
@@ -155,7 +185,22 @@ class StudentReportView(APIView):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
-    def _has_access(self, user, student, profile):
+    def _membership_context(self, profile):
+        if profile.report_has_membership_history:
+            return {
+                'uses_membership_history': True,
+                'school_id': profile.report_active_school_id,
+                'school_name': profile.report_active_school_name,
+                'status': profile.report_active_membership_status,
+            }
+        return {
+            'uses_membership_history': False,
+            'school_id': profile.school_id,
+            'school_name': profile.school.name if profile.school else None,
+            'status': profile.school_membership_status,
+        }
+
+    def _has_access(self, user, student, profile, membership_context):
         if user.role == 'system_admin':
             return True
         if user.role == 'student':
@@ -165,16 +210,11 @@ class StudentReportView(APIView):
                 counselor=user, student_profile=profile, is_active=True,
             ).exists()
         if user.role == 'school_admin':
-            memberships = list(
-                StudentSchoolMembership.objects
-                .filter(student_profile=profile)
-                .values_list('school_id', 'status')
-            )
-            if memberships:
-                return any(
-                    school_id == user.school_id
-                    and membership_status == StudentSchoolMembership.STATUS_ACTIVE
-                    for school_id, membership_status in memberships
+            if membership_context['uses_membership_history']:
+                return (
+                    membership_context['school_id'] == user.school_id
+                    and membership_context['status']
+                    == StudentSchoolMembership.STATUS_ACTIVE
                 )
             return (
                 profile.mode == 'school_linked'

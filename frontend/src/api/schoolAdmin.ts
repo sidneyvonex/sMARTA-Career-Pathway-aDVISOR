@@ -29,7 +29,8 @@ export interface SchoolStudent {
   grade: number
   photo_url: string | null
   quiz_status: 'done' | 'pending'
-  school_membership_status: 'pending' | 'active' | 'rejected'
+  school_membership_status: 'pending' | 'active' | 'rejected' | 'ended' | 'not_applicable'
+  school: { id: number; name: string } | null
   counselor_id: number | null
   counselor_name: string | null
   membership: {
