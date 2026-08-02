@@ -76,6 +76,42 @@ def build_student_report(data):
     ))
     elements.append(Spacer(1, 4 * mm))
 
+    # --- Deterministic academic progress ---
+    progress = data.get('academic_progress') or {}
+    elements.append(Paragraph('Academic Progress', styles['SectionTitle']))
+    overall = progress.get('overall') or {}
+    elements.append(Paragraph(
+        f"<b>Overall support status:</b> {_text(overall.get('label') or 'Insufficient evidence')}",
+        styles['BodyText2'],
+    ))
+    progress_subjects = progress.get('subjects') or []
+    if not progress_subjects:
+        elements.append(Paragraph(
+            'No active subject progress can be derived yet.',
+            styles['BodyText2'],
+        ))
+    for subject in progress_subjects:
+        elements.append(Paragraph(
+            f"<b>{_text(subject.get('subject_name'))}</b> — "
+            f"{_text(subject.get('label'))} ({_text(subject.get('rule_code'))})",
+            styles['BodyText2'],
+        ))
+        elements.append(Paragraph(
+            _text(subject.get('explanation')),
+            styles['SmallGrey'],
+        ))
+        elements.append(Paragraph(
+            f"<b>Suggested action:</b> {_text(subject.get('suggested_action'))} "
+            f"<b>Evidence:</b> {_text(str(subject.get('evidence_confidence') or '').replace('_', ' '))}",
+            styles['SmallGrey'],
+        ))
+    if progress.get('advisory_disclaimer'):
+        elements.append(Paragraph(
+            _text(progress['advisory_disclaimer']),
+            styles['SmallGrey'],
+        ))
+    elements.append(Spacer(1, 4 * mm))
+
     # --- Student profile ---
     elements.append(Paragraph('Student Profile', styles['SectionTitle']))
     school_display = data.get('school_name') or 'Self-Guided'
@@ -158,14 +194,28 @@ def build_student_report(data):
                     styles['SmallGrey'],
                 ))
             else:
-                grade_rows = [['Term', 'Year', 'Level']]
+                grade_rows = [['Term', 'Year', 'Level', 'Framework / provenance']]
                 for g in subj['grades']:
+                    grade_framework = g.get('framework') or {}
+                    provenance = (
+                        f"{grade_framework.get('code', 'Unknown framework')} "
+                        f"{grade_framework.get('version', '')}; "
+                        f"{str(g.get('source') or 'learner').title()}-entered"
+                    )
+                    if g.get('verified_school'):
+                        provenance += f"; Verified by {g['verified_school']}"
+                        if g.get('verified_at'):
+                            provenance += f" on {g['verified_at']}"
                     grade_rows.append([
                         f"Term {g['term']}",
                         str(g['year']),
                         g['label'],
+                        Paragraph(_text(provenance), styles['SmallGrey']),
                     ])
-                grade_table = Table(grade_rows, colWidths=[30 * mm, 25 * mm, 110 * mm])
+                grade_table = Table(
+                    grade_rows,
+                    colWidths=[24 * mm, 20 * mm, 52 * mm, 69 * mm],
+                )
                 grade_table.setStyle(TableStyle([
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                     ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -179,6 +229,51 @@ def build_student_report(data):
                 ]))
                 elements.append(grade_table)
             elements.append(Spacer(1, 3 * mm))
+
+    # --- Learner-owned academic targets ---
+    elements.append(Paragraph('Academic Targets', styles['SectionTitle']))
+    academic_goals = data.get('academic_goals') or []
+    if not academic_goals:
+        elements.append(Paragraph('No academic targets recorded.', styles['BodyText2']))
+    for goal in academic_goals:
+        current = goal.get('current_level') or {}
+        target = goal.get('target_level') or {}
+        target_framework = target.get('framework') or {}
+        elements.append(Paragraph(
+            f"<b>{_text(goal.get('continuity_code'))}</b>: "
+            f"{_text(current.get('code'))} to {_text(target.get('code'))} "
+            f"by Term {_text(goal.get('target_term'))} {_text(goal.get('target_year'))} "
+            f"({_text(target_framework.get('code'))} {_text(target_framework.get('version'))})",
+            styles['BodyText2'],
+        ))
+        elements.append(Paragraph(
+            f"<b>Action plan:</b> {_text(goal.get('action_plan'))} "
+            f"<b>Status:</b> {_text(goal.get('status'))}",
+            styles['SmallGrey'],
+        ))
+
+    # --- Learner-owned tertiary exploration goals ---
+    elements.append(Paragraph('Education Goals', styles['SectionTitle']))
+    education_goals = data.get('education_goals') or []
+    if not education_goals:
+        elements.append(Paragraph('No education goals recorded.', styles['BodyText2']))
+    for goal in education_goals:
+        institution = goal.get('institution') or {}
+        programme = goal.get('programme') or {}
+        elements.append(Paragraph(
+            f"<b>{_text(institution.get('name'))}</b>"
+            f"{f' — {_text(programme.get("name"))}' if programme.get('name') else ''}",
+            styles['BodyText2'],
+        ))
+        elements.append(Paragraph(
+            f"{_text(institution.get('education_framework'))} · "
+            f"{_text(institution.get('admission_cycle'))}; effective "
+            f"{_text(institution.get('effective_date'))}; "
+            f"{_text(institution.get('verification_status'))}. "
+            f"Source: {_text(institution.get('source_url'))}",
+            styles['SmallGrey'],
+        ))
+    elements.append(Spacer(1, 4 * mm))
 
     # --- RIASEC results ---
     elements.append(Paragraph('Interest Profile (RIASEC)', styles['SectionTitle']))

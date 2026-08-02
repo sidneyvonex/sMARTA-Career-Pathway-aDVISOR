@@ -2,6 +2,7 @@ import io
 import pytest
 from pypdf import PdfReader
 from rest_framework.test import APIClient
+from django.utils import timezone
 from guidance.models import LearnerCombinationChoice, LearnerPlan, PlanMilestone
 from reports.pdf_builder import build_student_report
 from system_admin.models import AuditLog
@@ -9,7 +10,8 @@ from tests.factories import (
     VerifiedUserFactory, StudentProfileFactory, CounselorFactory,
     CounselorAssignmentFactory, SchoolFactory, SchoolAdminFactory,
     ParentFactory, ParentStudentLinkFactory, SystemAdminFactory,
-    StudentSubjectFactory, CBCGradeFactory,
+    StudentSubjectFactory, CBCGradeFactory, AcademicGoalFactory,
+    LearnerEducationGoalFactory,
     RIASECAssessmentFactory, RIASECScoreFactory, PathwayFactory,
     RecommendationFactory, FrameworkVersionFactory, PathwayTrackFactory,
     SubjectCombinationFactory,
@@ -85,6 +87,49 @@ class TestPDFBuilder:
                 'label': 'In progress',
                 'explanation': '2 of 2 enrolled subjects have recorded academic evidence.',
             },
+            'academic_progress': {
+                'overall': {
+                    'status': 'on_track',
+                    'label': 'On track',
+                    'subject_continuity_codes': ['MAT'],
+                },
+                'subjects': [{
+                    'continuity_code': 'MAT',
+                    'subject_name': 'Mathematics',
+                    'status': 'on_track',
+                    'label': 'On track',
+                    'rule_code': 'otherwise_me_on_track',
+                    'explanation': 'The available academic evidence is meeting expectation.',
+                    'suggested_action': 'Continue practising and record the next available evidence.',
+                    'evidence_confidence': 'school_verified',
+                    'records_used': [],
+                    'evidence': [],
+                    'decision_inputs': {},
+                }],
+                'advisory_disclaimer': 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+            },
+            'academic_goals': [{
+                'continuity_code': 'MAT',
+                'current_level': {'code': 'ME1', 'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'}},
+                'target_level': {'code': 'ME2', 'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'}},
+                'target_term': 3,
+                'target_year': 2026,
+                'action_plan': 'Practise twice each week.',
+                'status': 'active',
+            }],
+            'education_goals': [{
+                'kind': 'primary',
+                'priority': 1,
+                'institution': {
+                    'name': 'Test University',
+                    'source_url': 'https://students.kuccps.net/institutions/',
+                    'education_framework': 'KCSE',
+                    'admission_cycle': '2025/2026',
+                    'effective_date': '2025-03-01',
+                    'verification_status': 'historical',
+                },
+                'programme': {'name': 'Bachelor of Science'},
+            }],
             'provisional_choice': {
                 'code': 'STEM-PURE-01',
                 'title': 'Pure Sciences',
@@ -213,6 +258,31 @@ class TestPDFBuilder:
         assert 'riasec-pilot-1.0' in text
         assert '21 June 2026 10:30 EAT' in normalized_text
         assert 'does not submit official Senior School choices' in normalized_text
+
+    def test_pdf_contains_advisory_progress_targets_goals_and_evidence_provenance(self):
+        data = self._make_data()
+        data['subjects'][0]['grades'][0].update({
+            'framework': {'code': 'CBC-JUNIOR-SCHOOL', 'version': 'pilot-2026'},
+            'source': 'school',
+            'verified_school': 'Starehe Boys Centre',
+            'verified_at': '20 June 2026',
+        })
+
+        text = _extract_pdf_text(build_student_report(data))
+        normalized = ' '.join(text.split())
+
+        assert 'Academic Progress' in text
+        assert 'otherwise_me_on_track' in normalized
+        assert 'Continue practising' in normalized
+        assert 'Academic Targets' in text
+        assert 'ME1 to ME2' in normalized
+        assert 'Education Goals' in text
+        assert 'Test University' in text
+        assert 'KCSE · 2025/2026' in normalized
+        assert 'Verified by Starehe Boys Centre' in normalized
+        assert 'CBC-JUNIOR-SCHOOL pilot-2026' in normalized
+        assert 'advisory only' in normalized
+        assert 'eligibility probability' not in normalized.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +534,44 @@ class TestStudentReportViewEdgeCases:
         assert captured['instrument_version'] == 'riasec-pilot-test'
         assert captured['algorithm_version'] == 'alignment-test-2'
         assert captured['generated_at']
+
+    def test_report_assembles_progress_targets_goals_and_grade_provenance(self, monkeypatch):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        school = SchoolFactory(name='Evidence School')
+        verifier = SchoolAdminFactory(school=school)
+        grade = CBCGradeFactory(
+            student_subject=enrollment,
+            verified_by=verifier,
+            verified_school=school,
+            verified_at=timezone.now(),
+            source='school',
+        )
+        AcademicGoalFactory(
+            learner=profile,
+            current_evidence=grade,
+            created_by=student,
+        )
+        LearnerEducationGoalFactory(learner=profile, created_by=student)
+        captured = {}
+
+        def capture_report(data):
+            captured.update(data)
+            return b'%PDF-1.4 test'
+
+        monkeypatch.setattr('reports.views.build_student_report', capture_report)
+
+        response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/')
+
+        assert response.status_code == 200
+        assert captured['academic_progress']['subjects'][0]['rule_code']
+        assert len(captured['academic_goals']) == 1
+        assert len(captured['education_goals']) == 1
+        exported_grade = captured['subjects'][0]['grades'][0]
+        assert exported_grade['framework']['version'] == grade.framework.version
+        assert exported_grade['verified_school'] == 'Evidence School'
+        assert exported_grade['source'] == 'school'
 
     def test_invalid_student_id_returns_404(self):
         # <int:student_id> URL converter rejects non-numeric IDs at routing level.

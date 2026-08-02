@@ -2,6 +2,7 @@ import re
 from datetime import date
 
 from django.conf import settings
+from django.db.models import Prefetch
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +14,8 @@ from accounts.response import _error
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
-from students.models import StudentSubject, GRADE_LEVEL_CHOICES
+from students.models import CBCGrade, StudentSubject, GRADE_LEVEL_CHOICES
+from students.role_support import academic_support_context
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
 from .pdf_builder import build_student_report
@@ -39,6 +41,7 @@ class StudentReportView(APIView):
             return _error("You don't have permission to do that.", 403)
 
         subjects_data = self._get_subjects_data(profile)
+        support_context = academic_support_context(profile)
         riasec_data, recommendations_data = self._get_riasec_data(profile)
 
         if not subjects_data and riasec_data is None:
@@ -94,6 +97,7 @@ class StudentReportView(APIView):
                     'have recorded academic evidence.'
                 ),
             },
+            **support_context,
             'provisional_choice': self._serialize_choice(provisional_choice),
             'plan': self._serialize_plan(plan),
             'framework': (
@@ -174,7 +178,14 @@ class StudentReportView(APIView):
             StudentSubject.objects
             .filter(student_profile=profile)
             .select_related('subject')
-            .prefetch_related('grades')
+            .prefetch_related(
+                Prefetch(
+                    'grades',
+                    queryset=CBCGrade.objects.select_related(
+                        'framework', 'verified_school'
+                    ),
+                )
+            )
         )
         subjects = []
         for enrollment in enrollments:
@@ -184,6 +195,21 @@ class StudentReportView(APIView):
                     'year': g.year,
                     'level': g.level,
                     'label': GRADE_LABELS.get(g.level, g.level),
+                    'framework': {
+                        'code': g.framework.code,
+                        'version': g.framework.version,
+                    },
+                    'source': g.source,
+                    'verified_school': (
+                        g.verified_school.name
+                        if g.verified_school_id is not None
+                        else None
+                    ),
+                    'verified_at': (
+                        timezone.localtime(g.verified_at).strftime('%d %B %Y')
+                        if g.verified_at is not None
+                        else None
+                    ),
                 }
                 for g in enrollment.grades.all()
             ]
