@@ -4,6 +4,7 @@ import {
   type SubjectProgress,
 } from '../../api/students'
 import ResponsiveDataList from '../common/dashboard/ResponsiveDataList'
+import { evidenceOrigin, evidenceVerification } from '../../lib/academicEvidence'
 
 
 const CONFIDENCE_LABELS: Record<SubjectProgress['evidence_confidence'], string> = {
@@ -13,15 +14,9 @@ const CONFIDENCE_LABELS: Record<SubjectProgress['evidence_confidence'], string> 
 }
 
 
-function evidenceSource(evidence: ProgressEvidence): string {
-  return evidence.source === 'school' && evidence.verified_at
-    ? 'School verified'
-    : 'Learner entered'
-}
-
-
-function trendText(evidence: ProgressEvidence[]): string {
-  if (evidence.length < 2) return 'Not enough evidence to describe a trend.'
+function trendText(progress: SubjectProgress): string {
+  const evidence = progress.records_used
+  if (evidence.length < 2) return 'Not enough status evidence to describe a trend.'
   const first = evidence[0]
   const latest = evidence[evidence.length - 1]
   const direction = latest.rank > first.rank
@@ -29,7 +24,7 @@ function trendText(evidence: ProgressEvidence[]): string {
     : latest.rank < first.rank
       ? 'Declining'
       : 'Steady'
-  return `${direction} from ${GRADE_LEVEL_LABELS[first.level]} to ${GRADE_LEVEL_LABELS[latest.level]} across ${evidence.length} records.`
+  return `${direction} from ${GRADE_LEVEL_LABELS[first.level]} to ${GRADE_LEVEL_LABELS[latest.level]} across ${evidence.length} status records.`
 }
 
 
@@ -52,7 +47,7 @@ export default function ProgressSubjectCard({ progress, evidence }: Props) {
         </span>
       </header>
 
-      <p className="progress-subject__trend">{trendText(evidence)}</p>
+      <p className="progress-subject__trend">{trendText(progress)}</p>
 
       {evidence.length > 0 ? (
         <div className="progress-trail" aria-hidden="true">
@@ -74,6 +69,43 @@ export default function ProgressSubjectCard({ progress, evidence }: Props) {
         <small>Rule: {progress.rule_code}</small>
       </div>
 
+      <section className="progress-evidence-used" aria-labelledby={`evidence-used-${progress.continuity_code}`}>
+        <h4 id={`evidence-used-${progress.continuity_code}`}>Evidence used for this status</h4>
+        <ResponsiveDataList
+          ariaLabel={`${progress.subject_name} evidence used for this status`}
+          items={progress.records_used}
+          getKey={(record) => record.id}
+          columns={[
+            {
+              key: 'period',
+              label: 'Period',
+              render: (record) => `Grade ${record.academic_grade}, ${record.year}, Term ${record.term}`,
+            },
+            {
+              key: 'level',
+              label: 'CBE level',
+              render: (record) => GRADE_LEVEL_LABELS[record.level],
+            },
+            {
+              key: 'framework',
+              label: 'Assessment framework',
+              render: (record) => `${record.framework.code} ${record.framework.version}`,
+            },
+            {
+              key: 'origin',
+              label: 'Origin',
+              render: evidenceOrigin,
+            },
+            {
+              key: 'verification',
+              label: 'Verification',
+              render: evidenceVerification,
+            },
+          ]}
+          empty={<p className="progress-evidence__empty">No evidence records were used for this status.</p>}
+        />
+      </section>
+
       <details className="progress-evidence">
         <summary>View evidence details</summary>
         <ResponsiveDataList
@@ -92,9 +124,14 @@ export default function ProgressSubjectCard({ progress, evidence }: Props) {
               render: (record) => GRADE_LEVEL_LABELS[record.level],
             },
             {
-              key: 'source',
-              label: 'Source',
-              render: evidenceSource,
+              key: 'origin',
+              label: 'Origin',
+              render: evidenceOrigin,
+            },
+            {
+              key: 'verification',
+              label: 'Verification',
+              render: evidenceVerification,
             },
             {
               key: 'framework',

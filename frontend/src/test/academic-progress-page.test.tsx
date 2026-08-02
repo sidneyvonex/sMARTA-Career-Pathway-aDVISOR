@@ -64,7 +64,12 @@ const subject = (
 
 const mathematicsEvidence = [
   makeEvidence(1, 'AE2', 3, 10, 2025, 3),
-  makeEvidence(2, 'ME2', 5, 10, 2026, 1, 'school'),
+  {
+    ...makeEvidence(2, 'ME2', 5, 10, 2026, 1),
+    verified_by: 9,
+    verified_school: 3,
+    verified_at: '2026-07-30T10:00:00Z',
+  },
 ]
 
 const progressFixture: ProgressAssessment = {
@@ -150,7 +155,7 @@ describe('flagged My Progress dashboard', () => {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0)
     }
     expect(screen.getByText(
-      'Improving from Approaching Expectation - Level 2 to Meeting Expectation - Level 2 across 2 records.',
+      'Improving from Approaching Expectation - Level 2 to Meeting Expectation - Level 2 across 2 status records.',
     )).toBeInTheDocument()
     expect(screen.getByText('Mixed learner-entered and school-verified evidence')).toBeInTheDocument()
     expect(screen.getAllByText('CBC-SENIOR-SCHOOL pilot-2026').length).toBeGreaterThan(0)
@@ -159,7 +164,14 @@ describe('flagged My Progress dashboard', () => {
 
     const evidenceTable = screen.getByRole('table', { name: 'Mathematics evidence' })
     expect(within(evidenceTable).getByText('Grade 10, 2026, Term 1')).toBeInTheDocument()
-    expect(within(evidenceTable).getByText('School verified')).toBeInTheDocument()
+    expect(within(evidenceTable).getByText(/School verified on/)).toBeInTheDocument()
+    const recordsUsed = screen.getByRole('table', {
+      name: 'Mathematics evidence used for this status',
+    })
+    expect(within(recordsUsed).getByText('Grade 10, 2025, Term 3')).toBeInTheDocument()
+    expect(within(recordsUsed).getAllByText('CBC-SENIOR-SCHOOL pilot-2026')).toHaveLength(2)
+    expect(within(recordsUsed).getAllByText('Learner entered')).toHaveLength(2)
+    expect(within(recordsUsed).getByText(/School verified/)).toBeInTheDocument()
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
     expect(screen.getByText(progressFixture.advisory_disclaimer)).toBeInTheDocument()
   })
@@ -194,6 +206,46 @@ describe('flagged My Progress dashboard', () => {
     await user.selectOptions(yearFilter, '2026')
     expect(screen.getByRole('heading', { name: 'Mathematics' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'English' })).not.toBeInTheDocument()
+  })
+
+  it('keeps trend copy tied to the unfiltered winning-rule evidence', async () => {
+    const chronology = [
+      makeEvidence(31, 'BE1', 2, 9, 2025, 3),
+      makeEvidence(32, 'EE1', 8, 10, 2026, 1),
+      makeEvidence(33, 'ME1', 6, 10, 2026, 2),
+    ]
+    const declining = subject(
+      'MTH',
+      'Mathematics',
+      'needs_attention',
+      'Needs attention',
+      'latest_ae_or_two_declines_attention',
+      chronology,
+    )
+    declining.records_used = chronology.slice(-2)
+    server.use(http.get('/api/v1/students/progress/', () => progressResponse({
+      ...progressFixture,
+      subjects: [declining],
+      overall: {
+        status: 'needs_attention',
+        label: 'Needs attention',
+        subject_continuity_codes: ['MTH'],
+      },
+    })))
+    const user = userEvent.setup()
+
+    renderPage()
+    expect(await screen.findByText(
+      'Declining from Exceeding Expectation - Level 1 to Meeting Expectation - Level 1 across 2 status records.',
+    )).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Academic grade'), '9')
+    expect(screen.getByText(
+      'Declining from Exceeding Expectation - Level 1 to Meeting Expectation - Level 1 across 2 status records.',
+    )).toBeInTheDocument()
+    expect(screen.getByRole('table', {
+      name: 'Mathematics evidence used for this status',
+    })).toBeInTheDocument()
   })
 
   it('creates an academic target from a fully labelled keyboard-operable form and shows its toast', async () => {
@@ -327,7 +379,10 @@ describe('flagged My Progress dashboard', () => {
     expect(await screen.findByRole('heading', { name: 'Education goal preview' })).toBeInTheDocument()
     expect(screen.getByText('University of Nairobi')).toBeInTheDocument()
     expect(screen.getByText('BSc Computer Science')).toBeInTheDocument()
-    expect(screen.getByText(/historical catalogue reference/i)).toBeInTheDocument()
+    expect(screen.getByText(/KCSE · 2025\/2026 .* Historical reference only/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open programme source' })).toHaveAttribute(
+      'href', 'https://students.kuccps.net/',
+    )
     expect(screen.getByRole('link', { name: 'Explore education goals' })).toHaveAttribute(
       'href', '/education-goals',
     )

@@ -958,7 +958,12 @@ export const handlers = [
             explanation: 'One record is available, so a trend is not yet established.',
             suggested_action: 'Record more academic evidence before drawing a progress trend.',
             evidence_confidence: 'learner_entered',
-            records_used: [],
+            records_used: [{
+              id: 50, academic_grade: 9, year: 2026, term: 1, level: 'ME2', rank: 5,
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_by: null, verified_school: 3, verified_at: null,
+              created_at: '2026-07-20T10:00:00Z',
+            }],
             evidence: [],
             decision_inputs: {
               latest_framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
@@ -975,7 +980,14 @@ export const handlers = [
         education_goals: [{
           id: 44,
           institution: institutionFixture,
-          programme: null,
+          programme: {
+            ...programmeFixture,
+            source_url: 'https://programme.example/source',
+            education_framework: 'PROGRAMME-CBE',
+            admission_cycle: '2026 exploration cycle',
+            effective_date: '2026-06-01',
+            verification_status: 'historical',
+          },
           kind: 'primary',
           priority: 1,
           created_by: 5,
@@ -1219,8 +1231,16 @@ export const handlers = [
             code: 'MAT0019',
             category: 'Core',
             grades: [
-              { id: 1, term: 1, year: 2026, level: 'ME1' },
-              { id: 2, term: 2, year: 2026, level: 'EE1' },
+              {
+                id: 1, academic_grade: 9, term: 1, year: 2026, level: 'ME1',
+                framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+                source: 'learner', verified_school: 3, verified_at: null,
+              },
+              {
+                id: 2, academic_grade: 9, term: 2, year: 2026, level: 'EE1',
+                framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+                source: 'school', verified_school: 3, verified_at: '2026-07-30T10:00:00Z',
+              },
             ],
           },
           {
@@ -1228,7 +1248,11 @@ export const handlers = [
             name: 'English',
             code: 'ENG0019',
             category: 'Core',
-            grades: [{ id: 3, term: 1, year: 2026, level: 'AE1' }],
+            grades: [{
+              id: 3, academic_grade: 9, term: 1, year: 2026, level: 'AE1',
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_school: null, verified_at: null,
+            }],
           },
         ],
         assessment: {
@@ -1251,7 +1275,7 @@ export const handlers = [
             },
           ],
         },
-        academic_readiness: {
+        evidence_completeness: {
           status: 'in_progress',
           total_subjects: 2,
           subjects_with_evidence: 2,
@@ -1330,7 +1354,12 @@ export const handlers = [
             explanation: 'The latest evidence needs attention.',
             suggested_action: 'Review the recent evidence with a teacher, counsellor, or trusted adult and agree a support action.',
             evidence_confidence: 'learner_entered',
-            records_used: [],
+            records_used: [{
+              id: 51, academic_grade: 9, year: 2026, term: 1, level: 'ME2', rank: 5,
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_by: null, verified_school: 3, verified_at: null,
+              created_at: '2026-07-20T10:00:00Z',
+            }],
             evidence: [],
             decision_inputs: { latest_framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, me2_rank: 5 },
           }],
@@ -1344,7 +1373,14 @@ export const handlers = [
         education_goals: [{
           id: 45,
           institution: institutionFixture,
-          programme: null,
+          programme: {
+            ...programmeFixture,
+            source_url: 'https://programme.example/source',
+            education_framework: 'PROGRAMME-CBE',
+            admission_cycle: '2026 exploration cycle',
+            effective_date: '2026-06-01',
+            verification_status: 'historical',
+          },
           kind: 'primary',
           priority: 1,
           created_by: 10,

@@ -7,7 +7,10 @@ import { initials } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
+import ResponsiveDataList from '../../components/common/dashboard/ResponsiveDataList'
 import StatusBadge from '../../components/common/dashboard/StatusBadge'
+import { GRADE_LEVEL_LABELS } from '../../api/students'
+import { evidenceOrigin, evidenceVerification } from '../../lib/academicEvidence'
 import '../../styles/parent.css'
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -71,7 +74,7 @@ export default function ChildDetailPage() {
     profile,
     subjects,
     assessment,
-    academic_readiness: academic,
+    evidence_completeness: evidenceCompleteness,
     provisional_combination: provisional,
     plan,
     counselor,
@@ -178,13 +181,15 @@ export default function ChildDetailPage() {
       </section>
 
       <section className="child-detail__section" aria-labelledby="academic-title">
-        <SectionTitle eyebrow="Academic evidence" title="Academic readiness" id="academic-title" />
+        <SectionTitle eyebrow="Academic evidence" title="Evidence completeness" id="academic-title" />
         <div className="child-detail__readiness">
-          <StatusBadge tone={academic.status === 'ready' ? 'positive' : 'attention'}>
-            {academic.status === 'ready' ? 'Evidence ready' : academic.status === 'in_progress' ? 'In progress' : 'Not started'}
+          <StatusBadge tone={evidenceCompleteness.status === 'complete' ? 'positive' : 'attention'}>
+            {evidenceCompleteness.status === 'complete'
+              ? 'Complete coverage'
+              : evidenceCompleteness.status === 'in_progress' ? 'In progress' : 'Not started'}
           </StatusBadge>
           <p>
-            {academic.subjects_with_evidence} of {academic.total_subjects} enrolled subjects have grade evidence, across {academic.total_grade_records} records.
+            {evidenceCompleteness.subjects_with_evidence} of {evidenceCompleteness.total_subjects} enrolled subjects have grade evidence, across {evidenceCompleteness.total_grade_records} records.
           </p>
         </div>
         {subjects.length ? (
@@ -198,9 +203,12 @@ export default function ChildDetailPage() {
                 <div>
                   {subject.grades.length
                     ? subject.grades.map((grade) => (
-                        <span className="grade-badge" key={grade.id}>
-                          T{grade.term}: {grade.level}
-                        </span>
+                        <div className="grade-badge" key={grade.id}>
+                          <strong>T{grade.term}: {grade.level}</strong>
+                          <small>{grade.framework.code} {grade.framework.version}</small>
+                          <small>Origin: {evidenceOrigin(grade)}</small>
+                          <small>Verification: {evidenceVerification(grade)}</small>
+                        </div>
                       ))
                     : <small>No grade evidence</small>}
                 </div>
@@ -242,6 +250,39 @@ export default function ChildDetailPage() {
                   <p>{subject.explanation}</p>
                   <small>{subject.suggested_action}</small>
                 </div>
+                <section
+                  className="child-detail__progress-evidence"
+                  aria-labelledby={`parent-evidence-${subject.continuity_code}`}
+                >
+                  <h3 id={`parent-evidence-${subject.continuity_code}`}>
+                    Evidence used for this status
+                  </h3>
+                  <ResponsiveDataList
+                    ariaLabel={`${subject.subject_name} evidence used for this status`}
+                    items={subject.records_used}
+                    getKey={(record) => record.id}
+                    columns={[
+                      {
+                        key: 'period',
+                        label: 'Period',
+                        render: (record) => `Grade ${record.academic_grade}, ${record.year}, Term ${record.term}`,
+                      },
+                      {
+                        key: 'level',
+                        label: 'CBE level',
+                        render: (record) => GRADE_LEVEL_LABELS[record.level],
+                      },
+                      {
+                        key: 'framework',
+                        label: 'Assessment framework',
+                        render: (record) => `${record.framework.code} ${record.framework.version}`,
+                      },
+                      { key: 'origin', label: 'Origin', render: evidenceOrigin },
+                      { key: 'verification', label: 'Verification', render: evidenceVerification },
+                    ]}
+                    empty={<p>No evidence records were used for this status.</p>}
+                  />
+                </section>
               </article>
             ))}
           </div>
@@ -273,15 +314,27 @@ export default function ChildDetailPage() {
         <SectionTitle eyebrow="Exploration choices" title="Education goals" id="education-goals-title" />
         {educationGoals.length ? (
           <div className="child-detail__subjects">
-            {educationGoals.map(goal => (
-              <article key={goal.id}>
-                <div><h3>{goal.institution.name}</h3></div>
-                <div>
-                  <p>{goal.programme?.name ?? 'Institution exploration'}</p>
-                  <small>{goal.institution.education_framework} · {goal.institution.admission_cycle} · {goal.institution.verification_status}</small>
-                </div>
-              </article>
-            ))}
+            {educationGoals.map(goal => {
+              const provenance = goal.programme ?? goal.institution
+              const verification = provenance.verification_status === 'historical'
+                ? 'Historical'
+                : provenance.verification_status === 'verified' ? 'Verified' : 'Unavailable'
+              return (
+                <article key={goal.id}>
+                  <div><h3>{goal.institution.name}</h3></div>
+                  <div>
+                    <p>{goal.programme?.name ?? 'Institution exploration'}</p>
+                    <small>
+                      {provenance.education_framework} · {provenance.admission_cycle} · Effective {formatDate(provenance.effective_date)} · Verification: {verification}
+                      {provenance.verification_status === 'historical' ? ' · Historical reference only' : ''}
+                    </small>
+                    <a href={provenance.source_url} target="_blank" rel="noreferrer">
+                      Open {goal.programme ? 'programme' : 'institution'} source
+                    </a>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         ) : <EmptyCopy>No education goals have been shared yet.</EmptyCopy>}
       </section>

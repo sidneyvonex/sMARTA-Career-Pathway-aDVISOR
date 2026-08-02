@@ -168,6 +168,14 @@ describe('StudentDetailPage', () => {
     expect(screen.getByText('Practise mathematics twice each week.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Education goals' })).toBeInTheDocument()
     expect(screen.getByText('University of Nairobi')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Evidence used for this status' })).toBeInTheDocument()
+    expect(screen.getByText('Learner entered')).toBeInTheDocument()
+    expect(screen.getByText('Verification removed; school provenance retained')).toBeInTheDocument()
+    expect(screen.getByText(/PROGRAMME-CBE · 2026 exploration cycle/i)).toBeInTheDocument()
+    expect(screen.getByText(/Historical reference only/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open programme source' })).toHaveAttribute(
+      'href', 'https://programme.example/source',
+    )
     expect(screen.queryByText(/eligib|probability|admission chance/i)).not.toBeInTheDocument()
   })
 

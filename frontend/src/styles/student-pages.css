@@ -1023,6 +1023,18 @@ textarea.student-field__control {
   border-top: 1px solid var(--color-divider);
 }
 
+.progress-evidence-used {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+
+.progress-evidence-used h4 {
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
 .progress-evidence summary {
   display: flex;
   align-items: center;
