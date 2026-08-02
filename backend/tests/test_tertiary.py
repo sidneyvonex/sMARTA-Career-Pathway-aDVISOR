@@ -282,3 +282,11 @@ def test_historical_admission_rows_are_database_labeled_kcse_references():
                 education_framework='CBE',
                 verification_status='verified',
             )
+
+
+@pytest.mark.django_db
+def test_subject_mapping_kinds_are_restricted_by_the_database():
+    """Catches bulk or racing writes bypassing the two advisory mapping semantics."""
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ProgrammeSubjectReferenceFactory(mapping_kind='required_for_admission')

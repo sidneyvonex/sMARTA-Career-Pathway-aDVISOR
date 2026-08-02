@@ -118,6 +118,15 @@ class ProgrammeSubjectReference(SourcedCatalogueRecord):
                 fields=['source_scope', 'external_key'],
                 name='tertiary_subj_scope_external_uniq',
             ),
+            models.CheckConstraint(
+                check=models.Q(
+                    mapping_kind__in=[
+                        'historical_requirement',
+                        'exploratory_alignment',
+                    ]
+                ),
+                name='tertiary_subj_mapping_kind_ck',
+            ),
         ]
         indexes = [
             models.Index(fields=['programme', 'mapping_kind'], name='tert_subj_prog_kind_idx'),
