@@ -331,6 +331,27 @@ class TestAcademicSourceMetadataView:
             target_id=framework.id,
         ).exists()
 
+    def test_reactivates_retired_assessment_framework(self):
+        framework = AssessmentFrameworkFactory(
+            status=AssessmentFramework.STATUS_RETIRED,
+        )
+
+        response = self.client.patch(
+            f'/api/v1/system-admin/source-metadata/assessment_framework/{framework.id}/',
+            {'status': 'active'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        framework.refresh_from_db()
+        assert framework.status == AssessmentFramework.STATUS_ACTIVE
+        entry = AuditLog.objects.get(
+            action='assessment_framework_status_changed',
+            target_id=framework.id,
+        )
+        assert entry.details['previous_status'] == 'retired'
+        assert entry.details['status'] == 'active'
+
     def test_source_metadata_requires_system_admin(self):
         client = APIClient()
         client.force_authenticate(VerifiedUserFactory(role='student'))
