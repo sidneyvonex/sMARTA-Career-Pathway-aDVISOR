@@ -53,6 +53,7 @@ from .summaries import (
     academic_evidence_summary,
     assessment_summary,
     grade_summary,
+    journey_summary,
     next_action_for,
     profile_completion_summary,
 )
@@ -125,7 +126,7 @@ class EvidenceSummaryView(APIView):
     def get(self, request):
         profile = (
             StudentProfile.objects
-            .select_related('learner_plan')
+            .select_related('learner_plan', 'current_pathway')
             .annotate(
                 saved_combination_count=Count('combination_choices'),
                 provisional_combination_count=Count(
@@ -142,6 +143,7 @@ class EvidenceSummaryView(APIView):
         profile_completion = profile_completion_summary(profile)
         academic_evidence = academic_evidence_summary(profile)
         assessment = assessment_summary(profile)
+        journey = journey_summary(profile)
         saved_combination_count = profile.saved_combination_count
         has_provisional_choice = profile.provisional_combination_count > 0
         try:
@@ -153,6 +155,7 @@ class EvidenceSummaryView(APIView):
                 'profile_completion': profile_completion,
                 'academic_evidence': academic_evidence,
                 'assessment': assessment,
+                'journey': journey,
                 'saved_combination_count': saved_combination_count,
                 'plan_status': plan_status,
                 'next_action': next_action_for(
@@ -162,6 +165,7 @@ class EvidenceSummaryView(APIView):
                     saved_combination_count,
                     has_provisional_choice=has_provisional_choice,
                     plan_status=plan_status,
+                    journey_status=profile.journey_status,
                 ),
             }
         )
@@ -173,7 +177,7 @@ class StudentDashboardView(APIView):
     def get(self, request):
         profile = (
             StudentProfile.objects
-            .select_related('user', 'school', 'learner_plan')
+            .select_related('user', 'school', 'learner_plan', 'current_pathway')
             .annotate(
                 saved_combination_count=Count(
                     'combination_choices',
@@ -230,6 +234,7 @@ class StudentDashboardView(APIView):
             'profile_completion': profile_completion,
             'academic_evidence': academic_evidence,
             'assessment': assessment_evidence,
+            'journey': journey_summary(profile),
             'saved_combination_count': profile.saved_combination_count,
             'plan_status': plan_status,
             'next_action': next_action_for(
@@ -239,6 +244,7 @@ class StudentDashboardView(APIView):
                 profile.saved_combination_count,
                 has_provisional_choice=has_provisional_choice,
                 plan_status=plan_status,
+                journey_status=profile.journey_status,
             ),
         }
 

@@ -18,17 +18,35 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     county = serializers.CharField(source='user.county', read_only=True)
 
+    current_pathway_name = serializers.CharField(
+        source='current_pathway.name', read_only=True, default=None
+    )
+
     class Meta:
         model = StudentProfile
         fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
             'grade', 'mode', 'school_membership_status',
             'bio', 'date_of_birth', 'career_interests', 'photo_url',
+            'journey_status', 'current_pathway', 'current_pathway_name',
+            'current_subject_combination', 'selection_source',
+            'selection_date', 'selection_verified',
         )
         read_only_fields = (
             'id', 'email', 'first_name', 'last_name', 'county',
             'grade', 'mode', 'school_membership_status', 'photo_url',
+            # Provenance is set by school/ministry flows, never by the learner.
+            'current_pathway_name', 'selection_verified',
         )
+
+    # Fields a learner may not silently overwrite once a school- or
+    # ministry-verified selection is on record (spec rule §9).
+    AUTHORITATIVE_LOCKED_FIELDS = (
+        'current_pathway',
+        'current_subject_combination',
+        'selection_source',
+        'selection_date',
+    )
 
     def validate_bio(self, value):
         if len(value) > 500:
@@ -39,6 +57,24 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         if len(value) > 500:
             raise serializers.ValidationError('Career interests must be 500 characters or less.')
         return value
+
+    def validate(self, attrs):
+        instance = self.instance
+        if instance is not None and instance.has_authoritative_selection:
+            for field in self.AUTHORITATIVE_LOCKED_FIELDS:
+                if field not in attrs:
+                    continue
+                new_value = attrs[field]
+                if new_value != getattr(instance, field):
+                    raise serializers.ValidationError(
+                        {
+                            field: (
+                                'This selection was verified by your school and '
+                                'cannot be changed here. Ask a counsellor to update it.'
+                            )
+                        }
+                    )
+        return attrs
 
 
 class SubjectSerializer(serializers.ModelSerializer):

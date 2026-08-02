@@ -159,8 +159,12 @@ def test_migration_cleanup_preserves_leaf_baseline_rows_after_rollback():
 
 
 def _create_old_goal_rows(apps, *, duplicate=False):
-    User = apps.get_model('accounts', 'User')
-    StudentProfile = apps.get_model('accounts', 'StudentProfile')
+    # These tertiary migration tests migrate only the tertiary app backwards, so
+    # the physical accounts schema stays at its leaf state. Build the accounts
+    # fixtures from the current models (a stable FK target here) rather than a
+    # historical state that predates later accounts columns.
+    from accounts.models import StudentProfile, User
+
     Institution = apps.get_model('tertiary', 'Institution')
     LearnerEducationGoal = apps.get_model('tertiary', 'LearnerEducationGoal')
 
@@ -179,13 +183,13 @@ def _create_old_goal_rows(apps, *, duplicate=False):
         institution_type='university', county='Nairobi', website_url='',
     )
     LearnerEducationGoal.objects.create(
-        learner=learner, institution=institution, kind='primary', priority=1,
-        created_by=user,
+        learner_id=learner.pk, institution=institution, kind='primary', priority=1,
+        created_by_id=user.pk,
     )
     if duplicate:
         LearnerEducationGoal.objects.create(
-            learner=learner, institution=institution, kind='alternative', priority=1,
-            created_by=user,
+            learner_id=learner.pk, institution=institution, kind='alternative',
+            priority=1, created_by_id=user.pk,
         )
     return learner.pk, institution.pk
 
@@ -305,8 +309,10 @@ def test_0003_rejects_whitespace_provenance_before_schema_changes(field, whitesp
 def test_0003_rejects_existing_goal_programme_institution_mismatch():
     """Catches migration preserving an education goal linked across institutions."""
     old_apps = _old_models()
-    User = old_apps.get_model('accounts', 'User')
-    StudentProfile = old_apps.get_model('accounts', 'StudentProfile')
+    # accounts stays at its leaf schema here (only tertiary migrates back), so
+    # build the learner from the current accounts models.
+    from accounts.models import StudentProfile, User
+
     Institution = old_apps.get_model('tertiary', 'Institution')
     Programme = old_apps.get_model('tertiary', 'Programme')
     Goal = old_apps.get_model('tertiary', 'LearnerEducationGoal')
@@ -340,8 +346,8 @@ def test_0003_rejects_existing_goal_programme_institution_mismatch():
         description='',
     )
     goal = Goal.objects.create(
-        learner=learner, institution=selected, programme=programme,
-        kind='primary', priority=1, created_by=user,
+        learner_id=learner.pk, institution=selected, programme=programme,
+        kind='primary', priority=1, created_by_id=user.pk,
     )
 
     executor = MigrationExecutor(connection)
