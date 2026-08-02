@@ -1,6 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 from tests.factories import (
+    AcademicGoalFactory, LearnerEducationGoalFactory,
     ParentFactory, VerifiedUserFactory, StudentProfileFactory,
     ParentStudentLinkFactory, CounselorAssignmentFactory,
     RIASECAssessmentFactory, StudentSubjectFactory,
@@ -380,6 +381,50 @@ class TestParentChildDetailView:
             'I want to explore practical science.'
         )
         assert data['plan']['milestones'][0]['title'] == 'Visit a pilot school'
+
+    def test_active_parent_sees_learner_progress_and_goals_without_private_notes(self):
+        parent = ParentFactory()
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(
+            student_profile=profile,
+            subject=SubjectFactory(code='PARPROG9', grade=9),
+        )
+        evidence = CBCGradeFactory(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            level='ME2',
+        )
+        academic_goal = AcademicGoalFactory(
+            learner=profile,
+            current_evidence=evidence,
+            target_academic_grade=9,
+        )
+        education_goal = LearnerEducationGoalFactory(learner=profile)
+        counselor = CounselorFactory()
+        CounselorAssignmentFactory(counselor=counselor, student_profile=profile)
+        CounselorNoteFactory(
+            counselor=counselor,
+            student=student,
+            body='Safeguarding note for counsellor only.',
+            visible_to_parent=False,
+        )
+        ParentStudentLinkFactory(parent=parent, student=student)
+        self.client.force_authenticate(user=parent)
+
+        response = self.client.get(self._url(student.id))
+
+        assert response.status_code == 200
+        data = response.json()['data']
+        assert data['academic_progress']['subjects'][0]['rule_code'] == (
+            'one_non_be_insufficient'
+        )
+        assert data['academic_progress']['subjects'][0]['records_used'][0]['id'] == evidence.id
+        assert data['academic_goals'][0]['id'] == academic_goal.id
+        assert data['education_goals'][0]['id'] == education_goal.id
+        assert data['parent_visible_notes'] == []
+        assert 'Safeguarding note' not in str(data)
 
 
 class TestRIASECParentNotification:

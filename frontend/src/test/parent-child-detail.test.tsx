@@ -94,6 +94,19 @@ describe('ChildDetailPage', () => {
     expect(screen.getAllByRole('button', { name: 'Download report' })).toHaveLength(2)
   })
 
+  it('renders learner-approved progress and goals as read-only advisory context', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Academic progress' })).toBeInTheDocument()
+    expect(screen.getByText('The latest evidence needs attention.')).toBeInTheDocument()
+    expect(screen.getByText(/Academic progress is advisory only/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Academic targets' })).toBeInTheDocument()
+    expect(screen.getByText('Read together three evenings each week.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Education goals' })).toBeInTheDocument()
+    expect(screen.getByText('University of Nairobi')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /edit.*goal/i })).not.toBeInTheDocument()
+  })
+
   it('shows deliberate empty states when approved evidence is absent', async () => {
     const { server } = await import('./msw/server')
     const { http, HttpResponse } = await import('msw')

@@ -77,6 +77,9 @@ export default function ChildDetailPage() {
     counselor,
     parent_visible_notes: notes,
     interventions = [],
+    academic_progress: academicProgress,
+    academic_goals: academicGoals = [],
+    education_goals: educationGoals = [],
   } = detailQ.data
   const maxScore = assessment ? Math.max(...Object.values(assessment.scores)) : 0
   const completedMilestones = plan?.milestones.filter((item) => item.is_complete).length ?? 0
@@ -221,6 +224,66 @@ export default function ChildDetailPage() {
         ) : (
           <EmptyCopy>No provisional combination has been selected.</EmptyCopy>
         )}
+      </section>
+
+      {academicProgress && (
+        <section className="child-detail__section" aria-labelledby="progress-title">
+          <SectionTitle eyebrow="Learner-approved evidence" title="Academic progress" id="progress-title" />
+          <div className="child-detail__subjects">
+            {academicProgress.subjects.map(subject => (
+              <article key={subject.continuity_code}>
+                <div>
+                  <h3>{subject.subject_name}</h3>
+                  <StatusBadge tone={subject.status === 'strong' || subject.status === 'on_track' ? 'positive' : 'attention'}>
+                    {subject.label}
+                  </StatusBadge>
+                </div>
+                <div>
+                  <p>{subject.explanation}</p>
+                  <small>{subject.suggested_action}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="child-detail__advisory">{academicProgress.advisory_disclaimer}</p>
+        </section>
+      )}
+
+      <section className="child-detail__section" aria-labelledby="academic-goals-title">
+        <SectionTitle eyebrow="Learner targets" title="Academic targets" id="academic-goals-title" />
+        {academicGoals.length ? (
+          <div className="child-detail__subjects">
+            {academicGoals.map(goal => (
+              <article key={goal.id}>
+                <div>
+                  <h3>{goal.continuity_code}</h3>
+                  <StatusBadge tone="neutral">{goal.status}</StatusBadge>
+                </div>
+                <div>
+                  <p>{goal.action_plan}</p>
+                  <small>{goal.current_level.code} to {goal.target_level.code} · Term {goal.target_term} {goal.target_year}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : <EmptyCopy>No academic targets have been shared yet.</EmptyCopy>}
+      </section>
+
+      <section className="child-detail__section" aria-labelledby="education-goals-title">
+        <SectionTitle eyebrow="Exploration choices" title="Education goals" id="education-goals-title" />
+        {educationGoals.length ? (
+          <div className="child-detail__subjects">
+            {educationGoals.map(goal => (
+              <article key={goal.id}>
+                <div><h3>{goal.institution.name}</h3></div>
+                <div>
+                  <p>{goal.programme?.name ?? 'Institution exploration'}</p>
+                  <small>{goal.institution.education_framework} · {goal.institution.admission_cycle} · {goal.institution.verification_status}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : <EmptyCopy>No education goals have been shared yet.</EmptyCopy>}
       </section>
 
       <section className="child-detail__section" aria-labelledby="plan-title">

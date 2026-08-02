@@ -15,6 +15,7 @@ from counselors.models import (
 from guidance.models import LearnerCombinationChoice
 from riasec.models import RIASECAssessment
 from students.models import StudentSubject
+from students.role_support import academic_support_context
 from parents.models import ParentStudentLink
 from system_admin.utils import log_action
 from parents.serializers import (
@@ -129,7 +130,10 @@ class ParentChildDetailView(APIView):
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', status.HTTP_404_NOT_FOUND)
 
-        data = ChildDetailSerializer(profile).data
+        data = {
+            **ChildDetailSerializer(profile).data,
+            **academic_support_context(profile),
+        }
         return _success(data=data)
 
 
