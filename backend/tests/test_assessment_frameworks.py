@@ -2,6 +2,7 @@ import pytest
 from django.apps import apps
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import ValidationError
+from django.test import override_settings
 from django.db import IntegrityError, transaction
 from django.db.models import Value
 from rest_framework.test import APIClient
@@ -34,6 +35,16 @@ def activate_complete_framework(framework):
         )
     framework.activate()
     return framework
+
+
+class ReadReplicaRouter:
+    """Route unqualified reads away from the write database for guard tests."""
+
+    def db_for_read(self, model, **hints):
+        return 'unconfigured_read_replica'
+
+    def db_for_write(self, model, **hints):
+        return 'default'
 
 
 def test_grade_admin_makes_all_verification_provenance_read_only():
@@ -452,6 +463,107 @@ def test_active_framework_definition_rejects_instance_and_admin_order_mutation()
     framework.refresh_from_db()
     assert framework.status == AssessmentFramework.STATUS_ACTIVE
     assert framework.level_definitions.filter(pk=definition.pk).exists()
+
+
+@pytest.mark.django_db
+def test_stale_draft_parent_cannot_delete_definition_after_activation():
+    """Catches instance deletion trusting a cached pre-activation parent."""
+    framework = AssessmentFrameworkFactory()
+    for code, rank in (
+        ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+        ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+    ):
+        PerformanceLevelDefinitionFactory(framework=framework, code=code, rank=rank)
+    stale_definition = PerformanceLevelDefinition.objects.select_related(
+        'framework'
+    ).get(framework=framework, code='BE2')
+    fresh_framework = AssessmentFramework.objects.get(pk=framework.pk)
+    fresh_framework.activate()
+
+    with pytest.raises(ValidationError, match='active framework'):
+        stale_definition.delete()
+
+    assert PerformanceLevelDefinition.objects.filter(pk=stale_definition.pk).exists()
+
+
+@pytest.mark.django_db
+def test_stale_draft_target_cannot_receive_definition_after_activation():
+    """Catches source-to-target reassignment trusting a cached draft target."""
+    source = AssessmentFrameworkFactory()
+    definition = PerformanceLevelDefinitionFactory(
+        framework=source,
+        code='HISTORICAL',
+        rank=9,
+    )
+    target = AssessmentFrameworkFactory()
+    for code, rank in (
+        ('EE1', 8), ('EE2', 7), ('ME1', 6), ('ME2', 5),
+        ('AE1', 4), ('AE2', 3), ('BE1', 2), ('BE2', 1),
+    ):
+        PerformanceLevelDefinitionFactory(framework=target, code=code, rank=rank)
+    stale_target = AssessmentFramework.objects.get(pk=target.pk)
+    fresh_target = AssessmentFramework.objects.get(pk=target.pk)
+    fresh_target.activate()
+    definition.framework = stale_target
+
+    with pytest.raises(ValidationError, match='active framework'):
+        definition.save(update_fields=['framework'])
+
+    definition.refresh_from_db()
+    assert definition.framework_id == source.id
+
+
+@pytest.mark.django_db
+def test_definition_queryset_guard_uses_write_alias_with_read_replica_router():
+    """Catches a guard consulting a read replica instead of its write alias."""
+    framework = activate_complete_framework(AssessmentFrameworkFactory())
+    definition = framework.level_definitions.get(code='EE1')
+
+    with override_settings(DATABASE_ROUTERS=[ReadReplicaRouter()]):
+        with pytest.raises(ValidationError, match='active framework'):
+            PerformanceLevelDefinition.objects.filter(pk=definition.pk).update(
+                rank=9,
+            )
+
+
+@pytest.mark.django_db
+def test_history_rewrite_uses_write_alias_with_read_replica_router():
+    """Catches a snapshot lock/write/audit split across router-selected aliases."""
+    from students.evidence import rewrite_grade_definition_snapshot_for_history
+
+    grade = CBCGradeFactory()
+    with override_settings(DATABASE_ROUTERS=[ReadReplicaRouter()]):
+        rewrite_grade_definition_snapshot_for_history(
+            grade_id=grade.id,
+            definition_id=None,
+            audit_reason='Exercise write-routed history repair.',
+        )
+
+    grade.refresh_from_db()
+    assert grade.level_definition_id_snapshot is None
+    assert AuditLog.objects.filter(
+        action='grade_definition_snapshot_rewritten',
+        target_id=grade.id,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_grade_persistence_uses_write_alias_with_read_replica_router():
+    """Catches framework and snapshot reads escaping the grade write alias."""
+    grade = CBCGradeFactory.build(
+        student_subject=StudentSubjectFactory(),
+        framework=None,
+    )
+
+    with override_settings(DATABASE_ROUTERS=[ReadReplicaRouter()]):
+        grade.save()
+
+    grade.refresh_from_db()
+    assert grade.framework.status == AssessmentFramework.STATUS_ACTIVE
+    assert grade.level_definition_id_snapshot == PerformanceLevelDefinition.objects.get(
+        framework=grade.framework,
+        code=grade.level,
+    ).pk
 
 
 @pytest.mark.django_db

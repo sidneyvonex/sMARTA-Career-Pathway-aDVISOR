@@ -4,7 +4,7 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models, transaction
+from django.db import models, router, transaction
 from django.utils import timezone
 from accounts.models import StudentProfile
 
@@ -35,6 +35,12 @@ GRADE_SUFFIX = re.compile(r'(?:9|10|11|12)$')
 _ACADEMIC_GOAL_LIFECYCLE_TRANSITION = object()
 _CBC_GRADE_VERIFICATION_TRANSITION = object()
 logger = logging.getLogger(__name__)
+
+
+def _write_database_alias(model, *, using=None, instance=None):
+    """Resolve one database for every read and write in a guarded operation."""
+    instance_database = getattr(getattr(instance, '_state', None), 'db', None)
+    return using or instance_database or router.db_for_write(model, instance=instance)
 
 
 class AcademicGoalHistoryDeletionError(ValidationError):
@@ -86,7 +92,7 @@ class AssessmentFrameworkQuerySet(models.QuerySet):
         raw_queryset = models.QuerySet(
             model=self.model,
             query=self.query.chain(),
-            using=self.db,
+            using=_write_database_alias(self.model, using=self._db),
             hints=self._hints,
         )
         return raw_queryset.bulk_update(objs, fields, batch_size=batch_size)
@@ -152,10 +158,19 @@ class AssessmentFramework(models.Model):
     def __str__(self):
         return f"{self.code} {self.version} — {self.title}"
 
-    def validate_activation_readiness(self):
+    def validate_activation_readiness(self, *, using=None):
         expected = GRADE_LEVEL_POINTS
+        using = _write_database_alias(
+            type(self),
+            using=using,
+            instance=self,
+        )
         actual = (
-            dict(self.level_definitions.values_list('code', 'rank'))
+            dict(
+                PerformanceLevelDefinition.objects.using(using)
+                .filter(framework_id=self.pk)
+                .values_list('code', 'rank')
+            )
             if self.pk is not None
             else {}
         )
@@ -177,8 +192,19 @@ class AssessmentFramework(models.Model):
 
     def save(self, *args, **kwargs):
         self._validate_status_scalar()
+        using = _write_database_alias(
+            type(self),
+            using=kwargs.get('using'),
+            instance=self,
+        )
+        kwargs['using'] = using
         if self.status == self.STATUS_ACTIVE:
-            self.validate_activation_readiness()
+            if self.pk is None:
+                self.validate_activation_readiness(using=using)
+            with transaction.atomic(using=using):
+                type(self).objects.using(using).select_for_update().get(pk=self.pk)
+                self.validate_activation_readiness(using=using)
+                return super().save(*args, **kwargs)
         return super().save(*args, **kwargs)
 
     def activate(self):
@@ -188,55 +214,127 @@ class AssessmentFramework(models.Model):
         return self
 
 
-class PerformanceLevelDefinitionQuerySet(models.QuerySet):
-    @staticmethod
-    def _active_framework_error():
-        return ValidationError(
+def _lock_frameworks_and_ensure_mutable(framework_ids, *, using):
+    """Serialize activation and readiness-affecting definition mutations."""
+    framework_ids = sorted({pk for pk in framework_ids if pk is not None})
+    statuses = (
+        AssessmentFramework.objects.using(using)
+        .select_for_update()
+        .filter(pk__in=framework_ids)
+        .order_by('pk')
+        .values_list('status', flat=True)
+    )
+    if AssessmentFramework.STATUS_ACTIVE in statuses:
+        raise ValidationError(
             'Performance definitions for an active framework cannot be modified.'
         )
 
-    def _ensure_mutable(self, target_framework_id=None):
-        if self.filter(framework__status=AssessmentFramework.STATUS_ACTIVE).exists() or (
-            target_framework_id is not None
-            and AssessmentFramework.objects.filter(
-                pk=target_framework_id,
-                status=AssessmentFramework.STATUS_ACTIVE,
-            ).exists()
-        ):
-            raise self._active_framework_error()
+
+class PerformanceLevelDefinitionQuerySet(models.QuerySet):
+    def _write_alias(self):
+        return _write_database_alias(self.model, using=self._db)
+
+    def _target_framework_id(self, kwargs):
+        if 'framework_id' not in kwargs and 'framework' not in kwargs:
+            return None
+        target = kwargs.get('framework_id', kwargs.get('framework'))
+        if hasattr(target, 'resolve_expression'):
+            raise ValidationError(
+                'Framework reassignment requires a literal framework.'
+            )
+        return getattr(target, 'pk', target)
 
     def update(self, **kwargs):
         protected = {'framework', 'framework_id', 'code', 'rank'}
         if protected & set(kwargs):
-            target = kwargs.get('framework_id', kwargs.get('framework'))
-            with transaction.atomic(using=self.db):
-                self.select_for_update()._ensure_mutable(getattr(target, 'pk', target))
+            using = self._write_alias()
+            target_framework_id = self._target_framework_id(kwargs)
+            write_queryset = self.using(using)
+            with transaction.atomic(using=using):
+                source_framework_ids = tuple(
+                    write_queryset.select_for_update().values_list(
+                        'framework_id',
+                        flat=True,
+                    )
+                )
+                _lock_frameworks_and_ensure_mutable(
+                    (*source_framework_ids, target_framework_id),
+                    using=using,
+                )
+                return super(
+                    PerformanceLevelDefinitionQuerySet,
+                    write_queryset,
+                ).update(**kwargs)
         return super().update(**kwargs)
 
     def delete(self):
-        self._ensure_mutable()
-        return super().delete()
+        using = self._write_alias()
+        write_queryset = self.using(using)
+        with transaction.atomic(using=using):
+            source_framework_ids = tuple(
+                write_queryset.select_for_update().values_list(
+                    'framework_id',
+                    flat=True,
+                )
+            )
+            _lock_frameworks_and_ensure_mutable(
+                source_framework_ids,
+                using=using,
+            )
+            return super(
+                PerformanceLevelDefinitionQuerySet,
+                write_queryset,
+            ).delete()
 
     def bulk_update(self, objs, fields, batch_size=None):
         objs = tuple(objs)
-        if {'framework', 'framework_id', 'code', 'rank'} & set(fields) and any(
-            obj.framework.status == AssessmentFramework.STATUS_ACTIVE for obj in objs
-        ):
-            raise self._active_framework_error()
-        if {'framework', 'framework_id', 'code', 'rank'} & set(fields):
-            with transaction.atomic(using=self.db):
-                if self.model.objects.using(self.db).select_for_update().filter(
-                    pk__in=[obj.pk for obj in objs],
-                    framework__status=AssessmentFramework.STATUS_ACTIVE,
-                ).exists():
-                    raise self._active_framework_error()
+        fields = tuple(fields)
+        protected = {'framework', 'framework_id', 'code', 'rank'}
+        if protected & set(fields):
+            using = self._write_alias()
+            write_queryset = self.using(using)
+            object_ids = [obj.pk for obj in objs]
+            target_framework_ids = (
+                [obj.framework_id for obj in objs]
+                if {'framework', 'framework_id'} & set(fields)
+                else []
+            )
+            with transaction.atomic(using=using):
+                source_framework_ids = tuple(
+                    write_queryset.select_for_update()
+                    .filter(pk__in=object_ids)
+                    .values_list('framework_id', flat=True)
+                )
+                _lock_frameworks_and_ensure_mutable(
+                    (*source_framework_ids, *target_framework_ids),
+                    using=using,
+                )
+                raw_queryset = models.QuerySet(
+                    model=self.model,
+                    query=self.query.chain(),
+                    using=using,
+                    hints=self._hints,
+                )
+                return raw_queryset.bulk_update(
+                    objs,
+                    fields,
+                    batch_size=batch_size,
+                )
         return super().bulk_update(objs, fields, batch_size=batch_size)
 
     def bulk_create(self, objs, **kwargs):
         objs = tuple(objs)
-        if any(obj.framework.status == AssessmentFramework.STATUS_ACTIVE for obj in objs):
-            raise self._active_framework_error()
-        return super().bulk_create(objs, **kwargs)
+        using = self._write_alias()
+        write_queryset = self.using(using)
+        with transaction.atomic(using=using):
+            _lock_frameworks_and_ensure_mutable(
+                (obj.framework_id for obj in objs),
+                using=using,
+            )
+            return super(
+                PerformanceLevelDefinitionQuerySet,
+                write_queryset,
+            ).bulk_create(objs, **kwargs)
 
 
 class PerformanceLevelDefinitionManager(
@@ -293,32 +391,60 @@ class PerformanceLevelDefinition(models.Model):
     def __str__(self):
         return f"{self.framework.code} {self.framework.version} — {self.code}"
 
-    def _ensure_framework_mutable(self, *, update_fields=None):
-        protected = {'framework', 'framework_id', 'code', 'rank'}
-        if update_fields is not None and not protected & set(update_fields):
-            return
-        if self.framework.status == AssessmentFramework.STATUS_ACTIVE:
-            raise ValidationError(
-                'Performance definitions for an active framework cannot be modified.'
-            )
-
     def save(self, *args, **kwargs):
         update_fields = kwargs.get('update_fields')
-        with transaction.atomic(using=kwargs.get('using') or self._state.db):
-            self._ensure_framework_mutable(update_fields=update_fields)
-            if not self._state.adding and (
-                update_fields is None or {'framework', 'framework_id', 'code', 'rank'} & set(update_fields)
-            ):
-                original = type(self).objects.select_for_update().filter(pk=self.pk).values('framework_id').first()
-                if original and AssessmentFramework.objects.filter(
-                    pk=original['framework_id'], status=AssessmentFramework.STATUS_ACTIVE,
-                ).exists():
-                    raise ValidationError('Performance definitions for an active framework cannot be modified.')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            kwargs['update_fields'] = update_fields
+        protected = {'framework', 'framework_id', 'code', 'rank'}
+        if update_fields is not None and not protected & set(update_fields):
+            return super().save(*args, **kwargs)
+
+        using = _write_database_alias(
+            type(self),
+            using=kwargs.get('using'),
+            instance=self,
+        )
+        kwargs['using'] = using
+        with transaction.atomic(using=using):
+            source_framework_id = None
+            if not self._state.adding:
+                original = (
+                    type(self).objects.using(using)
+                    .select_for_update()
+                    .filter(pk=self.pk)
+                    .values('framework_id')
+                    .first()
+                )
+                if original is not None:
+                    source_framework_id = original['framework_id']
+            _lock_frameworks_and_ensure_mutable(
+                (source_framework_id, self.framework_id),
+                using=using,
+            )
             return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        self._ensure_framework_mutable()
-        return super().delete(*args, **kwargs)
+        using = _write_database_alias(
+            type(self),
+            using=kwargs.get('using'),
+            instance=self,
+        )
+        kwargs['using'] = using
+        with transaction.atomic(using=using):
+            current = (
+                type(self).objects.using(using)
+                .select_for_update()
+                .filter(pk=self.pk)
+                .values('framework_id')
+                .first()
+            )
+            if current is not None:
+                _lock_frameworks_and_ensure_mutable(
+                    (current['framework_id'],),
+                    using=using,
+                )
+            return super().delete(*args, **kwargs)
 
 
 class Subject(models.Model):
@@ -474,7 +600,8 @@ class CBCGradeQuerySet(models.QuerySet):
 
     def update(self, **kwargs):
         if set(kwargs) & self.PROTECTED_EVIDENCE_FIELDS:
-            if self.exists():
+            using = _write_database_alias(self.model, using=self._db)
+            if self.using(using).exists():
                 raise self._bulk_persistence_error()
             return 0
         return super().update(**kwargs)
@@ -488,7 +615,8 @@ class CBCGradeQuerySet(models.QuerySet):
         raise self._bulk_persistence_error()
 
     def delete(self):
-        if self.filter(
+        using = _write_database_alias(self.model, using=self._db)
+        if self.using(using).filter(
             models.Q(verified_by__isnull=False)
             | models.Q(verified_at__isnull=False)
             | models.Q(verified_school__isnull=False)
@@ -520,15 +648,20 @@ class CBCGradeHistoryManager(CBCGradeManager):
         if grade_id is None:
             raise ValidationError('History snapshot rewrites require an existing grade.')
 
-        with transaction.atomic(using=self.db):
-            grade = self.model._base_manager.select_for_update().get(pk=grade_id)
+        using = _write_database_alias(self.model, using=self._db)
+        with transaction.atomic(using=using):
+            grade = (
+                self.model._base_manager.using(using)
+                .select_for_update()
+                .get(pk=grade_id)
+            )
             old_snapshot_id = grade.level_definition_id_snapshot
-            raw_query = models.QuerySet(model=self.model, using=self.db)
+            raw_query = models.QuerySet(model=self.model, using=using)
             updated = raw_query.filter(pk=grade_id).update(
                 level_definition_id_snapshot=definition_id,
             )
             from system_admin.models import AuditLog
-            AuditLog.objects.using(self.db).create(
+            AuditLog.objects.using(using).create(
                 actor=None,
                 action='grade_definition_snapshot_rewritten',
                 target_type='grade',
@@ -625,10 +758,20 @@ class CBCGrade(models.Model):
 
     def clean(self):
         super().clean()
+        using = getattr(self, '_guard_database_alias', None)
+        using = _write_database_alias(
+            type(self),
+            using=using,
+            instance=self,
+        )
         if self.student_subject_id is None or self.academic_grade is None:
             return
 
-        enrollment_grade = self.student_subject.academic_grade
+        enrollment_grade = (
+            StudentSubject.objects.using(using)
+            .values_list('academic_grade', flat=True)
+            .get(pk=self.student_subject_id)
+        )
         if self.academic_grade != enrollment_grade:
             raise ValidationError(
                 {
@@ -641,7 +784,17 @@ class CBCGrade(models.Model):
         framework_scope = (
             'junior_school' if self.academic_grade == 9 else 'senior_school'
         )
-        if self.framework_id is not None and self.framework.scope != framework_scope:
+        framework_scope_value = (
+            AssessmentFramework.objects.using(using)
+            .values_list('scope', flat=True)
+            .get(pk=self.framework_id)
+            if self.framework_id is not None
+            else None
+        )
+        if (
+            framework_scope_value is not None
+            and framework_scope_value != framework_scope
+        ):
             raise ValidationError(
                 {
                     'framework': (
@@ -654,7 +807,8 @@ class CBCGrade(models.Model):
         if not self._state.adding:
             original = (
                 type(self)
-                .objects.filter(pk=self.pk)
+                .objects.using(using)
+                .filter(pk=self.pk)
                 .values_list(
                     'verified_by_id',
                     'verified_at',
@@ -702,7 +856,15 @@ class CBCGrade(models.Model):
                         )
                     }
                 )
-            if self.verified_by.school_id != self.verified_school_id:
+            verifier_model = type(self)._meta.get_field(
+                'verified_by'
+            ).remote_field.model
+            verifier_school_id = (
+                verifier_model.objects.using(using)
+                .values_list('school_id', flat=True)
+                .get(pk=self.verified_by_id)
+            )
+            if verifier_school_id != self.verified_school_id:
                 raise ValidationError(
                     {
                         'verified_school': (
@@ -720,7 +882,12 @@ class CBCGrade(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        using = kwargs.get('using') or self._state.db
+        using = _write_database_alias(
+            type(self),
+            using=kwargs.get('using'),
+            instance=self,
+        )
+        kwargs['using'] = using
         with transaction.atomic(using=using):
             return self._save(*args, **kwargs)
 
@@ -732,20 +899,26 @@ class CBCGrade(models.Model):
 
         original_persistence = None
         if not self._state.adding:
-            original_persistence = type(self).objects.using(kwargs.get('using') or self._state.db).select_for_update().filter(pk=self.pk).values(
-                'student_subject_id',
-                'academic_grade',
-                'framework_id',
-                'term',
-                'year',
-                'level',
-                'level_definition_id_snapshot',
-                'raw_score',
-                'source',
-                'verified_by_id',
-                'verified_at',
-                'verified_school_id',
-            ).first()
+            original_persistence = (
+                type(self).objects.using(kwargs['using'])
+                .select_for_update()
+                .filter(pk=self.pk)
+                .values(
+                    'student_subject_id',
+                    'academic_grade',
+                    'framework_id',
+                    'term',
+                    'year',
+                    'level',
+                    'level_definition_id_snapshot',
+                    'raw_score',
+                    'source',
+                    'verified_by_id',
+                    'verified_at',
+                    'verified_school_id',
+                )
+                .first()
+            )
 
         if original_persistence is not None:
             verification_fields = {
@@ -830,7 +1003,9 @@ class CBCGrade(models.Model):
                     'junior_school' if self.academic_grade == 9 else 'senior_school'
                 )
                 try:
-                    self.framework = AssessmentFramework.objects.get(
+                    self.framework = AssessmentFramework.objects.using(
+                        kwargs['using']
+                    ).get(
                         scope=framework_scope,
                         status=AssessmentFramework.STATUS_ACTIVE,
                     )
@@ -915,7 +1090,9 @@ class CBCGrade(models.Model):
         if definition_identity_changed and definition_framework_id is not None:
             try:
                 self.level_definition_id_snapshot = (
-                    PerformanceLevelDefinition.objects.only('pk').get(
+                    PerformanceLevelDefinition.objects.using(
+                        kwargs['using']
+                    ).only('pk').get(
                         framework_id=definition_framework_id,
                         code=definition_level,
                     ).pk
@@ -929,7 +1106,11 @@ class CBCGrade(models.Model):
                         )
                     }
                 )
-        self.clean()
+        self._guard_database_alias = kwargs['using']
+        try:
+            self.clean()
+        finally:
+            del self._guard_database_alias
         if update_fields is not None and definition_identity_changed:
             update_fields.add('level_definition_id_snapshot')
         return super().save(*args, **kwargs)
@@ -942,7 +1123,12 @@ class CBCGrade(models.Model):
             del self._verification_transition_token
 
     def delete(self, *args, **kwargs):
-        using = kwargs.get('using') or self._state.db
+        using = _write_database_alias(
+            type(self),
+            using=kwargs.get('using'),
+            instance=self,
+        )
+        kwargs['using'] = using
         with transaction.atomic(using=using):
             current = type(self).objects.using(using).select_for_update().filter(pk=self.pk).values(
                 'verified_by_id', 'verified_at', 'verified_school_id',

@@ -207,6 +207,8 @@ def test_api_returns_explainable_snapshots_and_no_numeric_readiness_field():
         subject=SubjectFactory(code='PHY10', continuity_code='PHY', grade=10),
     )
     grade = CBCGradeFactory(student_subject=enrollment, level='BE2')
+    grade.framework.status = grade.framework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status', 'updated_at'])
     PerformanceLevelDefinition.objects.filter(
         framework=grade.framework,
         code='ME2',
@@ -248,6 +250,8 @@ def test_service_rejects_evidence_with_a_missing_framework_level_definition():
         subject=SubjectFactory(code='CFG10', continuity_code='CFG', grade=10),
     )
     grade = CBCGradeFactory(student_subject=enrollment, level='ME1')
+    grade.framework.status = grade.framework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status', 'updated_at'])
     PerformanceLevelDefinition.objects.filter(
         framework=grade.framework,
         code='ME1',
@@ -271,6 +275,8 @@ def test_api_fails_closed_when_the_latest_evidence_level_is_not_defined():
         subject=SubjectFactory(code='ERR10', continuity_code='ERR', grade=10),
     )
     grade = CBCGradeFactory(student_subject=enrollment, level='ME1')
+    grade.framework.status = grade.framework.STATUS_RETIRED
+    grade.framework.save(update_fields=['status', 'updated_at'])
     PerformanceLevelDefinition.objects.filter(
         framework=grade.framework,
         code='ME1',
