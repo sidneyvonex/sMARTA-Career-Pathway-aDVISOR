@@ -93,6 +93,7 @@ export default function StudentDashboard() {
     photoUrl: profile.photo_url,
     gradeLabel: `Grade ${profile.grade}`,
     county: profile.county,
+    journeyStatus: profile.journey_status,
     quizDone,
     subjectsCount: gradeSummary.total_subjects,
     academicReady: evidence.academic_evidence.status === 'ready',

@@ -7,6 +7,28 @@ import type { Notification } from './notifications'
 
 export type AcademicGrade = 9 | 10 | 11 | 12
 
+export type JourneyStatus =
+  | ''
+  | 'not_selected'
+  | 'selected'
+  | 'currently_enrolled'
+  | 'reconsidering'
+  | 'unsure'
+
+export type SelectionSource =
+  | ''
+  | 'smarta_shauri'
+  | 'learner_reported'
+  | 'school_verified'
+  | 'ministry_imported'
+
+/** Journey stages where the learner already has a pathway on record and RIASEC
+ * is optional rather than a prerequisite. */
+export const SELECTED_JOURNEY_STAGES: JourneyStatus[] = [
+  'selected',
+  'currently_enrolled',
+]
+
 export interface StudentProfile {
   id: number
   email: string
@@ -20,6 +42,13 @@ export interface StudentProfile {
   date_of_birth: string | null
   career_interests: string
   photo_url: string | null
+  journey_status: JourneyStatus
+  current_pathway: number | null
+  current_pathway_name: string | null
+  current_subject_combination: string
+  selection_source: SelectionSource
+  selection_date: string | null
+  selection_verified: boolean
 }
 
 export interface Subject {
@@ -234,6 +263,7 @@ export interface EvidenceSummary {
     instrument_version: string | null
     submitted_at: string | null
   }
+  journey: JourneySummary
   saved_combination_count: number
   plan_status: string
   next_action: {
@@ -241,6 +271,21 @@ export interface EvidenceSummary {
     title: string
     href: string
   }
+}
+
+export interface JourneySummary {
+  status: JourneyStatus
+  current_pathway: { id: number; name: string } | null
+  current_subject_combination: string
+  selection_source: SelectionSource
+  selection_date: string | null
+  selection_verified: boolean
+}
+
+/** True when the learner already has a pathway on record, so RIASEC is an
+ * optional career-reflection tool rather than a required step. */
+export function hasSelectedPathway(status: JourneyStatus): boolean {
+  return SELECTED_JOURNEY_STAGES.includes(status)
 }
 
 export interface StudentGradeSummary {
@@ -349,7 +394,19 @@ export const studentsApi = {
   getProfile: () =>
     api.get<{ data: StudentProfile }>('/students/profile/'),
 
-  updateProfile: (data: Partial<Pick<StudentProfile, 'bio' | 'date_of_birth' | 'career_interests'>>) =>
+  updateProfile: (
+    data: Partial<Pick<
+      StudentProfile,
+      | 'bio'
+      | 'date_of_birth'
+      | 'career_interests'
+      | 'journey_status'
+      | 'current_pathway'
+      | 'current_subject_combination'
+      | 'selection_source'
+      | 'selection_date'
+    >>,
+  ) =>
     api.patch<{ data: StudentProfile }>('/students/profile/', data),
 
   uploadPhoto: (file: File) => {

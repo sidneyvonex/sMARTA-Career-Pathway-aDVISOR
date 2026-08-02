@@ -25,6 +25,9 @@ const mockProfile = {
   county: 'kiambu', grade: 9 as const, mode: 'self_guided' as const,
   school_membership_status: 'not_applicable' as const,
   bio: 'Hello', date_of_birth: null, career_interests: '', photo_url: null,
+  journey_status: '' as const, current_pathway: null, current_pathway_name: null,
+  current_subject_combination: '', selection_source: '' as const,
+  selection_date: null, selection_verified: false,
 }
 
 describe('StudentProfilePage school membership', () => {

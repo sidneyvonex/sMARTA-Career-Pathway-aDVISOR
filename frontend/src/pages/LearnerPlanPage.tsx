@@ -11,7 +11,7 @@ import {
   type LearnerPlanStatus,
   type PlanMilestone,
 } from '../api/guidance'
-import { studentsApi } from '../api/students'
+import { studentsApi, hasSelectedPathway } from '../api/students'
 import ErrorState from '../components/common/dashboard/ErrorState'
 import '../styles/plan.css'
 
@@ -144,9 +144,14 @@ export default function LearnerPlanPage() {
     )
   }
 
+  // Learners who already selected a pathway are not required to complete the
+  // interest assessment — it stays an optional career-reflection tool for them.
+  const selectedPathway = hasSelectedPathway(evidence?.journey.status ?? '')
+  const assessmentComplete = evidence?.assessment.status === 'complete'
+  const showOptionalAssessment = selectedPathway && !assessmentComplete
   const gaps = [
     ...(evidence?.academic_evidence.status === 'ready' ? [] : ['Complete your academic evidence']),
-    ...(evidence?.assessment.status === 'complete' ? [] : ['Complete the career interest assessment']),
+    ...(assessmentComplete || selectedPathway ? [] : ['Complete the career interest assessment']),
     ...(plan.provisional_choice.combination.offered_schools.length ? [] : ['Confirm an offering on the official selection portal']),
     ...(reason.trim() ? [] : ['Record why you are considering this choice']),
   ]
@@ -279,6 +284,17 @@ export default function LearnerPlanPage() {
               <ul className="plan-gaps">{gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>
             ) : (
               <p className="plan-muted">Your core evidence is ready for a counsellor conversation.</p>
+            )}
+            {showOptionalAssessment && (
+              <div className="plan-optional-note">
+                <strong>Optional career-interest assessment</strong>
+                <p>
+                  You have already selected your pathway. This assessment can help you
+                  explore careers and programmes connected to your interests and current
+                  subjects. It will not change your subjects or predict your success.
+                </p>
+                <Link to="/assessment">Take the optional assessment</Link>
+              </div>
             )}
           </section>
 

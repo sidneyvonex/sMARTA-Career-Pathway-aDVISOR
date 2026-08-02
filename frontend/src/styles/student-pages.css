@@ -451,6 +451,13 @@ textarea.student-field__control {
   box-shadow: 0 0 0 3px rgba(26, 92, 56, 0.11);
 }
 
+.student-field__hint {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+}
+
 .student-action {
   display: inline-flex;
   align-items: center;
