@@ -329,6 +329,7 @@ class Command(BaseCommand):
                         'level': level,
                         'source': 'school',
                         'verified_by': verifier,
+                        'verified_school': verifier.school,
                         'verified_at': verified_at,
                     },
                 )
