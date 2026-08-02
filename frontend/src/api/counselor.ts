@@ -1,5 +1,7 @@
 import api from '../lib/axios'
 import type { AssignedStudent, CounselorStats } from './dashboard'
+import type { AcademicGoal, ProgressAssessment } from './students'
+import type { EducationGoal } from './tertiary'
 
 export interface StudentDetail {
   student: {
@@ -67,6 +69,9 @@ export interface StudentDetail {
     }[]
   } | null
   interventions: CounselorIntervention[]
+  academic_progress: ProgressAssessment
+  academic_goals: AcademicGoal[]
+  education_goals: EducationGoal[]
 }
 
 export interface CounselorNote {

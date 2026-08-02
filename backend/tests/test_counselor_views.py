@@ -3,9 +3,11 @@ from django.utils import timezone
 from django.urls import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
+    AcademicGoalFactory, CBCGradeFactory,
     CounselorFactory, SchoolFactory, StudentProfileFactory,
     VerifiedUserFactory, CounselorAssignmentFactory, CounselorNoteFactory,
-    SubjectCombinationFactory,
+    StudentSubjectFactory, SubjectCombinationFactory, SubjectFactory,
+    LearnerEducationGoalFactory,
 )
 from counselors.models import CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
@@ -232,6 +234,48 @@ class TestCounselorStudentDetailView:
         _auth(client, counselor)
         r = client.get(reverse('counselor-student-detail', args=[other_student.id]))
         assert r.status_code == 404
+
+    def test_returns_read_only_progress_and_goals_for_assigned_learner(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        enrollment = StudentSubjectFactory(
+            student_profile=assigned_student,
+            subject=SubjectFactory(code='COUN9', grade=9),
+        )
+        evidence = CBCGradeFactory(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            level='ME2',
+        )
+        academic_goal = AcademicGoalFactory(
+            learner=assigned_student,
+            current_evidence=evidence,
+            target_academic_grade=9,
+        )
+        education_goal = LearnerEducationGoalFactory(learner=assigned_student)
+        _auth(client, counselor)
+
+        response = client.get(
+            reverse('counselor-student-detail', args=[assigned_student.user_id])
+        )
+
+        assert response.status_code == 200
+        data = response.json()['data']
+        progress = data['academic_progress']
+        assert progress['subjects'][0]['continuity_code'] == 'COUN'
+        assert progress['subjects'][0]['rule_code'] == 'one_non_be_insufficient'
+        assert progress['subjects'][0]['explanation']
+        assert progress['subjects'][0]['records_used'][0]['id'] == evidence.id
+        assert progress['advisory_disclaimer'].startswith('Academic progress is advisory')
+        assert data['academic_goals'][0]['id'] == academic_goal.id
+        assert data['academic_goals'][0]['action_plan'] == academic_goal.action_plan
+        assert data['education_goals'][0]['id'] == education_goal.id
+        assert data['education_goals'][0]['institution']['source_url']
+        assert 'private_notes' not in data
 
     def test_returns_attention_evidence_choices_plan_and_interventions(
         self,

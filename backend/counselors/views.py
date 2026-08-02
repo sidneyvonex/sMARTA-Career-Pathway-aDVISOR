@@ -11,6 +11,7 @@ from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
+from students.role_support import academic_support_context
 from system_admin.utils import log_action
 from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorIntervention, CounselorNote
@@ -270,6 +271,7 @@ class CounselorStudentDetailView(APIView):
             student_id=student_id,
         ).select_related('student')
 
+        support_context = academic_support_context(profile)
         return _success(data={
             'student': student_data,
             'riasec_result': riasec_result,
@@ -297,6 +299,7 @@ class CounselorStudentDetailView(APIView):
                 interventions,
                 many=True,
             ).data,
+            **support_context,
         })
 
 
