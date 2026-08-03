@@ -1,11 +1,17 @@
 import pytest
 from django.core import mail
 from django.test import override_settings
+from rest_framework.test import APIClient
 
 from devmail.models import CapturedEmail
 from tests.factories import CapturedEmailFactory
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
 
 
 def test_captured_email_orders_newest_first():
@@ -52,3 +58,57 @@ def test_dev_mail_backend_joins_multiple_recipients():
 
     captured = CapturedEmail.objects.get()
     assert captured.to_email == 'a@test.com, b@test.com'
+
+
+def test_letter_list_returns_newest_first(api_client):
+    older = CapturedEmailFactory(subject='Older')
+    newer = CapturedEmailFactory(subject='Newer')
+    CapturedEmail.objects.filter(pk=older.pk).update(created_at='2026-08-01T09:00:00Z')
+    CapturedEmail.objects.filter(pk=newer.pk).update(created_at='2026-08-02T09:00:00Z')
+
+    response = api_client.get('/api/v1/dev/letters/')
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body['error'] is None
+    assert [row['subject'] for row in body['data']] == ['Newer', 'Older']
+    assert set(body['data'][0].keys()) == {'id', 'to_email', 'subject', 'created_at'}
+
+
+def test_letter_detail_returns_full_body(api_client):
+    letter = CapturedEmailFactory(
+        subject='Reset your CBC Guidance password',
+        body='Reset link: http://localhost:5173/reset-password?token=xyz',
+    )
+
+    response = api_client.get(f'/api/v1/dev/letters/{letter.pk}/')
+
+    assert response.status_code == 200
+    data = response.json()['data']
+    assert data['subject'] == 'Reset your CBC Guidance password'
+    assert 'reset-password?token=xyz' in data['body']
+    assert 'from_email' in data
+
+
+def test_letter_detail_missing_returns_404(api_client):
+    response = api_client.get('/api/v1/dev/letters/999999/')
+
+    assert response.status_code == 404
+    assert response.json()['error'] is True
+
+
+def test_clear_inbox_deletes_all_letters(api_client):
+    CapturedEmailFactory.create_batch(3)
+
+    response = api_client.delete('/api/v1/dev/letters/')
+
+    assert response.status_code == 200
+    assert response.json()['data']['deleted'] == 3
+    assert CapturedEmail.objects.count() == 0
+
+
+@override_settings(DEBUG=False)
+def test_endpoints_return_404_in_production_mode(api_client):
+    CapturedEmailFactory()
+
+    assert api_client.get('/api/v1/dev/letters/').status_code == 404
