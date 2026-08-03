@@ -30,6 +30,7 @@ from tertiary.models import (
     Programme,
     ProgrammeSubjectReference,
 )
+from devmail.models import CapturedEmail
 
 User = get_user_model()
 
@@ -475,3 +476,13 @@ class AuditLogFactory(factory.django.DjangoModelFactory):
     target_type = 'school'
     target_id = 1
     details = factory.LazyFunction(dict)
+
+
+class CapturedEmailFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CapturedEmail
+
+    to_email = 'learner@test.com'
+    from_email = 'noreply@cbcguidance.co.ke'
+    subject = factory.Sequence(lambda n: f'Test email {n}')
+    body = 'Hello from Smarta Shauri.'

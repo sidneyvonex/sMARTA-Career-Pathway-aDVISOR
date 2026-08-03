@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'system_admin',
     'guidance',
     'tertiary',
+    'devmail',
 ]
 
 MIDDLEWARE = [
