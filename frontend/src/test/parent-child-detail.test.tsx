@@ -43,7 +43,7 @@ describe('ChildDetailPage', () => {
   it('renders child name and grade', async () => {
     renderPage()
     expect(await screen.findByText(/Tom Doe/)).toBeInTheDocument()
-    expect(screen.getByText(/Grade 9 · kiambu · School-linked/)).toBeInTheDocument()
+    expect(screen.getByText(/Grade 9 · Kiambu · School-linked/)).toBeInTheDocument()
   })
 
   it('renders RIASEC scores', async () => {
