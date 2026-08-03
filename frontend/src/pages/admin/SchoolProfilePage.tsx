@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { schoolAdminApi } from '../../api/schoolAdmin'
 import ManagementPage from '../../components/common/management/ManagementPage'
 import EmptyState from '../../components/common/dashboard/EmptyState'
+import { formatCounty } from '../../lib/format'
 import '../../styles/school-admin.css'
 
 export default function SchoolProfilePage() {
@@ -146,7 +147,7 @@ export default function SchoolProfilePage() {
                 </div>
                 <div className="form-field">
                   <label htmlFor="school-county">County</label>
-                  <input id="school-county" type="text" value={school.county} disabled />
+                  <input id="school-county" type="text" value={formatCounty(school.county)} disabled />
                 </div>
               </div>
 

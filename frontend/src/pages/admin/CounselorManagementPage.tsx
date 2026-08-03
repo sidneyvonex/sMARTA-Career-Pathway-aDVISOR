@@ -9,6 +9,7 @@ import ManagementPage from '../../components/common/management/ManagementPage'
 import ManagementTable from '../../components/common/management/ManagementTable'
 import ManagementToolbar from '../../components/common/management/ManagementToolbar'
 import type { ManagementColumn } from '../../components/common/management/types'
+import { formatDate } from '../../lib/format'
 import '../../styles/dashboard.css'
 import '../../styles/school-admin.css'
 
@@ -88,7 +89,7 @@ export default function CounselorManagementPage() {
       key: 'joined',
       label: 'Joined',
       priority: 'secondary',
-      render: counsellor => new Date(counsellor.joined_at).toLocaleDateString(),
+      render: counsellor => formatDate(counsellor.joined_at),
     },
   ]
 
@@ -195,7 +196,7 @@ export default function CounselorManagementPage() {
             </div>
             <div>
               <dt>Joined</dt>
-              <dd>{new Date(detailCounsellor.joined_at).toLocaleDateString()}</dd>
+              <dd>{formatDate(detailCounsellor.joined_at)}</dd>
             </div>
           </dl>
         )}

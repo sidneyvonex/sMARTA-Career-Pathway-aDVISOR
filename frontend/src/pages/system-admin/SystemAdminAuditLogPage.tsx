@@ -74,16 +74,22 @@ function formatDetailValue(value: unknown): string {
       .map(([key, nestedValue]) => `${formatLabel(key)}: ${formatDetailValue(nestedValue)}`)
       .join(' · ')
   }
+  // Humanize snake_case enum tokens (e.g. "system_admin" → "System admin");
+  // leave emails, codes, and free text untouched.
+  if (typeof value === 'string' && /^[a-z]+(_[a-z]+)+$/.test(value)) return formatLabel(value)
   return String(value)
 }
 
 function detailsSummary(details: Record<string, unknown>): string {
-  const values = Object.values(details)
-    .map(formatDetailValue)
-    .filter(value => value !== 'Not recorded')
+  // Show labelled key/value pairs ("Role: System admin") rather than bare
+  // values ("system_admin"), so the summary reads without opening the drawer.
+  const parts = Object.entries(details)
+    .map(([key, value]) => [formatLabel(key), formatDetailValue(value)] as const)
+    .filter(([, value]) => value !== 'Not recorded')
     .slice(0, 2)
+    .map(([key, value]) => `${key}: ${value}`)
 
-  return values.length > 0 ? values.join(' · ') : 'No additional metadata'
+  return parts.length > 0 ? parts.join(' · ') : 'No additional metadata'
 }
 
 export default function SystemAdminAuditLogPage() {

@@ -1,4 +1,4 @@
-import { initials } from '../../lib/format'
+import { formatCounty, initials } from '../../lib/format'
 import type { StudentDetail } from '../../api/counselor'
 
 interface Props {
@@ -28,7 +28,7 @@ export default function StudentDetailHeader({ student }: Props) {
         <div className="detail-header__meta">
           <span className="detail-header__badge">Grade {student.grade}</span>
           {student.county && (
-            <span className="detail-header__meta-item">{student.county}</span>
+            <span className="detail-header__meta-item">{formatCounty(student.county)}</span>
           )}
           {student.school && (
             <span className="detail-header__meta-item">{student.school}</span>
