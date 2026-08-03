@@ -61,12 +61,12 @@ export default function AcceptInvitePage() {
           <div className="form-field">
             <label htmlFor="first_name">First name</label>
             <input id="first_name" type="text" required autoComplete="given-name"
-              placeholder="Jane" value={form.first_name} onChange={set('first_name')} />
+              placeholder="Amani" value={form.first_name} onChange={set('first_name')} />
           </div>
           <div className="form-field">
             <label htmlFor="last_name">Last name</label>
             <input id="last_name" type="text" required autoComplete="family-name"
-              placeholder="Doe" value={form.last_name} onChange={set('last_name')} />
+              placeholder="Otieno" value={form.last_name} onChange={set('last_name')} />
           </div>
         </div>
 

@@ -55,12 +55,12 @@ export default function RegisterPage() {
           <div className="form-field">
             <label htmlFor="first_name">First name</label>
             <input id="first_name" type="text" autoComplete="given-name" required
-              placeholder="Jane" value={form.first_name} onChange={set('first_name')} />
+              placeholder="Amani" value={form.first_name} onChange={set('first_name')} />
           </div>
           <div className="form-field">
             <label htmlFor="last_name">Last name</label>
             <input id="last_name" type="text" autoComplete="family-name" required
-              placeholder="Doe" value={form.last_name} onChange={set('last_name')} />
+              placeholder="Otieno" value={form.last_name} onChange={set('last_name')} />
           </div>
         </div>
 
