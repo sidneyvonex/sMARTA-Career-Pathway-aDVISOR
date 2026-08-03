@@ -2,6 +2,7 @@ import pytest
 from django.contrib.auth import authenticate
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db.models import F
 
 from accounts.management.commands.seed_pilot_demo import (
     DEMO_DOMAIN,
@@ -97,6 +98,12 @@ def test_seed_creates_a_complete_five_county_demo():
         student_subject__student_profile__user__email__endswith=f'@{DEMO_DOMAIN}',
         verified_by__email=DEMO_USERS['school_admin']['email'],
     ).count() == 15
+    assert not CBCGrade.objects.filter(
+        student_subject__student_profile__user__email__endswith=f'@{DEMO_DOMAIN}',
+        verified_at__isnull=False,
+    ).exclude(
+        verified_school_id=F('verified_by__school_id'),
+    ).exists()
     assert RIASECAssessment.objects.filter(
         student_profile__user__email__endswith=f'@{DEMO_DOMAIN}'
     ).count() == 2
@@ -167,6 +174,13 @@ def test_seed_is_idempotent():
                 student_profile__user__email__endswith=f'@{DEMO_DOMAIN}'
             ).order_by('student_profile__user__email').values_list('pk', flat=True)
         ),
+        'grade_verification': list(
+            CBCGrade.objects.filter(
+                student_subject__student_profile__user__email__endswith=(
+                    f'@{DEMO_DOMAIN}'
+                )
+            ).order_by('pk').values_list('pk', 'verified_at')
+        ),
     }
 
     run_seed()
@@ -187,3 +201,10 @@ def test_seed_is_idempotent():
             student_profile__user__email__endswith=f'@{DEMO_DOMAIN}'
         ).order_by('student_profile__user__email').values_list('pk', flat=True)
     ) == first_ids['assessments']
+    assert list(
+        CBCGrade.objects.filter(
+            student_subject__student_profile__user__email__endswith=(
+                f'@{DEMO_DOMAIN}'
+            )
+        ).order_by('pk').values_list('pk', 'verified_at')
+    ) == first_ids['grade_verification']

@@ -160,4 +160,41 @@ describe('LearnerPlanPage', () => {
 
     await waitFor(() => expect(submittedReason).toBe('I want to explore agricultural science.'))
   })
+
+  it('treats RIASEC as optional (not a gap) for a learner who already selected', async () => {
+    server.use(
+      http.get('/api/v1/students/combination-choices/', () => HttpResponse.json({
+        data: [choice], error: null, message: '',
+      })),
+      http.get('/api/v1/students/plan/', () => HttpResponse.json({
+        data: plan, error: null, message: '',
+      })),
+      http.get('/api/v1/students/evidence-summary/', () => HttpResponse.json({
+        data: {
+          profile_completion: { status: 'complete', percent: 100, missing_fields: [] },
+          academic_evidence: {
+            status: 'ready', total_subjects: 3, subjects_with_evidence: 3, total_grade_records: 6,
+          },
+          assessment: { status: 'not_started', instrument_version: null, submitted_at: null },
+          journey: {
+            status: 'selected', current_pathway: { id: 1, name: 'STEM' },
+            current_subject_combination: '', selection_source: 'learner_reported',
+            selection_date: null, selection_verified: false,
+          },
+          saved_combination_count: 1,
+          plan_status: 'draft',
+          next_action: { code: 'view_progress', title: 'View your academic progress', href: '/grades' },
+        },
+        error: null, message: '',
+      })),
+    )
+    renderPlan()
+
+    expect(await screen.findByRole('heading', { name: 'Build evidence around your choice' })).toBeInTheDocument()
+    // The incomplete assessment must NOT appear as a required gap.
+    expect(screen.queryByText('Complete the career interest assessment')).not.toBeInTheDocument()
+    // Instead it is surfaced as an optional career-reflection tool.
+    expect(screen.getByText('Optional career-interest assessment')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Take the optional assessment' })).toHaveAttribute('href', '/assessment')
+  })
 })

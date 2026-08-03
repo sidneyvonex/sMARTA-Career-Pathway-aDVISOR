@@ -2,10 +2,11 @@ import { StudentSubject } from '../../api/students'
 
 interface Props {
   enrolledSubjects: StudentSubject[]
-  onRemove: (id: number) => void
+  onRemove: (subject: StudentSubject) => void
+  disabled?: boolean
 }
 
-export default function SubjectList({ enrolledSubjects, onRemove }: Props) {
+export default function SubjectList({ enrolledSubjects, onRemove, disabled = false }: Props) {
   if (enrolledSubjects.length === 0) {
     return (
       <div className="student-empty-state student-empty-state--small">
@@ -34,12 +35,13 @@ export default function SubjectList({ enrolledSubjects, onRemove }: Props) {
           <button
             type="button"
             onClick={() => {
-              if (window.confirm(`Remove ${studentSubject.subject.name}? All grades for this subject will be deleted.`)) {
-                onRemove(studentSubject.id)
+              if (window.confirm(`Archive ${studentSubject.subject.name}? Its existing grade history will be preserved.`)) {
+                onRemove(studentSubject)
               }
             }}
+            disabled={disabled}
             className="subject-list__remove"
-            aria-label={`Remove ${studentSubject.subject.name}`}
+            aria-label={`Archive ${studentSubject.subject.name}`}
           >
             ×
           </button>

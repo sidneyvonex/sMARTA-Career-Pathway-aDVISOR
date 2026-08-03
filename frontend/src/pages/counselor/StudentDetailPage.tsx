@@ -11,8 +11,19 @@ import NoteForm from '../../components/counselor/NoteForm'
 import ScoreBars from '../../components/assessment/ScoreBars'
 import RecommendationCards from '../../components/assessment/RecommendationCards'
 import StatusBadge from '../../components/common/dashboard/StatusBadge'
+import ResponsiveDataList from '../../components/common/dashboard/ResponsiveDataList'
+import { GRADE_LEVEL_LABELS } from '../../api/students'
+import { evidenceOrigin, evidenceVerification } from '../../lib/academicEvidence'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/counselor.css'
+
+
+function displayDate(value: string) {
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+  }).format(new Date(value))
+}
+
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -173,6 +184,9 @@ export default function StudentDetailPage() {
     combination_choices: choices,
     plan,
     interventions,
+    academic_progress: academicProgress,
+    academic_goals: academicGoals,
+    education_goals: educationGoals,
   } = studentQuery.data
 
   return (
@@ -230,6 +244,92 @@ export default function StudentDetailPage() {
                 <p>Use this as exploration evidence, not a placement decision.</p>
               </article>
             </div>
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Academic progress</h2>
+            <div className="detail-reason-list">
+              {academicProgress.subjects.map(subject => (
+                <article key={subject.continuity_code}>
+                  <div>
+                    <strong>{subject.subject_name}</strong>
+                    <StatusBadge tone={subject.status === 'strong' || subject.status === 'on_track' ? 'positive' : 'attention'}>
+                      {subject.label}
+                    </StatusBadge>
+                  </div>
+                  <p>{subject.explanation}</p>
+                  <small>{subject.suggested_action}</small>
+                  <section
+                    className="detail-progress-evidence"
+                    aria-labelledby={`counselor-evidence-${subject.continuity_code}`}
+                  >
+                    <h3 id={`counselor-evidence-${subject.continuity_code}`}>
+                      Evidence used for this status
+                    </h3>
+                    <ResponsiveDataList
+                      ariaLabel={`${subject.subject_name} evidence used for this status`}
+                      items={subject.records_used}
+                      getKey={(record) => record.id}
+                      columns={[
+                        {
+                          key: 'period',
+                          label: 'Period',
+                          render: (record) => `Grade ${record.academic_grade}, ${record.year}, Term ${record.term}`,
+                        },
+                        {
+                          key: 'level',
+                          label: 'CBE level',
+                          render: (record) => GRADE_LEVEL_LABELS[record.level],
+                        },
+                        {
+                          key: 'framework',
+                          label: 'Assessment framework',
+                          render: (record) => `${record.framework.code} ${record.framework.version}`,
+                        },
+                        { key: 'origin', label: 'Origin', render: evidenceOrigin },
+                        { key: 'verification', label: 'Verification', render: evidenceVerification },
+                      ]}
+                      empty={<p>No evidence records were used for this status.</p>}
+                    />
+                  </section>
+                </article>
+              ))}
+            </div>
+            <p className="detail-workspace-card__advisory">{academicProgress.advisory_disclaimer}</p>
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Academic targets</h2>
+            {academicGoals.length ? academicGoals.map(goal => (
+              <article key={goal.id} className="detail-goal-row">
+                <strong>{goal.continuity_code}: {goal.current_level.code} to {goal.target_level.code}</strong>
+                <p>{goal.action_plan}</p>
+                <small>Target: Grade {goal.target_academic_grade}, Term {goal.target_term} {goal.target_year}</small>
+              </article>
+            )) : <p>No academic targets have been set.</p>}
+          </section>
+
+          <section className="student-detail__section detail-workspace-card">
+            <h2 className="student-detail__section-title">Education goals</h2>
+            {educationGoals.length ? educationGoals.map(goal => {
+              const provenance = goal.programme ?? goal.institution
+              const verification = provenance.verification_status === 'historical'
+                ? 'Historical'
+                : provenance.verification_status === 'verified' ? 'Verified' : 'Unavailable'
+              return (
+                <article key={goal.id} className="detail-goal-row">
+                  <strong>{goal.institution.name}</strong>
+                  <p>{goal.programme?.name ?? 'Institution exploration'}</p>
+                  <small>
+                    {provenance.education_framework} · {provenance.admission_cycle} · Effective {displayDate(provenance.effective_date)} · Verification: {verification}
+                    {provenance.verification_status === 'historical' ? ' · Historical reference only' : ''}
+                  </small>
+                  <a href={provenance.source_url} target="_blank" rel="noreferrer">
+                    Open {goal.programme ? 'programme' : 'institution'} source
+                  </a>
+                </article>
+              )
+            }) : <p>No education goals have been saved.</p>}
           </section>
 
           <section className="student-detail__section detail-workspace-card">

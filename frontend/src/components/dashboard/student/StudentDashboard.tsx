@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { GRADE_LEVEL_POINTS, studentsApi } from '../../../api/students'
+import { studentsApi } from '../../../api/students'
 import type { RIASECDimension } from '../../../api/assessment'
 import { useAuthStore } from '../../../store/authStore'
 import { useNotificationStore } from '../../../store/notificationStore'
@@ -70,24 +70,17 @@ export default function StudentDashboard() {
       ))
     : null
 
-  const gradeBuckets = new Map<string, { year: number; term: number; scores: number[] }>()
-  gradeSummary.subjects.forEach((subject) => {
-    subject.grades.forEach((grade) => {
-      const key = `${grade.year}-${grade.term}`
-      const bucket = gradeBuckets.get(key) ?? { year: grade.year, term: grade.term, scores: [] }
-      bucket.scores.push(GRADE_LEVEL_POINTS[grade.level])
-      gradeBuckets.set(key, bucket)
-    })
+  const gradeTrend = gradeSummary.subjects.flatMap((subject) => {
+    const records = [...subject.grades]
+      .sort((a, b) => a.year - b.year || a.term - b.term || a.id - b.id)
+      .map((grade) => ({
+        period: `${grade.year} Term ${grade.term}`,
+        level: grade.level,
+      }))
+    return records.length > 0
+      ? [{ subject: subject.subject.name, records }]
+      : []
   })
-
-  const gradeTrend = Array.from(gradeBuckets.values())
-    .sort((a, b) => a.year - b.year || a.term - b.term)
-    .map((bucket) => ({
-      term: `T${bucket.term} '${String(bucket.year).slice(-2)}`,
-      points: Number(
-        (bucket.scores.reduce((total, score) => total + score, 0) / bucket.scores.length).toFixed(1),
-      ),
-    }))
 
   const fullName = `${profile.first_name} ${profile.last_name}`.trim()
   const counselorName = counselor
@@ -100,6 +93,7 @@ export default function StudentDashboard() {
     photoUrl: profile.photo_url,
     gradeLabel: `Grade ${profile.grade}`,
     county: profile.county,
+    journeyStatus: profile.journey_status,
     quizDone,
     subjectsCount: gradeSummary.total_subjects,
     academicReady: evidence.academic_evidence.status === 'ready',

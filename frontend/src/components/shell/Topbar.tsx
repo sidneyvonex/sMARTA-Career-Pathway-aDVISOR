@@ -3,6 +3,7 @@ import { useNotificationStore } from '../../store/notificationStore'
 import { useLayoutStore } from '../../store/layoutStore'
 import { Link, useLocation } from 'react-router-dom'
 import { todayLabel } from '../../lib/greeting'
+import { isFeatureEnabled } from '../../lib/featureFlags'
 import Avatar from '../common/Avatar'
 
 const BELL_ICON = (
@@ -24,7 +25,17 @@ interface PageContext {
 
 function getPageContext(pathname: string): PageContext {
   if (pathname === '/') return { title: 'Dashboard' }
-  if (pathname === '/grades') return { title: 'My grades' }
+  if (pathname === '/grades') {
+    return {
+      title: isFeatureEnabled('academic_progress_v1') ? 'My progress' : 'My grades',
+    }
+  }
+  if (pathname === '/education-goals' && isFeatureEnabled('academic_progress_v1')) {
+    return {
+      title: 'Education goals',
+      parent: { label: 'My progress', to: '/grades' },
+    }
+  }
   if (pathname === '/explore') return { title: 'Explore combinations' }
   if (pathname === '/compare') return {
     title: 'Compare combinations',

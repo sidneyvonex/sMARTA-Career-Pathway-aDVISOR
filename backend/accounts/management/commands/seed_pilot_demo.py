@@ -30,6 +30,7 @@ from riasec.models import (
     RIASECScore,
 )
 from riasec.scoring import build_interest_explanation, compute_pathway_fits
+from students.evidence import transition_grade_verification
 from students.models import CBCGrade, StudentSubject, Subject
 from system_admin.models import AuditLog
 
@@ -321,7 +322,7 @@ class Command(BaseCommand):
                     student_profile=profile,
                     subject=subject,
                 )
-                CBCGrade.objects.update_or_create(
+                grade, created = CBCGrade.objects.get_or_create(
                     student_subject=enrollment,
                     term=1,
                     year=current_year,
@@ -329,9 +330,30 @@ class Command(BaseCommand):
                         'level': level,
                         'source': 'school',
                         'verified_by': verifier,
+                        'verified_school': verifier.school,
                         'verified_at': verified_at,
                     },
                 )
+                if created:
+                    continue
+                if grade.level != level or grade.source != 'school':
+                    raise CommandError(
+                        'Pilot demo evidence already exists with different '
+                        'immutable academic evidence.'
+                    )
+                if grade.verified_at is None:
+                    if grade.verified_school_id not in (None, verifier.school_id):
+                        raise CommandError(
+                            'Pilot demo evidence retains verification provenance '
+                            'from another school.'
+                        )
+                    transition_grade_verification(
+                        grade,
+                        actor=verifier,
+                        school=verifier.school,
+                        should_verify=True,
+                        verified_at=verified_at,
+                    )
 
     def _assessments(self, *, profiles):
         score_sets = {

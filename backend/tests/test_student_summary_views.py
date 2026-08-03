@@ -64,6 +64,7 @@ class TestEvidenceSummaryView:
             'profile_completion',
             'academic_evidence',
             'assessment',
+            'journey',
             'saved_combination_count',
             'plan_status',
             'next_action',
@@ -83,7 +84,7 @@ class TestEvidenceSummaryView:
         }
         assert response.data['data']['next_action']['code'] == 'complete_profile'
 
-    def test_academic_evidence_is_next_after_profile_completion(self):
+    def test_declare_journey_stage_follows_profile_completion(self):
         self.profile.bio = 'Interested in science and design.'
         self.profile.date_of_birth = '2011-01-10'
         self.profile.career_interests = 'Engineering'
@@ -94,7 +95,28 @@ class TestEvidenceSummaryView:
         response = self.client.get(EVIDENCE_URL)
 
         assert response.data['data']['profile_completion']['status'] == 'complete'
-        assert response.data['data']['academic_evidence']['status'] == 'not_started'
+        assert response.data['data']['journey']['status'] == ''
+        assert response.data['data']['next_action']['code'] == 'declare_journey_stage'
+
+    def test_academic_evidence_is_next_for_selected_learner_with_subjects(self):
+        self.profile.bio = 'Interested in science and design.'
+        self.profile.date_of_birth = '2011-01-10'
+        self.profile.career_interests = 'Engineering'
+        self.profile.journey_status = 'selected'
+        self.profile.save(
+            update_fields=[
+                'bio', 'date_of_birth', 'career_interests', 'journey_status'
+            ]
+        )
+        StudentSubjectFactory(
+            student_profile=self.profile,
+            subject=SubjectFactory(code='SEL19', grade=9),
+        )
+
+        response = self.client.get(EVIDENCE_URL)
+
+        assert response.data['data']['profile_completion']['status'] == 'complete'
+        assert response.data['data']['academic_evidence']['status'] == 'in_progress'
         assert response.data['data']['next_action']['code'] == 'add_academic_evidence'
 
     def test_assessment_status_includes_version_slot(self):
@@ -107,27 +129,21 @@ class TestEvidenceSummaryView:
         assert assessment['instrument_version'] == assessment_record.instrument_version
         assert assessment['submitted_at'] is not None
 
-    def test_next_action_advances_to_explore_after_required_evidence(self):
+    def test_pre_selection_learner_advances_to_explore_after_assessment(self):
         self.profile.bio = 'Interested in science and design.'
         self.profile.date_of_birth = '2011-01-10'
         self.profile.career_interests = 'Engineering'
+        self.profile.journey_status = 'not_selected'
         self.profile.save(
-            update_fields=['bio', 'date_of_birth', 'career_interests']
+            update_fields=[
+                'bio', 'date_of_birth', 'career_interests', 'journey_status'
+            ]
         )
-        for index in range(3):
-            enrollment = StudentSubjectFactory(
-                student_profile=self.profile,
-                subject=SubjectFactory(
-                    code=f'EVD{index}9',
-                    grade=9,
-                ),
-            )
-            CBCGradeFactory(student_subject=enrollment)
         RIASECAssessment.objects.create(student_profile=self.profile)
 
         response = self.client.get(EVIDENCE_URL)
 
-        assert response.data['data']['academic_evidence']['status'] == 'ready'
+        assert response.data['data']['assessment']['status'] == 'complete'
         assert response.data['data']['next_action']['code'] == 'explore_combinations'
 
     def test_saved_choice_count_is_included_without_extra_summary_queries(

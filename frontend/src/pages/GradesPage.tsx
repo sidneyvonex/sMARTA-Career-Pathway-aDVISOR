@@ -5,10 +5,12 @@ import { studentsApi, StudentSubject } from '../api/students'
 import SubjectList from '../components/students/SubjectList'
 import GradeEntryForm from '../components/students/GradeEntryForm'
 import GradeHistory from '../components/students/GradeHistory'
+import AcademicProgressDashboard from '../components/students/AcademicProgressDashboard'
 import ErrorState from '../components/common/dashboard/ErrorState'
+import { isFeatureEnabled } from '../lib/featureFlags'
 import '../styles/student-pages.css'
 
-export default function GradesPage() {
+function LegacyGradesPage() {
   const qc = useQueryClient()
   const [activeSubjectId, setActiveSubjectId] = useState<number | null>(null)
 
@@ -102,7 +104,8 @@ export default function GradesPage() {
             {subjectsQ.isLoading ? <p>Loading…</p> : (
               <SubjectList
                 enrolledSubjects={enrolled}
-                onRemove={(id) => removeMutation.mutate(id)}
+                onRemove={(subject) => removeMutation.mutate(subject.id)}
+                disabled={removeMutation.isPending}
               />
             )}
           </section>
@@ -186,4 +189,10 @@ export default function GradesPage() {
       </div>
     </div>
   )
+}
+
+export default function GradesPage() {
+  return isFeatureEnabled('academic_progress_v1')
+    ? <AcademicProgressDashboard />
+    : <LegacyGradesPage />
 }

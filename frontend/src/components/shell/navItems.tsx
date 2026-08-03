@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../../store/authStore'
 import { dashboardApi } from '../../api/dashboard'
 import type { User } from '../../api/auth'
+import { isFeatureEnabled } from '../../lib/featureFlags'
 
 export interface NavItem {
   to: string
@@ -26,9 +27,15 @@ export const NAV_ICONS = {
 
 export function getBaseNavItems(role: User['role']): NavItem[] {
   if (role === 'student') {
+    const gradesItem = isFeatureEnabled('academic_progress_v1')
+      ? { to: '/grades', label: 'My Progress', short: 'Progress', icon: NAV_ICONS.bar }
+      : { to: '/grades', label: 'My Grades', short: 'Grades', icon: NAV_ICONS.bar }
     return [
       { to: '/', label: 'Dashboard', short: 'Home', icon: NAV_ICONS.grid },
-      { to: '/grades', label: 'My Grades', short: 'Grades', icon: NAV_ICONS.bar },
+      gradesItem,
+      ...(isFeatureEnabled('academic_progress_v1')
+        ? [{ to: '/education-goals', label: 'Education Goals', short: 'Goals', icon: NAV_ICONS.school }]
+        : []),
       { to: '/explore', label: 'Explore Choices', short: 'Explore', icon: NAV_ICONS.grid },
       { to: '/compare', label: 'Compare Choices', short: 'Compare', icon: NAV_ICONS.clipboard },
       { to: '/plan', label: 'My Plan', short: 'Plan', icon: NAV_ICONS.note },

@@ -14,7 +14,10 @@ from counselors.models import (
 )
 from guidance.models import LearnerCombinationChoice
 from riasec.models import RIASECAssessment
-from students.models import StudentSubject
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolment_queryset,
+)
 from parents.models import ParentStudentLink
 from system_admin.utils import log_action
 from parents.serializers import (
@@ -22,6 +25,19 @@ from parents.serializers import (
     LinkedChildSerializer,
     ParentAccessSerializer,
 )
+
+
+def _redact_staff_verifier_identity(value):
+    """Remove staff IDs from a parent-facing progress payload at any depth."""
+    if isinstance(value, dict):
+        return {
+            key: _redact_staff_verifier_identity(item)
+            for key, item in value.items()
+            if key != 'verified_by'
+        }
+    if isinstance(value, list):
+        return [_redact_staff_verifier_identity(item) for item in value]
+    return value
 
 
 class ParentChildrenView(APIView):
@@ -81,9 +97,8 @@ class ParentChildDetailView(APIView):
                 .prefetch_related(
                     Prefetch(
                         'enrolled_subjects',
-                        queryset=StudentSubject.objects
-                        .select_related('subject')
-                        .prefetch_related('grades'),
+                        queryset=academic_support_enrolment_queryset(),
+                        to_attr='support_enrolments',
                     ),
                     Prefetch(
                         'riasec_assessments',
@@ -129,7 +144,14 @@ class ParentChildDetailView(APIView):
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', status.HTTP_404_NOT_FOUND)
 
-        data = ChildDetailSerializer(profile).data
+        support_context = academic_support_context(profile)
+        support_context['academic_progress'] = _redact_staff_verifier_identity(
+            support_context['academic_progress']
+        )
+        data = {
+            **ChildDetailSerializer(profile).data,
+            **support_context,
+        }
         return _success(data=data)
 
 

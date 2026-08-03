@@ -1,7 +1,9 @@
 import pytest
+from django.db import connection
 from rest_framework.test import APIClient
 
 from students.models import CBCGrade
+from notifications.models import Notification
 from system_admin.models import AuditLog
 from tests.factories import (
     CBCGradeFactory,
@@ -71,7 +73,7 @@ class TestLearnerGradeProvenanceProtection:
         assert grade.verified_at is None
         assert response.data['data']['source'] == 'learner'
 
-    def test_learner_update_does_not_clear_existing_verification(self):
+    def test_learner_cannot_update_existing_verified_evidence(self):
         verifier = SchoolAdminFactory()
         grade = CBCGradeFactory(
             student_subject=self.enrollment,
@@ -91,10 +93,11 @@ class TestLearnerGradeProvenanceProtection:
             format='json',
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 403
         grade.refresh_from_db()
         assert grade.verified_by == verifier
         assert grade.verified_at is not None
+        assert grade.level == 'ME1'
 
 
 class TestSchoolGradeVerification:
@@ -125,11 +128,19 @@ class TestSchoolGradeVerification:
         assert self.grade.verified_by == self.admin
         assert self.grade.verified_at is not None
         assert response.data['data']['verified_by'] == self.admin.id
+        notification = Notification.objects.get(
+            user=self.profile.user,
+            type='grade_verification_changed',
+        )
+        assert self.grade.student_subject.subject.name in notification.message
+        assert self.school.name in notification.message
 
     def test_school_admin_can_remove_verification(self):
-        self.grade.verified_by = self.admin
-        self.grade.verified_at = '2026-07-30T10:00:00Z'
-        self.grade.save(update_fields=['verified_by', 'verified_at'])
+        assert self.client.put(
+            self.url,
+            {'verified': True},
+            format='json',
+        ).status_code == 200
 
         response = self.client.put(
             self.url,
@@ -141,6 +152,62 @@ class TestSchoolGradeVerification:
         self.grade.refresh_from_db()
         assert self.grade.verified_by is None
         assert self.grade.verified_at is None
+
+    @pytest.mark.parametrize('should_verify', [True, False])
+    def test_current_school_cannot_mutate_another_schools_provenance(
+        self,
+        should_verify,
+    ):
+        """Catches transfer membership overriding the historical verifying school."""
+        original_school = SchoolFactory()
+        original_admin = SchoolAdminFactory(school=original_school)
+        grade = CBCGradeFactory(
+            student_subject=self.grade.student_subject,
+            term=2,
+            verified_by=original_admin,
+            verified_at='2026-07-30T10:00:00Z',
+            verified_school=original_school,
+        )
+
+        response = self.client.put(
+            verification_url(self.profile, grade),
+            {'verified': should_verify},
+            format='json',
+        )
+
+        assert response.status_code == 403
+        assert response.data['data'] is None
+        assert response.data['error'] is True
+        grade.refresh_from_db()
+        assert grade.verified_by == original_admin
+        assert grade.verified_school == original_school
+
+    @pytest.mark.parametrize('should_verify', [True, False])
+    def test_school_cannot_mutate_legacy_verification_without_school_provenance(
+        self,
+        should_verify,
+    ):
+        """Catches guessing ownership for legacy verified evidence."""
+        with connection.cursor() as cursor:
+            cursor.execute(
+                'UPDATE students_cbcgrade '
+                'SET verified_by_id = %s, verified_at = %s, '
+                'verified_school_id = NULL WHERE id = %s',
+                [self.admin.id, '2026-07-30T10:00:00Z', self.grade.pk],
+            )
+
+        response = self.client.put(
+            self.url,
+            {'verified': should_verify},
+            format='json',
+        )
+
+        assert response.status_code == 403
+        assert response.data['data'] is None
+        assert response.data['error'] is True
+        self.grade.refresh_from_db()
+        assert self.grade.verified_by == self.admin
+        assert self.grade.verified_school is None
 
     def test_verification_and_removal_are_audited(self):
         self.client.put(self.url, {'verified': True}, format='json')
@@ -165,6 +232,10 @@ class TestSchoolGradeVerification:
             action='grade_verified',
             target_type='grade',
             target_id=self.grade.id,
+        ).count() == 1
+        assert Notification.objects.filter(
+            user=self.profile.user,
+            type='grade_verification_changed',
         ).count() == 1
 
     def test_grade_at_another_school_is_not_accessible(self):
@@ -196,6 +267,19 @@ class TestSchoolGradeVerification:
         )
 
         assert response.status_code == 404
+
+    def test_archived_enrolment_grade_is_not_verifiable(self):
+        self.grade.student_subject.archive()
+
+        response = self.client.put(
+            self.url,
+            {'verified': True},
+            format='json',
+        )
+
+        assert response.status_code == 404
+        self.grade.refresh_from_db()
+        assert self.grade.verified_at is None
 
     def test_inactive_school_cannot_verify(self):
         self.school.is_active = False

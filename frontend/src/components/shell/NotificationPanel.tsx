@@ -10,6 +10,12 @@ import '../../styles/notifications.css'
 const CHIP_LABELS: Record<string, string> = {
   counselor_note: 'From counselor',
   assessment_submitted: 'Results',
+  child_assessment_complete: 'About learner',
+  school_membership_decided: 'School link',
+  school_transfer_decided: 'School transfer',
+  grade_verification_changed: 'Academic evidence',
+  counselor_intervention: 'Support action',
+  academic_goal_achieved: 'Goal achieved',
   account: 'Account',
   system: 'System',
 }
@@ -45,9 +51,18 @@ function roleTabLabel(role: string | undefined) {
 }
 
 function roleTabFilter(notif: Notification, role: string | undefined) {
-  if (role === 'student') return notif.type === 'counselor_note'
-  if (role === 'counselor') return notif.type === 'assessment_submitted'
-  if (role === 'parent') return notif.type === 'assessment_submitted'
+  if (role === 'student') {
+    return notif.type === 'counselor_note'
+      || notif.type === 'counselor_intervention'
+  }
+  if (role === 'counselor') {
+    return notif.type === 'assessment_submitted'
+  }
+  if (role === 'parent') {
+    return notif.type === 'child_assessment_complete'
+      || notif.type === 'counselor_intervention'
+      || notif.type === 'academic_goal_achieved'
+  }
   return false
 }
 

@@ -1,15 +1,22 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from counselors.models import CounselorIntervention, CounselorNote
+from counselors.models import (
+    CounselorAssignment,
+    CounselorIntervention,
+    CounselorNote,
+)
+from notifications.models import Notification
 from tests.factories import (
     CounselorAssignmentFactory,
     CounselorFactory,
     CounselorNoteFactory,
+    ParentStudentLinkFactory,
     SchoolFactory,
     StudentProfileFactory,
     VerifiedUserFactory,
@@ -119,6 +126,118 @@ def test_counselor_can_create_and_list_assigned_learner_intervention(
     ]
 
 
+def test_intervention_list_hides_records_after_assignment_ends(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Review the learner plan.',
+    )
+    CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile=profile,
+    ).update(is_active=False)
+    _auth(client, counselor)
+
+    response = client.get(reverse('counselor-interventions'))
+
+    assert response.status_code == 200
+    assert response.json()['data'] == []
+
+
+def test_intervention_patch_is_denied_after_assignment_ends_without_notification(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Private support action.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile=profile,
+    ).update(is_active=False)
+    _auth(client, counselor)
+
+    response = client.patch(
+        reverse('counselor-intervention-detail', args=[intervention.pk]),
+        {'learner_visible': True},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 404
+    intervention.refresh_from_db()
+    assert intervention.learner_visible is False
+    assert not Notification.objects.filter(
+        type='counselor_intervention',
+    ).exists()
+
+
+def test_visible_intervention_notifies_learner_and_only_approved_parent(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    approved = ParentStudentLinkFactory(student=profile.user, status='active')
+    pending = ParentStudentLinkFactory(
+        student=profile.user,
+        status='pending_learner',
+    )
+    _auth(client, counselor)
+
+    response = client.post(
+        reverse('counselor-interventions'),
+        {
+            'student_id': profile.user_id,
+            'category': 'academic_evidence',
+            'action_agreed': 'Bring the latest mathematics evidence.',
+            'learner_visible': True,
+            'parent_visible': True,
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 201
+    recipients = set(Notification.objects.filter(
+        type='counselor_intervention',
+    ).values_list('user_id', flat=True))
+    assert recipients == {profile.user_id, approved.parent_id}
+    assert pending.parent_id not in recipients
+
+
+def test_private_intervention_sends_no_notification(client, intervention_context):
+    counselor, profile = intervention_context
+    parent_link = ParentStudentLinkFactory(student=profile.user, status='active')
+    _auth(client, counselor)
+
+    response = client.post(
+        reverse('counselor-interventions'),
+        {
+            'student_id': profile.user_id,
+            'category': 'academic_evidence',
+            'action_agreed': 'Private counselor action.',
+            'learner_visible': False,
+            'parent_visible': False,
+        },
+        content_type='application/json',
+    )
+
+    assert response.status_code == 201
+    assert not Notification.objects.filter(
+        user_id__in=[profile.user_id, parent_link.parent_id],
+        type='counselor_intervention',
+    ).exists()
+
+
 def test_counselor_cannot_create_intervention_for_unassigned_learner(
     client,
     intervention_context,
@@ -165,6 +284,136 @@ def test_counselor_can_complete_own_intervention(
     assert response.status_code == 200
     assert response.json()['data']['status'] == 'completed'
     assert response.json()['data']['completed_at'] is not None
+
+
+def test_patch_learner_visibility_notifies_only_learner(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    parent_link = ParentStudentLinkFactory(
+        student=profile.user,
+        status='active',
+    )
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Review the learner plan.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    _auth(client, counselor)
+
+    response = client.patch(
+        reverse('counselor-intervention-detail', args=[intervention.pk]),
+        {'learner_visible': True},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 200
+    assert list(Notification.objects.filter(
+        type='counselor_intervention',
+    ).values_list('user_id', flat=True)) == [profile.user_id]
+    assert not Notification.objects.filter(user=parent_link.parent).exists()
+
+
+def test_patch_parent_visibility_notifies_only_active_approved_parents(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    approved = ParentStudentLinkFactory(student=profile.user, status='active')
+    pending = ParentStudentLinkFactory(
+        student=profile.user,
+        status='pending_learner',
+    )
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Discuss the learner plan.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    _auth(client, counselor)
+
+    response = client.patch(
+        reverse('counselor-intervention-detail', args=[intervention.pk]),
+        {'parent_visible': True},
+        content_type='application/json',
+    )
+
+    assert response.status_code == 200
+    recipients = set(Notification.objects.filter(
+        type='counselor_intervention',
+    ).values_list('user_id', flat=True))
+    assert recipients == {approved.parent_id}
+    assert profile.user_id not in recipients
+    assert pending.parent_id not in recipients
+
+
+def test_repeated_visible_patch_does_not_duplicate_notifications(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    approved = ParentStudentLinkFactory(student=profile.user, status='active')
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Discuss the learner plan.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    _auth(client, counselor)
+    url = reverse('counselor-intervention-detail', args=[intervention.pk])
+
+    assert client.patch(
+        url,
+        {'learner_visible': True, 'parent_visible': True},
+        content_type='application/json',
+    ).status_code == 200
+    assert client.patch(
+        url,
+        {'learner_visible': True, 'parent_visible': True},
+        content_type='application/json',
+    ).status_code == 200
+
+    recipients = list(Notification.objects.filter(
+        type='counselor_intervention',
+    ).values_list('user_id', flat=True))
+    assert sorted(recipients) == sorted([profile.user_id, approved.parent_id])
+
+
+def test_visibility_patch_rolls_back_if_notification_cannot_be_saved(
+    client,
+    intervention_context,
+):
+    counselor, profile = intervention_context
+    intervention = CounselorIntervention.objects.create(
+        counselor=counselor,
+        student=profile.user,
+        category=CounselorIntervention.CATEGORY_PLAN,
+        action_agreed='Review the learner plan.',
+        learner_visible=False,
+        parent_visible=False,
+    )
+    _auth(client, counselor)
+
+    with patch(
+        'counselors.views.Notification.objects.create',
+        side_effect=RuntimeError('notification write failed'),
+    ), pytest.raises(RuntimeError, match='notification write failed'):
+        client.patch(
+            reverse('counselor-intervention-detail', args=[intervention.pk]),
+            {'learner_visible': True},
+            content_type='application/json',
+        )
+
+    intervention.refresh_from_db()
+    assert intervention.learner_visible is False
 
 
 def test_counselor_cannot_update_another_counselors_intervention(

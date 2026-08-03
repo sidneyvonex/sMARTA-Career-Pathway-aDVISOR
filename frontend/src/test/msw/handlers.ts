@@ -1,6 +1,167 @@
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
+
+import type { AcademicGoal, AcademicGoalEvidenceSnapshot } from '../../api/students'
+import type { EducationGoal, Institution, ProgrammeDetail } from '../../api/tertiary'
 
 const BASE = '/api/v1/auth'
+
+const creationEvidence: AcademicGoalEvidenceSnapshot = {
+  evidence_id: 20,
+  period: { academic_grade: 10, year: 2026, term: 1 },
+  level: { code: 'ME2', rank: 5 },
+  framework: {
+    id: 1,
+    code: 'CBC-SENIOR-SCHOOL',
+    version: 'pilot-2026',
+    level_ranks: {
+      EE1: 8, EE2: 7, ME1: 6, ME2: 5,
+      AE1: 4, AE2: 3, BE1: 2, BE2: 1,
+    },
+  },
+  source: 'learner',
+  verification: {
+    confidence: 'learner_entered',
+    verified_by: null,
+    verified_school: null,
+    verified_at: null,
+  },
+  recorded_at: '2026-08-01T09:00:00Z',
+}
+
+const achievementEvidence: AcademicGoalEvidenceSnapshot = {
+  ...creationEvidence,
+  evidence_id: 21,
+  period: { academic_grade: 10, year: 2026, term: 2 },
+  level: { code: 'ME1', rank: 6 },
+  recorded_at: '2026-08-01T11:00:00Z',
+}
+
+export function academicGoalFixture(overrides: Partial<AcademicGoal> = {}): AcademicGoal {
+  return {
+    id: 7,
+    continuity_code: 'MTH',
+    current_evidence: 20,
+    creation_evidence_snapshot: creationEvidence,
+    current_level: {
+      code: 'ME2', rank: 5,
+      framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+    },
+    target_level: {
+      id: 3, code: 'ME1', rank: 6,
+      framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+    },
+    target_term: 3,
+    target_year: 2026,
+    target_academic_grade: 10,
+    action_plan: 'Practise twice each week.',
+    status: 'active',
+    ready_for_achievement: true,
+    readiness_evidence: 21,
+    achievement_evidence_snapshot: null,
+    legacy_lifecycle_unverifiable: false,
+    created_by: 1,
+    confirmed_by: null,
+    achieved_at: null,
+    closed_at: null,
+    created_at: '2026-08-01T10:00:00Z',
+    updated_at: '2026-08-01T10:00:00Z',
+    ...overrides,
+  }
+}
+
+export const institutionFixture: Institution = {
+  id: 1,
+  name: 'University of Nairobi',
+  institution_type: 'university',
+  county: 'Nairobi',
+  website_url: 'https://uonbi.ac.ke/',
+  source_scope: 'kuccps-2025',
+  external_key: 'UON',
+  source_url: 'https://students.kuccps.net/',
+  education_framework: 'KCSE',
+  admission_cycle: '2025/2026',
+  effective_date: '2025-03-01',
+  verification_status: 'historical',
+}
+
+export const programmeFixture: ProgrammeDetail = {
+  id: 10,
+  institution: institutionFixture,
+  code: 'BSC-CS',
+  name: 'BSc Computer Science',
+  description: 'Programme catalogue entry.',
+  source_scope: 'kuccps-2025',
+  external_key: 'UON-CS',
+  source_url: 'https://students.kuccps.net/',
+  education_framework: 'KCSE',
+  admission_cycle: '2025/2026',
+  effective_date: '2025-03-01',
+  verification_status: 'historical',
+  subject_references: [{
+    id: 20,
+    subject_code: 'MAT',
+    subject_name: 'Mathematics',
+    mapping_kind: 'historical_requirement',
+    notes: 'Historical reference only.',
+    advisory_label: 'Exploration reference only; this does not determine admission.',
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-MAT',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }, {
+    id: 21,
+    subject_code: 'CHE',
+    subject_name: 'Chemistry',
+    mapping_kind: 'exploratory_alignment',
+    notes: 'A useful subject to discuss with a counsellor.',
+    advisory_label: 'Exploration reference only; this does not determine admission.',
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-CHE',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }],
+  historical_admission_references: [{
+    id: 30,
+    requirement_summary: 'Historical KCSE reference only.',
+    reference_status: 'historical_reference',
+    reference_only: true,
+    source_scope: 'kuccps-2025',
+    external_key: 'UON-CS-HIST',
+    source_url: 'https://students.kuccps.net/',
+    education_framework: 'KCSE',
+    admission_cycle: '2025/2026',
+    effective_date: '2025-03-01',
+    verification_status: 'historical',
+  }],
+}
+
+function educationGoalFixture(overrides: Partial<EducationGoal> = {}): EducationGoal {
+  return {
+    id: 40,
+    institution: institutionFixture,
+    programme: programmeFixture,
+    kind: 'alternative',
+    priority: 1,
+    created_by: 1,
+    created_at: '2026-08-02T09:00:00Z',
+    updated_at: '2026-08-02T09:00:00Z',
+    ...overrides,
+  }
+}
+
+let educationGoalState: EducationGoal[] = []
+
+export function resetEducationGoalState() {
+  educationGoalState = [educationGoalFixture()]
+}
+
+resetEducationGoalState()
 
 export const handlers = [
   http.post(`${BASE}/login/`, async ({ request }) => {
@@ -44,6 +205,9 @@ export const handlers = [
         school_membership_status: 'pending',
         bio: 'I love science', date_of_birth: null, career_interests: '',
         photo_url: null,
+        journey_status: '', current_pathway: null, current_pathway_name: null,
+        current_subject_combination: '', selection_source: '',
+        selection_date: null, selection_verified: false,
       },
       error: null, message: '',
     })
@@ -58,6 +222,9 @@ export const handlers = [
         school_membership_status: 'pending',
         bio: body.bio ?? 'I love science', date_of_birth: null,
         career_interests: body.career_interests ?? '', photo_url: null,
+        journey_status: body.journey_status ?? '', current_pathway: null,
+        current_pathway_name: null, current_subject_combination: '',
+        selection_source: '', selection_date: null, selection_verified: false,
       },
       error: null, message: 'Profile updated.',
     })
@@ -80,9 +247,9 @@ export const handlers = [
     return HttpResponse.json({
       data: [
         grade === 10
-          ? { id: 1, name: 'Core Mathematics', code: 'CMT10', grade, category: 'Elective', is_active: true }
-          : { id: 1, name: 'Mathematics', code: 'MTH9', grade, category: 'Core', is_active: true },
-        { id: 2, name: 'English', code: `ENG${grade}`, grade, category: 'Core', is_active: true },
+          ? { id: 1, name: 'Core Mathematics', code: 'CMT10', continuity_code: 'CMT', grade, category: 'Elective', is_active: true }
+          : { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade, category: 'Core', is_active: true },
+        { id: 2, name: 'English', code: `ENG${grade}`, continuity_code: 'ENG', grade, category: 'Core', is_active: true },
       ],
       error: null, message: '',
     })
@@ -91,7 +258,7 @@ export const handlers = [
   http.get('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
       data: [
-        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
+        { id: 10, subject: { id: 1, name: 'Mathematics', code: 'MTH9', continuity_code: 'MTH', grade: 9, category: 'Core', is_active: true }, continuity_code: 'MTH', academic_grade: 9, academic_year: 2026, is_active: true, ended_at: null, created_at: '2026-06-14T10:00:00Z' },
       ],
       error: null, message: '',
     })
@@ -112,6 +279,14 @@ export const handlers = [
           instrument_version: 'riasec-pilot-1.0',
           submitted_at: '2026-07-30T10:00:00Z',
         },
+        journey: {
+          status: 'not_selected',
+          current_pathway: null,
+          current_subject_combination: '',
+          selection_source: '',
+          selection_date: null,
+          selection_verified: false,
+        },
         saved_combination_count: 2,
         plan_status: 'not_started',
         next_action: {
@@ -125,6 +300,260 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/progress/', () => {
+    return HttpResponse.json({
+      data: {
+        subjects: [
+          {
+            continuity_code: 'MTH',
+            subject_name: 'Mathematics',
+            status: 'on_track',
+            label: 'On track',
+            rule_code: 'otherwise_me_on_track',
+            explanation: 'The available academic evidence is meeting expectation.',
+            suggested_action: 'Continue practising and record the next available evidence.',
+            evidence_confidence: 'learner_entered',
+            records_used: [],
+            evidence: [],
+            decision_inputs: {
+              latest_framework: { code: 'CBC-SENIOR-SCHOOL', version: 'v1' },
+              me2_rank: 5,
+            },
+          },
+        ],
+        overall: {
+          status: 'on_track',
+          label: 'On track',
+          subject_continuity_codes: ['MTH'],
+        },
+        advisory_disclaimer: 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.get('/api/v1/students/academic-goals/', () => {
+    return HttpResponse.json({
+      data: [academicGoalFixture(), academicGoalFixture({ id: 8, ready_for_achievement: false, readiness_evidence: null })],
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.post('/api/v1/students/academic-goals/', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({
+      data: academicGoalFixture({
+        continuity_code: body.continuity_code as string,
+        target_level: {
+          id: 3, code: body.target_level as AcademicGoal['target_level']['code'], rank: 6,
+          framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+        },
+        target_term: body.target_term as AcademicGoal['target_term'],
+        target_year: body.target_year as number,
+        target_academic_grade: body.target_academic_grade as AcademicGoal['target_academic_grade'],
+        action_plan: body.action_plan as string,
+      }),
+      error: null,
+      message: 'Academic goal created.',
+    }, { status: 201 })
+  }),
+
+  http.get('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
+    return HttpResponse.json({
+      data: academicGoalFixture({ id: Number(params.goalId) }),
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch('/api/v1/students/academic-goals/:goalId/', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const targetCode = body.target_level as AcademicGoal['target_level']['code'] | undefined
+    return HttpResponse.json({
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        action_plan: (body.action_plan as string | undefined) ?? 'Practise twice each week.',
+        ...(targetCode ? {
+          target_level: {
+            id: 3,
+            code: targetCode,
+            rank: 6,
+            framework: { code: 'CBC-SENIOR-SCHOOL', version: 'pilot-2026' },
+          },
+        } : {}),
+      }),
+      error: null,
+      message: 'Academic goal updated.',
+    })
+  }),
+
+  http.delete('/api/v1/students/academic-goals/:goalId/', ({ params }) => {
+    if (Number(params.goalId) === 7) {
+      return HttpResponse.json(
+        {
+          data: null,
+          error: true,
+          message: 'Only an active academic goal can be closed.',
+        },
+        { status: 409 },
+      )
+    }
+    return HttpResponse.json({
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        status: 'closed',
+        ready_for_achievement: false,
+        readiness_evidence: null,
+        closed_at: '2026-08-02T10:00:00Z',
+      }),
+      error: null,
+      message: 'Academic goal closed.',
+    })
+  }),
+
+  http.post('/api/v1/students/academic-goals/:goalId/confirm-achievement/', ({ params }) => {
+    return HttpResponse.json({
+      data: academicGoalFixture({
+        id: Number(params.goalId),
+        status: 'achieved',
+        ready_for_achievement: true,
+        readiness_evidence: 21,
+        achievement_evidence_snapshot: achievementEvidence,
+        confirmed_by: 1,
+        achieved_at: '2026-08-02T10:00:00Z',
+      }),
+      error: null,
+      message: 'Academic goal achieved.',
+    })
+  }),
+
+  http.get('/api/v1/tertiary/institutions/', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const search = query.get('search')?.toLocaleLowerCase()
+    const matches = (
+      (!search || institutionFixture.name.toLocaleLowerCase().includes(search)
+        || institutionFixture.external_key.toLocaleLowerCase().includes(search))
+      && (!query.get('county') || query.get('county')?.toLocaleLowerCase()
+        === institutionFixture.county.toLocaleLowerCase())
+      && (!query.get('framework') || query.get('framework')?.toLocaleLowerCase()
+        === institutionFixture.education_framework.toLocaleLowerCase())
+      && (!query.get('cycle') || query.get('cycle')?.toLocaleLowerCase()
+        === institutionFixture.admission_cycle.toLocaleLowerCase())
+      && (!query.get('verification_status')
+        || query.get('verification_status') === institutionFixture.verification_status)
+    )
+    return HttpResponse.json({
+      data: matches ? [institutionFixture] : [], error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/tertiary/programmes/', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const search = query.get('search')?.toLocaleLowerCase()
+    const matches = (
+      (!search || programmeFixture.name.toLocaleLowerCase().includes(search)
+        || programmeFixture.code.toLocaleLowerCase().includes(search)
+        || programmeFixture.external_key.toLocaleLowerCase().includes(search))
+      && (!query.get('institution')
+        || Number(query.get('institution')) === programmeFixture.institution.id)
+      && (!query.get('framework') || query.get('framework')?.toLocaleLowerCase()
+        === programmeFixture.education_framework.toLocaleLowerCase())
+      && (!query.get('cycle') || query.get('cycle')?.toLocaleLowerCase()
+        === programmeFixture.admission_cycle.toLocaleLowerCase())
+      && (!query.get('verification_status')
+        || query.get('verification_status') === programmeFixture.verification_status)
+    )
+    return HttpResponse.json({
+      data: matches ? [programmeFixture] : [], error: null, message: '',
+    })
+  }),
+
+  http.get('/api/v1/tertiary/programmes/:programmeId/', () => HttpResponse.json({
+    data: programmeFixture, error: null, message: '',
+  })),
+
+  http.get('/api/v1/students/education-goals/', () => HttpResponse.json({
+    data: educationGoalState.map(goal => ({ ...goal })), error: null, message: '',
+  })),
+
+  http.post('/api/v1/students/education-goals/', async ({ request }) => {
+    const body = await request.json() as {
+      institution: number; programme?: number | null; kind: EducationGoal['kind']; priority: 1 | 2
+    }
+    await delay(80)
+    const goal = educationGoalFixture({
+      id: Math.max(0, ...educationGoalState.map(item => item.id)) + 1,
+      institution: { ...institutionFixture, id: body.institution },
+      kind: body.kind,
+      priority: body.priority,
+      programme: body.programme == null ? null : {
+        ...programmeFixture,
+        id: body.programme,
+        institution: { ...institutionFixture, id: body.institution },
+      },
+    })
+    educationGoalState.push(goal)
+    return HttpResponse.json({
+      data: goal,
+      error: null,
+      message: 'Education goal saved.',
+    }, { status: 201 })
+  }),
+
+  http.patch('/api/v1/students/education-goals/:goalId/', async ({ params, request }) => {
+    const body = await request.json() as Partial<{
+      institution: number
+      programme: number | null
+      kind: EducationGoal['kind']
+      priority: 1 | 2
+    }>
+    const id = Number(params.goalId)
+    const current = educationGoalState.find(goal => goal.id === id)
+      ?? educationGoalFixture({ id })
+    const institution = {
+      ...current.institution,
+      id: body.institution ?? current.institution.id,
+    }
+    const programmeId = body.programme
+    const programme = !Object.prototype.hasOwnProperty.call(body, 'programme')
+      ? current.programme
+      : programmeId == null
+        ? null
+        : {
+            ...programmeFixture,
+            id: programmeId,
+            institution,
+          }
+    const updated = educationGoalFixture({
+      ...current,
+      id,
+      institution,
+      kind: body.kind ?? current.kind,
+      priority: body.priority ?? current.priority,
+      programme,
+    })
+    educationGoalState = [
+      ...educationGoalState.filter(goal => goal.id !== id),
+      updated,
+    ]
+    return HttpResponse.json({
+      data: updated,
+      error: null,
+      message: 'Education goal updated.',
+    })
+  }),
+
+  http.delete('/api/v1/students/education-goals/:goalId/', ({ params }) => {
+    educationGoalState = educationGoalState.filter(
+      goal => goal.id !== Number(params.goalId)
+    )
+    return HttpResponse.json({
+      data: null, error: null, message: 'Education goal removed.',
+    })
+  }),
+
   http.get('/api/v1/students/dashboard/', () => {
     return HttpResponse.json({
       data: {
@@ -134,6 +563,9 @@ export const handlers = [
           school_membership_status: 'active',
           bio: 'I love science', date_of_birth: '2011-01-10',
           career_interests: 'Engineering', photo_url: null,
+          journey_status: 'not_selected', current_pathway: null,
+          current_pathway_name: null, current_subject_combination: '',
+          selection_source: '', selection_date: null, selection_verified: false,
         },
         grade_summary: {
           status: 'ready',
@@ -176,6 +608,14 @@ export const handlers = [
             status: 'complete',
             instrument_version: 'riasec-pilot-1.0',
             submitted_at: '2026-06-15T10:30:00Z',
+          },
+          journey: {
+            status: 'not_selected',
+            current_pathway: null,
+            current_subject_combination: '',
+            selection_source: '',
+            selection_date: null,
+            selection_verified: false,
           },
           saved_combination_count: 2,
           plan_status: 'not_started',
@@ -252,13 +692,13 @@ export const handlers = [
 
   http.post('/api/v1/students/my-subjects/', () => {
     return HttpResponse.json({
-      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', grade: 9, category: 'Core', is_active: true }, created_at: '2026-06-14T10:00:00Z' },
+      data: { id: 11, subject: { id: 2, name: 'English', code: 'ENG9', continuity_code: 'ENG', grade: 9, category: 'Core', is_active: true }, continuity_code: 'ENG', academic_grade: 9, academic_year: 2026, is_active: true, ended_at: null, created_at: '2026-06-14T10:00:00Z' },
       error: null, message: 'Subject added.',
     }, { status: 201 })
   }),
 
   http.post('/api/v1/students/my-subjects/:id/remove/', () => {
-    return HttpResponse.json({ data: null, error: null, message: 'Subject and all grades removed.' })
+    return HttpResponse.json({ data: null, error: null, message: 'Subject removed.' })
   }),
 
   http.get('/api/v1/students/my-subjects/:id/grades/', () => {
@@ -347,6 +787,13 @@ export const handlers = [
           message: 'Your counselor left a note on your profile.',
           read: true,
           created_at: '2026-06-15T09:00:00Z',
+        },
+        {
+          id: 3,
+          type: 'grade_verification_changed',
+          message: 'Mathematics evidence was verified by Starehe Boys Centre.',
+          read: true,
+          created_at: '2026-06-14T09:00:00Z',
         },
       ],
       error: null,
@@ -521,6 +968,57 @@ export const handlers = [
             updated_at: '2026-07-29T09:00:00Z',
           },
         ],
+        academic_progress: {
+          overall: {
+            status: 'insufficient_evidence',
+            label: 'Insufficient evidence',
+            subject_continuity_codes: ['MTH'],
+          },
+          subjects: [{
+            continuity_code: 'MTH',
+            subject_name: 'Mathematics',
+            status: 'insufficient_evidence',
+            label: 'Insufficient evidence',
+            rule_code: 'one_non_be_insufficient',
+            explanation: 'One record is available, so a trend is not yet established.',
+            suggested_action: 'Record more academic evidence before drawing a progress trend.',
+            evidence_confidence: 'learner_entered',
+            records_used: [{
+              id: 50, academic_grade: 9, year: 2026, term: 1, level: 'ME2', rank: 5,
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_by: null, verified_school: 3, verified_at: null,
+              created_at: '2026-07-20T10:00:00Z',
+            }],
+            evidence: [],
+            decision_inputs: {
+              latest_framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              me2_rank: 5,
+            },
+          }],
+          advisory_disclaimer: 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+        },
+        academic_goals: [{
+          ...academicGoalFixture(),
+          continuity_code: 'MTH',
+          action_plan: 'Practise mathematics twice each week.',
+        }],
+        education_goals: [{
+          id: 44,
+          institution: institutionFixture,
+          programme: {
+            ...programmeFixture,
+            source_url: 'https://programme.example/source',
+            education_framework: 'PROGRAMME-CBE',
+            admission_cycle: '2026 exploration cycle',
+            effective_date: '2026-06-01',
+            verification_status: 'historical',
+          },
+          kind: 'primary',
+          priority: 1,
+          created_by: 5,
+          created_at: '2026-08-01T10:00:00Z',
+          updated_at: '2026-08-01T10:00:00Z',
+        }],
       },
       error: null, message: '',
     })
@@ -758,8 +1256,16 @@ export const handlers = [
             code: 'MAT0019',
             category: 'Core',
             grades: [
-              { id: 1, term: 1, year: 2026, level: 'ME1' },
-              { id: 2, term: 2, year: 2026, level: 'EE1' },
+              {
+                id: 1, academic_grade: 9, term: 1, year: 2026, level: 'ME1',
+                framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+                source: 'learner', verified_school: 3, verified_at: null,
+              },
+              {
+                id: 2, academic_grade: 9, term: 2, year: 2026, level: 'EE1',
+                framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+                source: 'school', verified_school: 3, verified_at: '2026-07-30T10:00:00Z',
+              },
             ],
           },
           {
@@ -767,7 +1273,11 @@ export const handlers = [
             name: 'English',
             code: 'ENG0019',
             category: 'Core',
-            grades: [{ id: 3, term: 1, year: 2026, level: 'AE1' }],
+            grades: [{
+              id: 3, academic_grade: 9, term: 1, year: 2026, level: 'AE1',
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_school: null, verified_at: null,
+            }],
           },
         ],
         assessment: {
@@ -790,7 +1300,7 @@ export const handlers = [
             },
           ],
         },
-        academic_readiness: {
+        evidence_completeness: {
           status: 'in_progress',
           total_subjects: 2,
           subjects_with_evidence: 2,
@@ -858,6 +1368,50 @@ export const handlers = [
             updated_at: '2026-07-29T08:00:00Z',
           },
         ],
+        academic_progress: {
+          overall: { status: 'needs_attention', label: 'Needs attention', subject_continuity_codes: ['ENG'] },
+          subjects: [{
+            continuity_code: 'ENG',
+            subject_name: 'English',
+            status: 'needs_attention',
+            label: 'Needs attention',
+            rule_code: 'latest_ae_or_two_declines_attention',
+            explanation: 'The latest evidence needs attention.',
+            suggested_action: 'Review the recent evidence with a teacher, counsellor, or trusted adult and agree a support action.',
+            evidence_confidence: 'learner_entered',
+            records_used: [{
+              id: 51, academic_grade: 9, year: 2026, term: 1, level: 'ME2', rank: 5,
+              framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' },
+              source: 'learner', verified_by: null, verified_school: 3, verified_at: null,
+              created_at: '2026-07-20T10:00:00Z',
+            }],
+            evidence: [],
+            decision_inputs: { latest_framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, me2_rank: 5 },
+          }],
+          advisory_disclaimer: 'Academic progress is advisory only. It does not determine official CBE placement or admission.',
+        },
+        academic_goals: [{
+          ...academicGoalFixture(),
+          continuity_code: 'ENG',
+          action_plan: 'Read together three evenings each week.',
+        }],
+        education_goals: [{
+          id: 45,
+          institution: institutionFixture,
+          programme: {
+            ...programmeFixture,
+            source_url: 'https://programme.example/source',
+            education_framework: 'PROGRAMME-CBE',
+            admission_cycle: '2026 exploration cycle',
+            effective_date: '2026-06-01',
+            verification_status: 'historical',
+          },
+          kind: 'primary',
+          priority: 1,
+          created_by: 10,
+          created_at: '2026-08-01T10:00:00Z',
+          updated_at: '2026-08-01T10:00:00Z',
+        }],
       },
       error: null,
       message: '',
@@ -922,8 +1476,18 @@ export const handlers = [
   http.get('/api/v1/school-admin/students/', () => {
     return HttpResponse.json({
       data: [
-        { id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', school_membership_status: 'active', counselor_id: 10, counselor_name: 'Alice Wanjiku' },
-        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', school_membership_status: 'active', counselor_id: null, counselor_name: null },
+        {
+          id: 20, first_name: 'Jane', last_name: 'Muthoni', email: 'jane@student.co.ke', grade: 9, photo_url: null, quiz_status: 'done', school_membership_status: 'active', counselor_id: 10, counselor_name: 'Alice Wanjiku',
+          school: { id: 1, name: 'Starehe Boys Centre' },
+          membership: { id: 51, status: 'active', record_source: 'learner_request', requested_at: '2026-01-10T08:00:00Z', started_at: '2026-01-11T08:00:00Z', ended_at: null },
+          transfer: { previous_membership_count: 1 },
+          academic_evidence: [{
+            id: 301, continuity_code: 'MTH', subject_name: 'Mathematics', academic_grade: 9, term: 1, year: 2026, level: 'ME1', framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, source: 'school', verified_school: { id: 9, name: 'Previous School' }, verified_at: '2026-04-01T08:00:00Z', can_verify: false, can_remove_verification: false,
+          }, {
+            id: 302, continuity_code: 'MTH', subject_name: 'Mathematics', academic_grade: 9, term: 2, year: 2026, level: 'ME2', framework: { code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026' }, source: 'learner', verified_school: null, verified_at: null, can_verify: true, can_remove_verification: false,
+          }],
+        },
+        { id: 21, first_name: 'Kevin', last_name: 'Otieno', email: 'kevin@student.co.ke', grade: 10, photo_url: null, quiz_status: 'pending', school_membership_status: 'active', school: { id: 1, name: 'Starehe Boys Centre' }, counselor_id: null, counselor_name: null, membership: null, transfer: { previous_membership_count: 0 }, academic_evidence: [] },
       ],
       error: null, message: '',
     })
@@ -954,6 +1518,15 @@ export const handlers = [
       },
       error: null,
       message: 'Learner school link approved.',
+    })
+  }),
+
+  http.put('/api/v1/school-admin/students/:studentId/grades/:gradeId/verification/', async ({ request }) => {
+    const body = await request.json() as { verified: boolean }
+    return HttpResponse.json({
+      data: { id: 302, verified_at: body.verified ? '2026-08-02T08:00:00Z' : null },
+      error: null,
+      message: body.verified ? 'Grade verified.' : 'Grade verification removed.',
     })
   }),
 
@@ -1098,6 +1671,32 @@ export const handlers = [
       },
       error: null,
       message: '',
+    })
+  }),
+
+  http.get('/api/v1/system-admin/source-metadata/', () => {
+    return HttpResponse.json({
+      data: {
+        assessment_frameworks: [{
+          id: 10, record_type: 'assessment_framework', code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026', title: 'Junior school performance levels', scope: 'junior_school', source_url: 'https://kicd.ac.ke/curriculum-reform/', effective_date: '2026-01-01', status: 'active', level_count: 4, evidence_count: 12, can_change_status: true,
+        }],
+        tertiary_sources: [{
+          id: 1, record_type: 'institution', name: 'Test University 1', source_scope: 'kuccps-2025-catalogue', external_key: 'INST-0001', source_url: 'https://students.kuccps.net/institutions/', education_framework: 'KCSE', admission_cycle: '2025/2026', effective_date: '2025-03-01', verification_status: 'historical', can_change_status: false,
+        }, {
+          id: 2, record_type: 'programme', name: 'Test Programme 1', source_scope: 'kuccps-2025-catalogue', external_key: 'PROG-0001', source_url: 'https://students.kuccps.net/programmes/', education_framework: 'KCSE', admission_cycle: '2025/2026', effective_date: '2025-03-01', verification_status: 'historical', can_change_status: false,
+        }],
+      },
+      error: null,
+      message: '',
+    })
+  }),
+
+  http.patch('/api/v1/system-admin/source-metadata/:recordType/:recordId/', async ({ request }) => {
+    const body = await request.json() as { status: string }
+    return HttpResponse.json({
+      data: { status: body.status },
+      error: null,
+      message: 'Source status updated.',
     })
   }),
 

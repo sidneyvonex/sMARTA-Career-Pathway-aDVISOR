@@ -1,6 +1,13 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
-from .models import School, StudentProfile, COUNTY_CHOICES
+from .models import (
+    School,
+    StudentProfile,
+    StudentSchoolMembership,
+    COUNTY_CHOICES,
+)
 
 User = get_user_model()
 
@@ -54,14 +61,25 @@ class StudentRegistrationSerializer(serializers.Serializer):
         password = validated_data.pop('password')
         grade = validated_data.pop('grade')
 
-        user = User.objects.create_user(password=password, **validated_data)
-        StudentProfile.objects.create(
-            user=user,
-            mode=mode,
-            school=school,
-            school_membership_status=school_membership_status,
-            grade=grade,
-        )
+        with transaction.atomic():
+            user = User.objects.create_user(password=password, **validated_data)
+            profile = StudentProfile.objects.create(
+                user=user,
+                mode=mode,
+                school=school,
+                school_membership_status=school_membership_status,
+                grade=grade,
+            )
+            if school is not None:
+                StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=school,
+                    status=StudentSchoolMembership.STATUS_PENDING,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEARNER_REQUEST
+                    ),
+                    requested_at=timezone.now(),
+                )
         return user
 
 
@@ -70,3 +88,41 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'role', 'county', 'is_email_verified')
         read_only_fields = fields
+
+
+class StudentSchoolMembershipSerializer(serializers.ModelSerializer):
+    school_name = serializers.CharField(source='school.name', read_only=True)
+    school_code = serializers.CharField(
+        source='school.school_code',
+        read_only=True,
+    )
+
+    class Meta:
+        model = StudentSchoolMembership
+        fields = (
+            'id',
+            'school',
+            'school_name',
+            'school_code',
+            'status',
+            'requested_at',
+            'decided_at',
+            'started_at',
+            'ended_at',
+        )
+        read_only_fields = fields
+
+
+class StudentSchoolMembershipRequestSerializer(serializers.Serializer):
+    school_code = serializers.CharField(max_length=20)
+
+    def validate_school_code(self, value):
+        code = value.strip()
+        try:
+            school = School.objects.get(school_code=code, is_active=True)
+        except School.DoesNotExist:
+            raise serializers.ValidationError(
+                'Choose an active school with a valid school code.'
+            )
+        self.context['target_school'] = school
+        return code

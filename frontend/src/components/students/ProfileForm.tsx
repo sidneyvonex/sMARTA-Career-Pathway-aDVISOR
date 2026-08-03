@@ -1,17 +1,26 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { studentsApi, StudentProfile } from '../../api/students'
+import { studentsApi, StudentProfile, type JourneyStatus } from '../../api/students'
 
 interface Props {
   profile: StudentProfile
   onSaved: (updated: StudentProfile) => void
 }
 
+const JOURNEY_OPTIONS: { value: JourneyStatus; label: string }[] = [
+  { value: 'not_selected', label: 'I have not selected a pathway yet' },
+  { value: 'selected', label: 'I have already selected my pathway and subjects' },
+  { value: 'currently_enrolled', label: 'I am currently studying my selected subjects' },
+  { value: 'reconsidering', label: 'I am considering changing my selection' },
+  { value: 'unsure', label: 'I am not sure' },
+]
+
 export default function ProfileForm({ profile, onSaved }: Props) {
   const [bio, setBio] = useState(profile.bio)
   const [dateOfBirth, setDateOfBirth] = useState(profile.date_of_birth ?? '')
   const [interests, setInterests] = useState(profile.career_interests)
+  const [journeyStatus, setJourneyStatus] = useState<JourneyStatus>(profile.journey_status)
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -19,6 +28,7 @@ export default function ProfileForm({ profile, onSaved }: Props) {
         bio,
         date_of_birth: dateOfBirth || null,
         career_interests: interests,
+        journey_status: journeyStatus,
       }),
     onSuccess: (response) => {
       toast.success('Profile saved.')
@@ -32,6 +42,25 @@ export default function ProfileForm({ profile, onSaved }: Props) {
       onSubmit={(event) => { event.preventDefault(); mutation.mutate() }}
       className="profile-form"
     >
+      <div className="student-field">
+        <label htmlFor="journey-status">Where are you in your Senior School journey?</label>
+        <select
+          id="journey-status"
+          value={journeyStatus}
+          onChange={(event) => setJourneyStatus(event.target.value as JourneyStatus)}
+          className="student-field__control"
+        >
+          <option value="">Choose one…</option>
+          {JOURNEY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <small className="student-field__hint">
+          If you have already chosen your pathway, we will focus on tracking your
+          progress. The interest quiz stays optional for you.
+        </small>
+      </div>
+
       <div className="student-field">
         <div className="student-field__label-row">
           <label htmlFor="bio">Bio — a little about you</label>

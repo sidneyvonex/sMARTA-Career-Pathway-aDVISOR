@@ -43,7 +43,7 @@ describe('ChildDetailPage', () => {
   it('renders child name and grade', async () => {
     renderPage()
     expect(await screen.findByText(/Tom Doe/)).toBeInTheDocument()
-    expect(screen.getByText(/Grade 9/)).toBeInTheDocument()
+    expect(screen.getByText(/Grade 9 · kiambu · School-linked/)).toBeInTheDocument()
   })
 
   it('renders RIASEC scores', async () => {
@@ -79,10 +79,11 @@ describe('ChildDetailPage', () => {
     expect(await screen.findByText(/great progress in mathematics/i)).toBeInTheDocument()
   })
 
-  it('renders academic readiness, provisional choice, plan milestones and report', async () => {
+  it('renders evidence completeness, provisional choice, plan milestones and report', async () => {
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'Academic readiness' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Evidence completeness' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Academic readiness' })).not.toBeInTheDocument()
     expect(screen.getByText(/2 of 2 enrolled subjects have grade evidence/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Provisional combination' })).toBeInTheDocument()
     expect(screen.getByText('Agriculture, Biology & Chemistry')).toBeInTheDocument()
@@ -92,6 +93,27 @@ describe('ChildDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Agreed next steps' })).toBeInTheDocument()
     expect(screen.getByText('Discuss the reviewed learner plan.')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Download report' })).toHaveLength(2)
+  })
+
+  it('renders learner-approved progress and goals as read-only advisory context', async () => {
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Academic progress' })).toBeInTheDocument()
+    expect(screen.getByText('The latest evidence needs attention.')).toBeInTheDocument()
+    expect(screen.getByText(/Academic progress is advisory only/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Academic targets' })).toBeInTheDocument()
+    expect(screen.getByText('Read together three evenings each week.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Education goals' })).toBeInTheDocument()
+    expect(screen.getByText('University of Nairobi')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Evidence used for this status' })).toBeInTheDocument()
+    expect(screen.getAllByText('Learner entered').length).toBeGreaterThan(0)
+    expect(screen.getByText('Verification removed; school provenance retained')).toBeInTheDocument()
+    expect(screen.getByText(/PROGRAMME-CBE · 2026 exploration cycle/i)).toBeInTheDocument()
+    expect(screen.getByText(/Historical reference only/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open programme source' })).toHaveAttribute(
+      'href', 'https://programme.example/source',
+    )
+    expect(screen.queryByRole('button', { name: /edit.*goal/i })).not.toBeInTheDocument()
   })
 
   it('shows deliberate empty states when approved evidence is absent', async () => {
@@ -115,7 +137,7 @@ describe('ChildDetailPage', () => {
           },
           subjects: [],
           assessment: null,
-          academic_readiness: {
+          evidence_completeness: {
             status: 'not_started',
             total_subjects: 0,
             subjects_with_evidence: 0,

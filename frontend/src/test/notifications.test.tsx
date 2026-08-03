@@ -174,6 +174,14 @@ describe('NotificationPanel', () => {
     expect(await screen.findByText('Your RIASEC assessment results are ready.')).toBeInTheDocument()
   })
 
+  it('uses a friendly label for academic evidence notifications', async () => {
+    renderDrawer(true)
+
+    expect(await screen.findByText('Mathematics evidence was verified by Starehe Boys Centre.')).toBeInTheDocument()
+    expect(screen.getByText('Academic evidence')).toBeInTheDocument()
+    expect(screen.queryByText('grade_verification_changed')).not.toBeInTheDocument()
+  })
+
   it('closes when close button is clicked', async () => {
     renderDrawer(true)
     await userEvent.click(screen.getByRole('button', { name: /close/i }))

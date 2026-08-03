@@ -71,6 +71,27 @@ def assessment_summary(profile):
     }
 
 
+_SELECTED_JOURNEY_STAGES = frozenset({'selected', 'currently_enrolled'})
+
+
+def journey_summary(profile):
+    """Where the learner is in their Senior School journey, plus the provenance
+    of any recorded pathway selection."""
+    pathway = profile.current_pathway
+    return {
+        'status': profile.journey_status,
+        'current_pathway': (
+            {'id': pathway.id, 'name': pathway.name} if pathway else None
+        ),
+        'current_subject_combination': profile.current_subject_combination,
+        'selection_source': profile.selection_source,
+        'selection_date': (
+            profile.selection_date.isoformat() if profile.selection_date else None
+        ),
+        'selection_verified': profile.selection_verified,
+    }
+
+
 def next_action_for(
     profile_completion,
     academic_evidence,
@@ -78,19 +99,60 @@ def next_action_for(
     saved_combination_count,
     has_provisional_choice=False,
     plan_status='not_started',
+    journey_status='',
 ):
+    """Recommend the learner's next action based on where they are in their
+    Senior School journey.
+
+    RIASEC is only a prerequisite for pre-selection learners. Learners who have
+    already selected a pathway (``selected``/``currently_enrolled``) are routed
+    straight to progress tracking, and the interest assessment stays optional
+    for them. See docs/superpowers/plans/2026-08-03-journey-aware-next-actions.md
+    """
     if profile_completion['status'] != 'complete':
         return {
             'code': 'complete_profile',
             'title': 'Complete your learner profile',
             'href': '/profile',
         }
-    if academic_evidence['status'] != 'ready':
+    if not journey_status:
         return {
-            'code': 'add_academic_evidence',
-            'title': 'Add your academic evidence',
+            'code': 'declare_journey_stage',
+            'title': 'Tell us where you are in your journey',
+            'href': '/profile',
+        }
+    has_current_subjects = academic_evidence.get('total_subjects', 0) > 0
+    if journey_status in _SELECTED_JOURNEY_STAGES:
+        if not has_current_subjects:
+            return {
+                'code': 'record_current_subjects',
+                'title': 'Record your current subjects',
+                'href': '/grades',
+            }
+        if academic_evidence['status'] != 'ready':
+            return {
+                'code': 'add_academic_evidence',
+                'title': 'Add your academic evidence',
+                'href': '/grades',
+            }
+        return {
+            'code': 'view_progress',
+            'title': 'View your academic progress',
             'href': '/grades',
         }
+    if journey_status == 'reconsidering':
+        if assessment['status'] != 'complete':
+            return {
+                'code': 'complete_interest_assessment',
+                'title': 'Complete your interest assessment',
+                'href': '/assessment',
+            }
+        return {
+            'code': 'request_counsellor_review',
+            'title': 'Talk to a counsellor before changing subjects',
+            'href': '/plan',
+        }
+    # not_selected, unsure (pre-selection learners)
     if assessment['status'] != 'complete':
         return {
             'code': 'complete_interest_assessment',

@@ -24,6 +24,7 @@ import InstallBanner from './components/InstallBanner'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import ErrorState from './components/common/dashboard/ErrorState'
 import LoadingSkeleton from './components/common/dashboard/LoadingSkeleton'
+import { isFeatureEnabled } from './lib/featureFlags'
 
 const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'))
 const GradesPage = lazy(() => import('./pages/GradesPage'))
@@ -33,6 +34,7 @@ const CombinationExplorerPage = lazy(() => import('./pages/CombinationExplorerPa
 const CombinationComparePage = lazy(() => import('./pages/CombinationComparePage'))
 const LearnerPlanPage = lazy(() => import('./pages/LearnerPlanPage'))
 const ParentAccessPage = lazy(() => import('./pages/ParentAccessPage'))
+const EducationGoalsPage = lazy(() => import('./pages/EducationGoalsPage'))
 const StudentListPage = lazy(() => import('./pages/counselor/StudentListPage'))
 const StudentDetailPage = lazy(() => import('./pages/counselor/StudentDetailPage'))
 const NotesListPage = lazy(() => import('./pages/counselor/NotesListPage'))
@@ -98,6 +100,9 @@ function AppRoutes() {
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/profile" element={<StudentProfilePage />} />
             <Route path="/grades" element={<GradesPage />} />
+            {isFeatureEnabled('academic_progress_v1') && (
+              <Route path="/education-goals" element={<EducationGoalsPage />} />
+            )}
             <Route path="/assessment" element={<AssessmentPage />} />
             <Route path="/assessment/results" element={<AssessmentResultsPage />} />
             <Route path="/explore" element={<CombinationExplorerPage />} />

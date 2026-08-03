@@ -2,6 +2,8 @@ import pytest
 from io import BytesIO
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 from tests.factories import (
     CBCGradeFactory,
@@ -15,11 +17,14 @@ from tests.factories import (
     StudentSubjectFactory,
     SubjectCombinationFactory,
     SubjectFactory,
+    StudentSchoolMembershipFactory,
 )
+from django.utils import timezone
 from riasec.models import RIASECAssessment
 from counselors.models import CounselorAssignment
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from notifications.models import Notification
+from students.evidence import transition_grade_verification
 from system_admin.models import AuditLog
 
 pytestmark = pytest.mark.django_db
@@ -251,6 +256,11 @@ class TestSchoolStudentsView:
     def test_list_students(self):
         StudentProfileFactory(school=self.school, mode='school_linked')
         StudentProfileFactory(school=self.school, mode='school_linked')
+        StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='pending',
+        )
         StudentProfileFactory(school=SchoolFactory(), mode='school_linked')  # different school
         StudentProfileFactory(mode='self_guided')  # no school
         response = self.client.get('/api/v1/school-admin/students/')
@@ -277,6 +287,223 @@ class TestSchoolStudentsView:
         response = self.client.get('/api/v1/school-admin/students/')
         student = response.data['data'][0]
         assert student['quiz_status'] == 'done'
+
+    def test_active_school_sees_transfer_and_evidence_provenance_with_valid_controls(self):
+        previous_school = SchoolFactory()
+        previous_admin = SchoolAdminFactory(school=previous_school)
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+            grade=9,
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=previous_school,
+            status='ended',
+        )
+        current_membership = StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        enrollment = StudentSubjectFactory(
+            student_profile=profile,
+            subject=SubjectFactory(code='PROV9', grade=9),
+        )
+        prior_grade = CBCGradeFactory(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            verified_by=previous_admin,
+            verified_school=previous_school,
+            verified_at=timezone.now(),
+            source='school',
+        )
+        open_grade = CBCGradeFactory(
+            student_subject=enrollment,
+            term=2,
+            year=2026,
+            source='learner',
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        student = response.data['data'][0]
+        assert student['membership']['id'] == current_membership.id
+        assert student['membership']['record_source'] == 'learner_request'
+        assert student['transfer']['previous_membership_count'] == 1
+        evidence = {item['id']: item for item in student['academic_evidence']}
+        assert evidence[prior_grade.id]['verified_school']['id'] == previous_school.id
+        assert evidence[prior_grade.id]['can_verify'] is False
+        assert evidence[prior_grade.id]['can_remove_verification'] is False
+        assert evidence[open_grade.id]['can_verify'] is True
+        assert evidence[open_grade.id]['can_remove_verification'] is False
+
+        previous_client = APIClient()
+        previous_client.force_authenticate(previous_admin)
+        previous_response = previous_client.get('/api/v1/school-admin/students/')
+        assert previous_response.data['data'] == []
+
+    def test_removed_verification_retains_provenance_without_reporting_current_verification(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        grade = CBCGradeFactory(
+            student_subject=StudentSubjectFactory(student_profile=profile),
+        )
+        verification_url = (
+            f'/api/v1/school-admin/students/{profile.user_id}/grades/'
+            f'{grade.id}/verification/'
+        )
+
+        assert self.client.put(
+            verification_url, {'verified': True}, format='json'
+        ).status_code == 200
+        assert self.client.put(
+            verification_url, {'verified': False}, format='json'
+        ).status_code == 200
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['verified_school']['id'] == self.school.id
+        assert evidence['verified_at'] is None
+        assert evidence['can_verify'] is True
+        assert evidence['can_remove_verification'] is False
+
+    def test_archived_enrolment_evidence_exposes_no_verification_controls(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        grade = CBCGradeFactory(student_subject=enrollment)
+        enrollment.archive()
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['id'] == grade.id
+        assert evidence['can_verify'] is False
+        assert evidence['can_remove_verification'] is False
+
+    def test_ended_membership_overrides_stale_active_profile(self):
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='ended',
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        assert response.data['data'] == []
+
+    def test_active_membership_overrides_stale_profile_fields(self):
+        profile = StudentProfileFactory(
+            school=None,
+            mode='self_guided',
+            school_membership_status='not_applicable',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        assert [student['id'] for student in response.data['data']] == [
+            profile.user_id
+        ]
+        student = response.data['data'][0]
+        assert student['school_membership_status'] == 'active'
+        assert student['school'] == {
+            'id': self.school.id,
+            'name': self.school.name,
+        }
+
+    def test_foreign_revoked_provenance_cannot_be_verified_by_current_school(self):
+        previous_school = SchoolFactory()
+        previous_admin = SchoolAdminFactory(school=previous_school)
+        profile = StudentProfileFactory(
+            school=self.school,
+            mode='school_linked',
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=profile,
+            school=self.school,
+            status='active',
+        )
+        grade = CBCGradeFactory(
+            student_subject=StudentSubjectFactory(student_profile=profile),
+            verified_by=previous_admin,
+            verified_school=previous_school,
+            verified_at=timezone.now(),
+        )
+        transition_grade_verification(
+            grade,
+            actor=previous_admin,
+            school=previous_school,
+            should_verify=False,
+        )
+
+        response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        evidence = response.data['data'][0]['academic_evidence'][0]
+        assert evidence['verified_school']['id'] == previous_school.id
+        assert evidence['verified_at'] is None
+        assert evidence['can_verify'] is False
+        assert evidence['can_remove_verification'] is False
+
+    def test_list_query_count_is_bounded_for_academic_evidence(self):
+        for index in range(4):
+            profile = StudentProfileFactory(
+                school=self.school,
+                mode='school_linked',
+                school_membership_status='active',
+            )
+            StudentSchoolMembershipFactory(
+                student_profile=profile,
+                school=self.school,
+                status='active',
+            )
+            enrollment = StudentSubjectFactory(
+                student_profile=profile,
+                subject=SubjectFactory(code=f'QUERY-{index}', grade=9),
+            )
+            CBCGradeFactory(student_subject=enrollment)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.get('/api/v1/school-admin/students/')
+
+        assert response.status_code == 200
+        assert len(response.data['data']) == 4
+        assert len(captured) <= 7
 
 
 class TestSchoolMembershipRequests:

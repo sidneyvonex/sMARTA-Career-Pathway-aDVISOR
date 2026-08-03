@@ -9,9 +9,14 @@ from accounts.response import _success, _error
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
-from students.models import CBCGrade
 from students.serializers import CBCGradeSerializer
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolments,
+)
 from system_admin.utils import log_action
+from notifications.models import Notification
+from parents.models import ParentStudentLink
 from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorIntervention, CounselorNote
 from .serializers import (
@@ -27,6 +32,17 @@ def _get_assigned_profiles(counselor):
         counselor_assignments__counselor=counselor,
         counselor_assignments__is_active=True,
     ).select_related('user', 'school')
+
+
+def _active_assignment(counselor, student_id, *, lock=False):
+    assignments = CounselorAssignment.objects.filter(
+        counselor=counselor,
+        student_profile__user_id=student_id,
+        is_active=True,
+    )
+    if lock:
+        assignments = assignments.select_for_update()
+    return assignments.first()
 
 
 class CounselorPlanReviewView(APIView):
@@ -181,16 +197,15 @@ class CounselorStudentDetailView(APIView):
         if latest_assessment:
             riasec_result = AssessmentResultSerializer(latest_assessment).data
 
-        grades_qs = CBCGrade.objects.filter(
-            student_subject__student_profile=profile,
-        ).select_related('student_subject__subject')
+        support_enrolments = academic_support_enrolments(profile)
         grades = [
             {
-                'subject_name': g.student_subject.subject.name,
-                'subject_code': g.student_subject.subject.code,
+                'subject_name': enrollment.subject.name,
+                'subject_code': enrollment.subject.code,
                 **CBCGradeSerializer(g).data,
             }
-            for g in grades_qs
+            for enrollment in support_enrolments
+            for g in enrollment.grades.all()
         ]
 
         notes_count = CounselorNote.objects.filter(
@@ -270,6 +285,10 @@ class CounselorStudentDetailView(APIView):
             student_id=student_id,
         ).select_related('student')
 
+        support_context = academic_support_context(
+            profile,
+            enrolments=support_enrolments,
+        )
         return _success(data={
             'student': student_data,
             'riasec_result': riasec_result,
@@ -297,6 +316,7 @@ class CounselorStudentDetailView(APIView):
                 interventions,
                 many=True,
             ).data,
+            **support_context,
         })
 
 
@@ -320,10 +340,19 @@ class CounselorStatsView(APIView):
             for profile in profiles
         )
         notes = CounselorNote.objects.filter(
-            counselor=request.user, deleted_at__isnull=True,
+            counselor=request.user,
+            deleted_at__isnull=True,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
         ).count()
         follow_ups_due = CounselorIntervention.objects.filter(
             counselor=request.user,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
             status=CounselorIntervention.STATUS_OPEN,
             follow_up_date__lte=timezone.localdate(),
         ).count()
@@ -343,19 +372,23 @@ class CounselorNotesView(APIView):
 
     def get(self, request):
         notes = CounselorNote.objects.filter(
-            counselor=request.user, deleted_at__isnull=True,
-        ).select_related('student')
+            counselor=request.user,
+            deleted_at__isnull=True,
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
+        ).select_related('student').distinct()
         return _success(data=CounselorNoteSerializer(notes, many=True).data)
 
+    @transaction.atomic
     def post(self, request):
         serializer = CounselorNoteCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
 
         student_id = serializer.validated_data['student_id']
-        if not CounselorAssignment.objects.filter(
-            counselor=request.user, student_profile__user_id=student_id, is_active=True,
-        ).exists():
+        if _active_assignment(request.user, student_id, lock=True) is None:
             return _error('You can only write notes for your assigned students.')
 
         note = CounselorNote.objects.create(
@@ -374,14 +407,18 @@ class CounselorNotesView(APIView):
 class CounselorNoteDetailView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
-    def _get_note(self, note_id, user):
-        return CounselorNote.objects.get(
+    def _get_note_for_update(self, note_id, user):
+        note = CounselorNote.objects.select_for_update().get(
             pk=note_id, counselor=user, deleted_at__isnull=True,
         )
+        if _active_assignment(user, note.student_id, lock=True) is None:
+            raise CounselorNote.DoesNotExist
+        return note
 
+    @transaction.atomic
     def patch(self, request, note_id):
         try:
-            note = self._get_note(note_id, request.user)
+            note = self._get_note_for_update(note_id, request.user)
         except CounselorNote.DoesNotExist:
             return _error('Note not found.', status.HTTP_404_NOT_FOUND)
 
@@ -410,9 +447,10 @@ class CounselorNoteDetailView(APIView):
         note.save(update_fields=update_fields)
         return _success(data=CounselorNoteSerializer(note).data, message='Note updated.')
 
+    @transaction.atomic
     def delete(self, request, note_id):
         try:
-            note = self._get_note(note_id, request.user)
+            note = self._get_note_for_update(note_id, request.user)
         except CounselorNote.DoesNotExist:
             return _error('Note not found.', status.HTTP_404_NOT_FOUND)
         note.deleted_at = timezone.now()
@@ -426,7 +464,11 @@ class CounselorInterventionsView(APIView):
     def get(self, request):
         interventions = CounselorIntervention.objects.filter(
             counselor=request.user,
-        ).select_related('student')
+            student__student_profile__counselor_assignments__counselor=(
+                request.user
+            ),
+            student__student_profile__counselor_assignments__is_active=True,
+        ).select_related('student').distinct()
         return _success(
             data=CounselorInterventionSerializer(
                 interventions,
@@ -434,17 +476,14 @@ class CounselorInterventionsView(APIView):
             ).data
         )
 
+    @transaction.atomic
     def post(self, request):
         serializer = CounselorInterventionCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
 
         student_id = serializer.validated_data.pop('student_id')
-        if not CounselorAssignment.objects.filter(
-            counselor=request.user,
-            student_profile__user_id=student_id,
-            is_active=True,
-        ).exists():
+        if _active_assignment(request.user, student_id, lock=True) is None:
             return _error(
                 'You can only create interventions for your assigned students.'
             )
@@ -454,6 +493,26 @@ class CounselorInterventionsView(APIView):
             student_id=student_id,
             **serializer.validated_data,
         )
+        if intervention.learner_visible:
+            Notification.objects.create(
+                user=intervention.student,
+                type='counselor_intervention',
+                message='Your counsellor recorded a new support action.',
+            )
+        if intervention.parent_visible:
+            parent_ids = ParentStudentLink.objects.filter(
+                student=intervention.student,
+                status=ParentStudentLink.STATUS_ACTIVE,
+            ).values_list('parent_id', flat=True)
+            for parent_id in parent_ids:
+                Notification.objects.create(
+                    user_id=parent_id,
+                    type='counselor_intervention',
+                    message=(
+                        'A learner-approved support action is available for '
+                        f'{intervention.student.first_name}.'
+                    ),
+                )
         return _success(
             data=CounselorInterventionSerializer(intervention).data,
             message='Intervention saved.',
@@ -464,14 +523,27 @@ class CounselorInterventionsView(APIView):
 class CounselorInterventionDetailView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
+    @transaction.atomic
     def patch(self, request, intervention_id):
         try:
-            intervention = CounselorIntervention.objects.select_related(
-                'student'
-            ).get(pk=intervention_id, counselor=request.user)
+            intervention = (
+                CounselorIntervention.objects
+                .select_for_update()
+                .select_related('student')
+                .get(pk=intervention_id, counselor=request.user)
+            )
         except CounselorIntervention.DoesNotExist:
             return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
 
+        if _active_assignment(
+            request.user,
+            intervention.student_id,
+            lock=True,
+        ) is None:
+            return _error('Intervention not found.', status.HTTP_404_NOT_FOUND)
+
+        was_learner_visible = intervention.learner_visible
+        was_parent_visible = intervention.parent_visible
         serializer = CounselorInterventionSerializer(
             intervention,
             data=request.data,
@@ -479,7 +551,35 @@ class CounselorInterventionDetailView(APIView):
         )
         if not serializer.is_valid():
             return _error(serializer.errors)
-        serializer.save()
+        intervention = serializer.save()
+
+        if not was_learner_visible and intervention.learner_visible:
+            Notification.objects.create(
+                user=intervention.student,
+                type='counselor_intervention',
+                message='Your counsellor recorded a new support action.',
+            )
+        if not was_parent_visible and intervention.parent_visible:
+            parent_ids = (
+                ParentStudentLink.objects
+                .filter(
+                    student=intervention.student,
+                    status=ParentStudentLink.STATUS_ACTIVE,
+                )
+                .values_list('parent_id', flat=True)
+                .distinct()
+            )
+            Notification.objects.bulk_create([
+                Notification(
+                    user_id=parent_id,
+                    type='counselor_intervention',
+                    message=(
+                        'A learner-approved support action is available for '
+                        f'{intervention.student.first_name}.'
+                    ),
+                )
+                for parent_id in parent_ids
+            ])
         return _success(
             data=CounselorInterventionSerializer(intervention).data,
             message='Intervention updated.',

@@ -1,6 +1,7 @@
 from io import BytesIO
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.shortcuts import get_object_or_404
@@ -10,7 +11,11 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsStudent, IsEmailVerified
-from accounts.models import StudentProfile
+from accounts.models import StudentProfile, StudentSchoolMembership
+from accounts.serializers import (
+    StudentSchoolMembershipRequestSerializer,
+    StudentSchoolMembershipSerializer,
+)
 from accounts.response import _success, _error
 from guidance.models import (
     FrameworkVersion,
@@ -32,18 +37,23 @@ from guidance.serializers import (
 )
 from notifications.models import Notification
 from notifications.serializers import NotificationSerializer
+from parents.models import ParentStudentLink
 from riasec.models import RIASECAssessment
 from riasec.serializers import AssessmentResultSerializer
 from counselors.models import CounselorAssignment
-from .models import Subject, StudentSubject, CBCGrade
+from .models import AcademicGoal, Subject, StudentSubject, CBCGrade
 from .serializers import (
+    AcademicGoalSerializer,
+    AcademicGoalWriteSerializer,
     StudentProfileSerializer, SubjectSerializer,
-    StudentSubjectSerializer, CBCGradeSerializer,
+    StudentSubjectSerializer, CBCGradeSerializer, ProgressAssessmentSerializer,
 )
+from .progress import ProgressConfigurationError, derive_progress_for_enrolments
 from .summaries import (
     academic_evidence_summary,
     assessment_summary,
     grade_summary,
+    journey_summary,
     next_action_for,
     profile_completion_summary,
 )
@@ -116,7 +126,7 @@ class EvidenceSummaryView(APIView):
     def get(self, request):
         profile = (
             StudentProfile.objects
-            .select_related('learner_plan')
+            .select_related('learner_plan', 'current_pathway')
             .annotate(
                 saved_combination_count=Count('combination_choices'),
                 provisional_combination_count=Count(
@@ -133,6 +143,7 @@ class EvidenceSummaryView(APIView):
         profile_completion = profile_completion_summary(profile)
         academic_evidence = academic_evidence_summary(profile)
         assessment = assessment_summary(profile)
+        journey = journey_summary(profile)
         saved_combination_count = profile.saved_combination_count
         has_provisional_choice = profile.provisional_combination_count > 0
         try:
@@ -144,6 +155,7 @@ class EvidenceSummaryView(APIView):
                 'profile_completion': profile_completion,
                 'academic_evidence': academic_evidence,
                 'assessment': assessment,
+                'journey': journey,
                 'saved_combination_count': saved_combination_count,
                 'plan_status': plan_status,
                 'next_action': next_action_for(
@@ -153,6 +165,7 @@ class EvidenceSummaryView(APIView):
                     saved_combination_count,
                     has_provisional_choice=has_provisional_choice,
                     plan_status=plan_status,
+                    journey_status=profile.journey_status,
                 ),
             }
         )
@@ -164,7 +177,7 @@ class StudentDashboardView(APIView):
     def get(self, request):
         profile = (
             StudentProfile.objects
-            .select_related('user', 'school', 'learner_plan')
+            .select_related('user', 'school', 'learner_plan', 'current_pathway')
             .annotate(
                 saved_combination_count=Count(
                     'combination_choices',
@@ -221,6 +234,7 @@ class StudentDashboardView(APIView):
             'profile_completion': profile_completion,
             'academic_evidence': academic_evidence,
             'assessment': assessment_evidence,
+            'journey': journey_summary(profile),
             'saved_combination_count': profile.saved_combination_count,
             'plan_status': plan_status,
             'next_action': next_action_for(
@@ -230,6 +244,7 @@ class StudentDashboardView(APIView):
                 profile.saved_combination_count,
                 has_provisional_choice=has_provisional_choice,
                 plan_status=plan_status,
+                journey_status=profile.journey_status,
             ),
         }
 
@@ -300,6 +315,115 @@ class StudentInterventionsView(APIView):
                 interventions,
                 many=True,
             ).data
+        )
+
+
+class StudentSchoolMembershipListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        memberships = (
+            StudentSchoolMembership.objects
+            .filter(student_profile__user=request.user)
+            .select_related('school')
+        )
+        return _success(
+            data=StudentSchoolMembershipSerializer(
+                memberships,
+                many=True,
+            ).data
+        )
+
+    def post(self, request):
+        serializer = StudentSchoolMembershipRequestSerializer(
+            data=request.data,
+            context={},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        target_school = serializer.context['target_school']
+
+        with transaction.atomic():
+            profile = (
+                StudentProfile.objects.select_for_update()
+                .select_related('school')
+                .get(user=request.user)
+            )
+            memberships = StudentSchoolMembership.objects.select_for_update().filter(
+                student_profile=profile,
+            )
+            if memberships.filter(status='pending').exists():
+                return _error(
+                    'A school membership request is already pending.',
+                    status.HTTP_409_CONFLICT,
+                )
+            active = memberships.filter(status='active').first()
+            legacy_active_school_id = (
+                profile.school_id
+                if (
+                    active is None
+                    and not memberships.exists()
+                    and profile.school_id is not None
+                    and profile.mode == 'school_linked'
+                    and profile.school_membership_status == 'active'
+                )
+                else None
+            )
+            if (
+                (active is not None and active.school_id == target_school.pk)
+                or (
+                    legacy_active_school_id == target_school.pk
+                )
+            ):
+                return _error('You are already an active member of this school.')
+
+            if legacy_active_school_id is not None:
+                active = StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school_id=legacy_active_school_id,
+                    status=StudentSchoolMembership.STATUS_ACTIVE,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEGACY_BACKFILL
+                    ),
+                    requested_at=None,
+                    started_at=None,
+                )
+
+            try:
+                membership = StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=target_school,
+                    status=StudentSchoolMembership.STATUS_PENDING,
+                    record_source=(
+                        StudentSchoolMembership.SOURCE_LEARNER_REQUEST
+                    ),
+                    requested_at=timezone.now(),
+                )
+            except IntegrityError:
+                return _error(
+                    'A school membership request is already pending.',
+                    status.HTTP_409_CONFLICT,
+                )
+
+            if active is None:
+                profile.mode = 'school_linked'
+                profile.school = target_school
+                profile.school_membership_status = 'pending'
+                profile.save(
+                    update_fields=[
+                        'mode',
+                        'school',
+                        'school_membership_status',
+                    ]
+                )
+
+        membership = StudentSchoolMembership.objects.select_related('school').get(
+            pk=membership.pk
+        )
+        return _success(
+            data=StudentSchoolMembershipSerializer(membership).data,
+            message='School membership request submitted.',
+            status_code=status.HTTP_201_CREATED,
         )
 
 
@@ -668,9 +792,12 @@ class SubjectListView(APIView):
         qs = Subject.objects.filter(is_active=True)
         if grade_param is not None:
             try:
-                qs = qs.filter(grade=int(grade_param))
+                grade = int(grade_param)
             except ValueError:
-                return _error('Grade must be 9 or 10.')
+                return _error('Grade must be between 9 and 12.')
+            if grade not in range(9, 13):
+                return _error('Grade must be between 9 and 12.')
+            qs = qs.filter(grade=grade)
         return _success(data=SubjectSerializer(qs, many=True).data)
 
 
@@ -680,6 +807,8 @@ class MySubjectListView(APIView):
     def get(self, request):
         profile = StudentProfile.objects.get(user=request.user)
         qs = StudentSubject.objects.filter(student_profile=profile).select_related('subject')
+        if request.query_params.get('include_history') != 'true':
+            qs = qs.filter(is_active=True)
         return _success(data=StudentSubjectSerializer(qs, many=True).data)
 
     def post(self, request):
@@ -692,9 +821,24 @@ class MySubjectListView(APIView):
             return _error(
                 f'Subject is for Grade {subject.grade}, but you are in Grade {profile.grade}.'
             )
-        if StudentSubject.objects.filter(student_profile=profile, subject=subject).exists():
-            return _error('You are already enrolled in this subject.')
-        ss = StudentSubject.objects.create(student_profile=profile, subject=subject)
+        duplicate_message = (
+            f'You are already enrolled in this subject for Grade {subject.grade}.'
+        )
+        if StudentSubject.objects.filter(
+            student_profile=profile,
+            continuity_code=subject.continuity_code,
+            academic_grade=subject.grade,
+            is_active=True,
+        ).exists():
+            return _error(duplicate_message)
+        try:
+            with transaction.atomic():
+                ss = StudentSubject.objects.create(
+                    student_profile=profile,
+                    subject=subject,
+                )
+        except IntegrityError:
+            return _error(duplicate_message)
         return _success(
             data=StudentSubjectSerializer(ss).data,
             message='Subject added.',
@@ -707,14 +851,277 @@ class MySubjectRemoveView(APIView):
 
     def post(self, request, pk):
         if not request.data.get('confirm'):
-            return _error('Set confirm=true to remove this subject and all its grades.')
+            return _error('Set confirm=true to remove this subject.')
         try:
             profile = StudentProfile.objects.get(user=request.user)
-            ss = StudentSubject.objects.get(pk=pk, student_profile=profile)
+            ss = StudentSubject.objects.get(
+                pk=pk,
+                student_profile=profile,
+                is_active=True,
+            )
         except StudentSubject.DoesNotExist:
             return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
-        ss.delete()
-        return _success(message='Subject and all grades removed.')
+        ss.archive()
+        return _success(message='Subject removed.')
+
+
+class ProgressAssessmentView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    def get(self, request):
+        profile = StudentProfile.objects.get(user=request.user)
+        enrolments = (
+            StudentSubject.objects.filter(student_profile=profile)
+            .select_related('subject')
+            .prefetch_related(
+                Prefetch(
+                    'grades',
+                    queryset=(
+                        CBCGrade.objects.select_related('framework')
+                        .prefetch_related('framework__level_definitions')
+                        .order_by(
+                            'academic_grade', 'year', 'term', 'created_at', 'pk'
+                        )
+                    ),
+                )
+            )
+        )
+        try:
+            assessment = derive_progress_for_enrolments(enrolments)
+        except ProgressConfigurationError:
+            return _error(
+                (
+                    'Academic progress is temporarily unavailable because an '
+                    'assessment framework configuration is incomplete.'
+                ),
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return _success(data=ProgressAssessmentSerializer(assessment).data)
+
+
+def _academic_goal_queryset():
+    return AcademicGoal.objects.select_related(
+        'learner__user',
+        'current_evidence__student_subject',
+        'current_level_definition__framework',
+        'target_level_definition__framework',
+        'created_by',
+    )
+
+
+def _serialize_academic_goals(goals, *, many=False):
+    goal_list = list(goals) if many else [goals]
+    context = {
+        'academic_goal_readiness': AcademicGoal.batch_readiness(goal_list),
+    }
+    value = goal_list if many else goals
+    return AcademicGoalSerializer(value, many=many, context=context).data
+
+
+def _assigned_goal_profile(request):
+    try:
+        student_id = int(request.query_params.get('student_id', ''))
+    except (TypeError, ValueError):
+        return None
+    return StudentProfile.objects.filter(
+        user_id=student_id,
+        counselor_assignments__counselor=request.user,
+        counselor_assignments__is_active=True,
+    ).first()
+
+
+class AcademicGoalListCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified]
+
+    def get(self, request):
+        if request.user.role == 'student':
+            try:
+                learner = StudentProfile.objects.get(user=request.user)
+            except StudentProfile.DoesNotExist:
+                return _error('Learner profile not found.', status.HTTP_404_NOT_FOUND)
+        elif request.user.role == 'counselor':
+            learner = _assigned_goal_profile(request)
+            if learner is None:
+                return _error('Assigned learner not found.', status.HTTP_404_NOT_FOUND)
+        else:
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        goals = _academic_goal_queryset().filter(learner=learner)
+        return _success(data=_serialize_academic_goals(goals, many=True))
+
+    def post(self, request):
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            learner = StudentProfile.objects.get(user=request.user)
+        except StudentProfile.DoesNotExist:
+            return _error('Learner profile not found.', status.HTTP_404_NOT_FOUND)
+        serializer = AcademicGoalWriteSerializer(
+            data=request.data,
+            context={'learner': learner},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        continuity_code = serializer.validated_data['continuity_code']
+        duplicate_message = (
+            'An active academic goal already exists for this subject.'
+        )
+        if AcademicGoal.objects.filter(
+            learner=learner,
+            active_identity=continuity_code,
+        ).exists():
+            return _error(duplicate_message)
+        try:
+            with transaction.atomic():
+                goal = serializer.save()
+        except IntegrityError:
+            return _error(duplicate_message)
+        except ValidationError as exc:
+            return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
+        return _success(
+            data=_serialize_academic_goals(goal),
+            message='Academic goal created.',
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class AcademicGoalDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified]
+
+    def _get_goal(self, request, goal_id, *, mutation=False):
+        goals = _academic_goal_queryset().filter(pk=goal_id)
+        if request.user.role == 'student':
+            return goals.filter(learner__user=request.user).first(), None
+        if request.user.role == 'counselor' and not mutation:
+            return goals.filter(
+                learner__counselor_assignments__counselor=request.user,
+                learner__counselor_assignments__is_active=True,
+            ).first(), None
+        return None, _error(
+            "You don't have permission to do that.",
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def get(self, request, goal_id):
+        goal, denied = self._get_goal(request, goal_id)
+        if denied:
+            return denied
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        return _success(data=_serialize_academic_goals(goal))
+
+    @transaction.atomic
+    def patch(self, request, goal_id):
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        goal = AcademicGoal.objects.select_for_update().filter(
+            pk=goal_id,
+            learner__user=request.user,
+        ).first()
+        if goal is None:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        if goal.status != AcademicGoal.STATUS_ACTIVE:
+            return _error(
+                'Only an active academic goal can be updated.',
+                status.HTTP_409_CONFLICT,
+            )
+        serializer = AcademicGoalWriteSerializer(
+            goal,
+            data=request.data,
+            partial=True,
+            context={'learner': goal.learner},
+        )
+        if not serializer.is_valid():
+            return _error(serializer.errors)
+        try:
+            serializer.save()
+        except ValidationError as exc:
+            return _error(exc.message_dict if hasattr(exc, 'message_dict') else exc.messages)
+        return _success(
+            data=_serialize_academic_goals(goal),
+            message='Academic goal updated.',
+        )
+
+    put = patch
+
+    def delete(self, request, goal_id):
+        if request.user.role != 'student':
+            return _error(
+                "You don't have permission to do that.",
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            goal = AcademicGoal.close_goal(
+                goal_id=goal_id,
+                actor=request.user,
+            )
+        except AcademicGoal.DoesNotExist:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        except ValidationError as exc:
+            return _error(
+                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages,
+                status.HTTP_409_CONFLICT,
+            )
+        return _success(
+            data=_serialize_academic_goals(goal),
+            message='Academic goal closed.',
+        )
+
+
+class AcademicGoalConfirmAchievementView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsStudent]
+
+    @transaction.atomic
+    def post(self, request, goal_id):
+        if request.data.get('confirm') is not True:
+            return _error('Set confirm=true to mark this goal achieved.')
+        try:
+            goal = AcademicGoal.confirm_achievement(
+                goal_id=goal_id,
+                actor=request.user,
+            )
+        except AcademicGoal.DoesNotExist:
+            return _error('Academic goal not found.', status.HTTP_404_NOT_FOUND)
+        except ValidationError as exc:
+            messages = (
+                exc.message_dict if hasattr(exc, 'message_dict') else exc.messages
+            )
+            return _error(
+                messages,
+                status.HTTP_409_CONFLICT,
+            )
+        Notification.objects.create(
+            user=goal.learner.user,
+            type='academic_goal_achieved',
+            message=(
+                f'Your {goal.continuity_code} academic goal was confirmed achieved.'
+            ),
+        )
+        parent_ids = ParentStudentLink.objects.filter(
+            student=goal.learner.user,
+            status=ParentStudentLink.STATUS_ACTIVE,
+        ).values_list('parent_id', flat=True)
+        for parent_id in parent_ids:
+            Notification.objects.create(
+                user_id=parent_id,
+                type='academic_goal_achieved',
+                message=(
+                    f'{goal.learner.user.first_name} confirmed an academic goal '
+                    'achievement.'
+                ),
+            )
+        return _success(
+            data=_serialize_academic_goals(goal),
+            message='Academic goal achieved.',
+        )
 
 
 class CBCGradeListView(APIView):
@@ -737,6 +1144,10 @@ class CBCGradeListView(APIView):
             ss = self._get_student_subject(subject_pk, request.user)
         except StudentSubject.DoesNotExist:
             return _error('Subject enrollment not found.', status.HTTP_404_NOT_FOUND)
+        if not ss.is_active:
+            return _error(
+                'Grades cannot be changed on an archived subject enrollment.'
+            )
         serializer = CBCGradeSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
@@ -746,7 +1157,10 @@ class CBCGradeListView(APIView):
             year=serializer.validated_data['year'],
         ).exists():
             return _error('A grade for this subject, term, and year already exists.')
-        grade = serializer.save(student_subject=ss)
+        grade = serializer.save(
+            student_subject=ss,
+            academic_grade=ss.academic_grade,
+        )
         return _success(
             data=CBCGradeSerializer(grade).data,
             message='Grade added.',
@@ -759,33 +1173,76 @@ class CBCGradeDetailView(APIView):
 
     def _get_grade(self, subject_pk, grade_pk, user):
         profile = StudentProfile.objects.get(user=user)
-        ss = StudentSubject.objects.get(pk=subject_pk, student_profile=profile)
-        return CBCGrade.objects.get(pk=grade_pk, student_subject=ss)
+        ss = StudentSubject.objects.select_for_update().get(
+            pk=subject_pk,
+            student_profile=profile,
+        )
+        return CBCGrade.objects.select_for_update().get(
+            pk=grade_pk,
+            student_subject=ss,
+        )
 
     def put(self, request, subject_pk, grade_pk):
-        try:
-            grade = self._get_grade(subject_pk, grade_pk, request.user)
-        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
-            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
-        serializer = CBCGradeSerializer(grade, data=request.data)
-        if not serializer.is_valid():
-            return _error(serializer.errors)
-        new_term = serializer.validated_data.get('term', grade.term)
-        new_year = serializer.validated_data.get('year', grade.year)
-        if CBCGrade.objects.filter(
-            student_subject=grade.student_subject, term=new_term, year=new_year
-        ).exclude(pk=grade.pk).exists():
-            return _error('A grade for this subject, term, and year already exists.')
-        serializer.save()
-        return _success(data=serializer.data, message='Grade updated.')
+        with transaction.atomic():
+            try:
+                grade = self._get_grade(subject_pk, grade_pk, request.user)
+            except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+                return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+            if not grade.student_subject.is_active:
+                return _error(
+                    'Grades cannot be changed on an archived subject enrollment.'
+                )
+            if any((
+                grade.verified_school_id,
+                grade.verified_by_id,
+                grade.verified_at,
+            )):
+                return _error(
+                    'School-verified evidence cannot be edited by a learner.',
+                    status.HTTP_403_FORBIDDEN,
+                )
+            serializer = CBCGradeSerializer(grade, data=request.data)
+            if not serializer.is_valid():
+                return _error(serializer.errors)
+            new_term = serializer.validated_data.get('term', grade.term)
+            new_year = serializer.validated_data.get('year', grade.year)
+            if CBCGrade.objects.filter(
+                student_subject=grade.student_subject,
+                term=new_term,
+                year=new_year,
+            ).exclude(pk=grade.pk).exists():
+                return _error(
+                    'A grade for this subject, term, and year already exists.'
+                )
+            serializer.save()
+            return _success(data=serializer.data, message='Grade updated.')
 
     def delete(self, request, subject_pk, grade_pk):
-        try:
-            grade = self._get_grade(subject_pk, grade_pk, request.user)
-        except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
-            return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
-        grade.delete()
-        return _success(message='Grade deleted.')
+        with transaction.atomic():
+            try:
+                grade = self._get_grade(subject_pk, grade_pk, request.user)
+            except (StudentSubject.DoesNotExist, CBCGrade.DoesNotExist):
+                return _error('Grade not found.', status.HTTP_404_NOT_FOUND)
+            if not grade.student_subject.is_active:
+                return _error(
+                    'Grades cannot be changed on an archived subject enrollment.'
+                )
+            if any((
+                grade.verified_school_id,
+                grade.verified_by_id,
+                grade.verified_at,
+            )):
+                return _error(
+                    'School-verified evidence cannot be deleted by a learner.',
+                    status.HTTP_403_FORBIDDEN,
+                )
+            list(
+                AcademicGoal.objects.select_for_update().filter(
+                    current_evidence=grade,
+                ).order_by('pk').values_list('pk', flat=True)
+            )
+            grade.delete()
+            return _success(message='Grade deleted.')
 
 
 class StudentCounselorView(APIView):

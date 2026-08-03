@@ -59,8 +59,10 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Compare your saved combinations')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/compare')
     expect(screen.getByRole('heading', { name: 'Career insights' })).toBeInTheDocument()
+    // Pre-selection learner (journey_status 'not_selected') follows the
+    // exploration path; the interest quiz is a step here, not optional.
     expect(screen.getByRole('heading', { name: 'Evidence to action' })).toBeInTheDocument()
-    for (const stage of ['Evidence', 'Interests', 'Compare', 'Plan']) {
+    for (const stage of ['Interests', 'Compare', 'Plan']) {
       expect(screen.getByText(stage)).toBeInTheDocument()
     }
     expect(screen.queryByRole('progressbar', { name: 'Career journey progress' })).not.toBeInTheDocument()
@@ -70,6 +72,30 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Review your milestone dates.')).toBeInTheDocument()
     expect(screen.getByText(/suggestions are starting points for exploration/i)).toBeInTheDocument()
     expect(screen.queryByText('73%')).not.toBeInTheDocument()
+  })
+
+  it('shows a progress-focused journey with optional quiz for a selected learner', async () => {
+    setUser('student')
+    const getDashboard = studentsApi.getDashboard.bind(studentsApi)
+    vi.spyOn(studentsApi, 'getDashboard').mockImplementation(async () => {
+      const response = await getDashboard()
+      const data = response.data.data
+      data.profile.journey_status = 'selected'
+      data.evidence.journey.status = 'selected'
+      data.evidence.assessment.status = 'not_started'
+      data.assessment = null
+      return response
+    })
+
+    render(<DashboardPage />, { wrapper })
+
+    // Progress-focused panel, not the decision-journey ladder.
+    expect(await screen.findByRole('heading', { name: 'Track and improve' })).toBeInTheDocument()
+    expect(screen.getByText('Subjects')).toBeInTheDocument()
+    expect(screen.getByText('Grades')).toBeInTheDocument()
+    // The interest quiz is present but explicitly optional — never a blocker.
+    expect(screen.getByText('Optional')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Evidence to action' })).not.toBeInTheDocument()
   })
 
   it('keeps the first learner action usable after a delayed dashboard response', async () => {

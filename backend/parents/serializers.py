@@ -179,6 +179,7 @@ class LinkedChildSerializer(serializers.Serializer):
                 for choice in choices
             ),
             plan_status=plan.review_status if plan else 'not_started',
+            journey_status=profile.journey_status,
         )
         return {'code': action['code'], 'title': action['title']}
 
@@ -248,14 +249,21 @@ class LinkedChildSerializer(serializers.Serializer):
         action = self.get_next_action(obj)
         prompts = {
             'complete_profile': 'What interests or goals would you like to add to your profile?',
+            'declare_journey_stage': 'Where are you in choosing your Senior School pathway?',
+            'record_current_subjects': 'Which pathway and subjects have you already chosen?',
             'add_academic_evidence': 'Which subjects feel strongest, and where would support help?',
+            'view_progress': 'How is your progress going, and where would support help?',
             'complete_interest_assessment': 'Which activities make you feel curious or energized?',
+            'request_counsellor_review': 'What is making you consider changing your subjects?',
             'explore_combinations': 'Which subject combinations would you like to explore together?',
             'compare_combinations': 'What matters most as you compare your saved choices?',
             'create_plan': 'What is one practical step you can add to your plan?',
             'review_plan': 'How can I support your next plan milestone?',
         }
-        return prompts[action['code']]
+        return prompts.get(
+            action['code'],
+            'What would help you take your next step?',
+        )
 
 
 class ChildProfileSerializer(serializers.Serializer):
@@ -273,9 +281,36 @@ class ChildProfileSerializer(serializers.Serializer):
 
 
 class ChildGradeSerializer(serializers.ModelSerializer):
+    framework = serializers.SerializerMethodField()
+    verified_school = serializers.SerializerMethodField()
+
     class Meta:
         model = CBCGrade
-        fields = ('id', 'term', 'year', 'level')
+        fields = (
+            'id',
+            'academic_grade',
+            'term',
+            'year',
+            'level',
+            'framework',
+            'source',
+            'verified_school',
+            'verified_at',
+        )
+
+    def get_framework(self, grade):
+        return {
+            'code': grade.framework.code,
+            'version': grade.framework.version,
+        }
+
+    def get_verified_school(self, grade):
+        if grade.verified_school_id is None:
+            return None
+        return {
+            'id': grade.verified_school_id,
+            'name': grade.verified_school.name,
+        }
 
 
 class ChildSubjectSerializer(serializers.Serializer):
@@ -306,7 +341,7 @@ class ChildDetailSerializer(serializers.Serializer):
     profile = serializers.SerializerMethodField()
     subjects = serializers.SerializerMethodField()
     assessment = serializers.SerializerMethodField()
-    academic_readiness = serializers.SerializerMethodField()
+    evidence_completeness = serializers.SerializerMethodField()
     provisional_combination = serializers.SerializerMethodField()
     plan = serializers.SerializerMethodField()
     counselor = serializers.SerializerMethodField()
@@ -318,7 +353,11 @@ class ChildDetailSerializer(serializers.Serializer):
         return ChildProfileSerializer(profile).data
 
     def get_subjects(self, profile):
-        subjects = profile.enrolled_subjects.all()
+        subjects = getattr(
+            profile,
+            'support_enrolments',
+            profile.enrolled_subjects.all(),
+        )
         return ChildSubjectSerializer(subjects, many=True).data
 
     def get_assessment(self, profile):
@@ -328,20 +367,24 @@ class ChildDetailSerializer(serializers.Serializer):
             return None
         return AssessmentResultSerializer(assessment).data
 
-    def get_academic_readiness(self, profile):
-        enrollments = list(profile.enrolled_subjects.all())
+    def get_evidence_completeness(self, profile):
+        enrollments = list(getattr(
+            profile,
+            'support_enrolments',
+            profile.enrolled_subjects.all(),
+        ))
         grade_counts = [len(list(item.grades.all())) for item in enrollments]
         total_subjects = len(enrollments)
         subjects_with_evidence = sum(count > 0 for count in grade_counts)
         total_grade_records = sum(grade_counts)
         if total_subjects >= 3 and subjects_with_evidence == total_subjects:
-            readiness_status = 'ready'
+            completeness_status = 'complete'
         elif total_subjects or total_grade_records:
-            readiness_status = 'in_progress'
+            completeness_status = 'in_progress'
         else:
-            readiness_status = 'not_started'
+            completeness_status = 'not_started'
         return {
-            'status': readiness_status,
+            'status': completeness_status,
             'total_subjects': total_subjects,
             'subjects_with_evidence': subjects_with_evidence,
             'total_grade_records': total_grade_records,

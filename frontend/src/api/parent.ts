@@ -1,5 +1,7 @@
 import api from '../lib/axios'
 import type { CounselorIntervention } from './counselor'
+import type { AcademicGoal, ProgressAssessment } from './students'
+import type { EducationGoal } from './tertiary'
 
 export interface ChildProfile {
   id: number
@@ -7,7 +9,7 @@ export interface ChildProfile {
   last_name: string
   email: string
   county: string | null
-  grade: 9 | 10
+  grade: 9 | 10 | 11 | 12
   mode: 'self_guided' | 'school_linked'
   bio: string
   date_of_birth: string | null
@@ -17,9 +19,14 @@ export interface ChildProfile {
 
 export interface ChildGrade {
   id: number
+  academic_grade: 9 | 10 | 11 | 12
   term: 1 | 2 | 3
   year: number
   level: string
+  framework: { code: string; version: string }
+  source: 'learner' | 'school'
+  verified_school: { id: number; name: string } | null
+  verified_at: string | null
 }
 
 export interface ChildSubject {
@@ -56,8 +63,8 @@ export interface ChildNote {
   updated_at: string
 }
 
-export interface ChildAcademicReadiness {
-  status: 'not_started' | 'in_progress' | 'ready'
+export interface ChildEvidenceCompleteness {
+  status: 'not_started' | 'in_progress' | 'complete'
   total_subjects: number
   subjects_with_evidence: number
   total_grade_records: number
@@ -88,13 +95,16 @@ export interface ChildDetail {
   profile: ChildProfile
   subjects: ChildSubject[]
   assessment: ChildAssessment | null
-  academic_readiness: ChildAcademicReadiness
+  evidence_completeness: ChildEvidenceCompleteness
   provisional_combination: ChildProvisionalCombination | null
   plan: ChildPlan | null
   counselor: ChildCounselor | null
   latest_note: ChildNote | null
   parent_visible_notes: ChildNote[]
   interventions: CounselorIntervention[]
+  academic_progress?: ProgressAssessment
+  academic_goals?: AcademicGoal[]
+  education_goals?: EducationGoal[]
 }
 
 export const parentApi = {

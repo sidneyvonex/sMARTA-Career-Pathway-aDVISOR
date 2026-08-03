@@ -1,10 +1,15 @@
 from django.urls import path
+from tertiary.views import EducationGoalDetailView, EducationGoalListCreateView
 from .views import (
+    AcademicGoalConfirmAchievementView,
+    AcademicGoalDetailView,
+    AcademicGoalListCreateView,
     StudentProfileView, PhotoUploadView, SubjectListView,
     MySubjectListView, MySubjectRemoveView,
-    CBCGradeListView, CBCGradeDetailView,
+    CBCGradeListView, CBCGradeDetailView, ProgressAssessmentView,
     StudentCounselorView, StudentDashboardView, EvidenceSummaryView, GradeSummaryView,
     StudentInterventionsView,
+    StudentSchoolMembershipListCreateView,
     LearnerCombinationChoiceDetailView,
     LearnerCombinationChoiceListCreateView,
     LearnerCombinationChoiceProvisionalView,
@@ -19,6 +24,21 @@ from parents.views import (
 )
 
 urlpatterns = [
+    path(
+        'education-goals/',
+        EducationGoalListCreateView.as_view(),
+        name='education-goal-list',
+    ),
+    path(
+        'education-goals/<int:goal_id>/',
+        EducationGoalDetailView.as_view(),
+        name='education-goal-detail',
+    ),
+    path(
+        'school-memberships/',
+        StudentSchoolMembershipListCreateView.as_view(),
+        name='student-school-memberships',
+    ),
     path('dashboard/', StudentDashboardView.as_view(), name='student-dashboard'),
     path(
         'parent-access/',
@@ -42,6 +62,22 @@ urlpatterns = [
         name='student-interventions',
     ),
     path('grades/summary/', GradeSummaryView.as_view(), name='student-grade-summary'),
+    path('progress/', ProgressAssessmentView.as_view(), name='student-progress'),
+    path(
+        'academic-goals/',
+        AcademicGoalListCreateView.as_view(),
+        name='academic-goal-list',
+    ),
+    path(
+        'academic-goals/<int:goal_id>/',
+        AcademicGoalDetailView.as_view(),
+        name='academic-goal-detail',
+    ),
+    path(
+        'academic-goals/<int:goal_id>/confirm-achievement/',
+        AcademicGoalConfirmAchievementView.as_view(),
+        name='academic-goal-confirm-achievement',
+    ),
     path(
         'combination-choices/',
         LearnerCombinationChoiceListCreateView.as_view(),

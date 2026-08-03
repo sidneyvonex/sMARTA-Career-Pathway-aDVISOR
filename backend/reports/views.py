@@ -2,18 +2,23 @@ import re
 from datetime import date
 
 from django.conf import settings
+from django.db.models import Exists, OuterRef, Subquery
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from accounts.models import User, StudentProfile
+from accounts.models import User, StudentProfile, StudentSchoolMembership
 from accounts.permissions import IsEmailVerified
 from accounts.response import _error
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
-from students.models import StudentSubject, GRADE_LEVEL_CHOICES
+from students.models import GRADE_LEVEL_CHOICES
+from students.role_support import (
+    academic_support_context,
+    academic_support_enrolments,
+)
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
 from .pdf_builder import build_student_report
@@ -31,14 +36,47 @@ class StudentReportView(APIView):
             return _error('Student not found.', 404)
 
         try:
-            profile = StudentProfile.objects.select_related('school').get(user=student)
+            membership_history = StudentSchoolMembership.objects.filter(
+                student_profile=OuterRef('pk'),
+            )
+            active_membership = membership_history.filter(
+                status=StudentSchoolMembership.STATUS_ACTIVE,
+            ).order_by('pk')
+            profile = (
+                StudentProfile.objects
+                .select_related('school')
+                .annotate(
+                    report_has_membership_history=Exists(membership_history),
+                    report_active_school_id=Subquery(
+                        active_membership.values('school_id')[:1]
+                    ),
+                    report_active_school_name=Subquery(
+                        active_membership.values('school__name')[:1]
+                    ),
+                    report_active_membership_status=Subquery(
+                        active_membership.values('status')[:1]
+                    ),
+                )
+                .get(user=student)
+            )
         except StudentProfile.DoesNotExist:
             return _error('Student profile not found.', 404)
 
-        if not self._has_access(request.user, student, profile):
+        membership_context = self._membership_context(profile)
+        if not self._has_access(
+            request.user,
+            student,
+            profile,
+            membership_context,
+        ):
             return _error("You don't have permission to do that.", 403)
 
-        subjects_data = self._get_subjects_data(profile)
+        support_enrolments = academic_support_enrolments(profile)
+        subjects_data = self._get_subjects_data(profile, support_enrolments)
+        support_context = academic_support_context(
+            profile,
+            enrolments=support_enrolments,
+        )
         riasec_data, recommendations_data = self._get_riasec_data(profile)
 
         if not subjects_data and riasec_data is None:
@@ -58,20 +96,21 @@ class StudentReportView(APIView):
         total_grade_records = sum(len(subject['grades']) for subject in subjects_data)
         total_subjects = len(subjects_data)
         if total_subjects >= 3 and subjects_with_evidence == total_subjects:
-            readiness_status = 'ready'
-            readiness_label = 'Ready for discussion'
+            completeness_status = 'complete'
+            completeness_label = 'Complete coverage'
         elif total_subjects or total_grade_records:
-            readiness_status = 'in_progress'
-            readiness_label = 'In progress'
+            completeness_status = 'in_progress'
+            completeness_label = 'In progress'
         else:
-            readiness_status = 'not_started'
-            readiness_label = 'Not started'
+            completeness_status = 'not_started'
+            completeness_label = 'Not started'
 
         generated_at = timezone.localtime()
         data = {
             'student_name': f'{student.first_name} {student.last_name}'.strip(),
             'grade': profile.grade,
-            'school_name': profile.school.name if profile.school else None,
+            'school_name': membership_context['school_name'],
+            'school_membership_status': membership_context['status'],
             'county': (student.county or '').replace('_', ' ').title() if student.county else None,
             'email': student.email,
             'mode': profile.mode,
@@ -86,14 +125,15 @@ class StudentReportView(APIView):
                     riasec_data['submitted_at'] if riasec_data else None
                 ),
             },
-            'academic_readiness': {
-                'status': readiness_status,
-                'label': readiness_label,
+            'evidence_completeness': {
+                'status': completeness_status,
+                'label': completeness_label,
                 'explanation': (
                     f'{subjects_with_evidence} of {total_subjects} enrolled subjects '
                     'have recorded academic evidence.'
                 ),
             },
+            **support_context,
             'provisional_choice': self._serialize_choice(provisional_choice),
             'plan': self._serialize_plan(plan),
             'framework': (
@@ -145,7 +185,22 @@ class StudentReportView(APIView):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
-    def _has_access(self, user, student, profile):
+    def _membership_context(self, profile):
+        if profile.report_has_membership_history:
+            return {
+                'uses_membership_history': True,
+                'school_id': profile.report_active_school_id,
+                'school_name': profile.report_active_school_name,
+                'status': profile.report_active_membership_status,
+            }
+        return {
+            'uses_membership_history': False,
+            'school_id': profile.school_id,
+            'school_name': profile.school.name if profile.school else None,
+            'status': profile.school_membership_status,
+        }
+
+    def _has_access(self, user, student, profile, membership_context):
         if user.role == 'system_admin':
             return True
         if user.role == 'student':
@@ -155,6 +210,12 @@ class StudentReportView(APIView):
                 counselor=user, student_profile=profile, is_active=True,
             ).exists()
         if user.role == 'school_admin':
+            if membership_context['uses_membership_history']:
+                return (
+                    membership_context['school_id'] == user.school_id
+                    and membership_context['status']
+                    == StudentSchoolMembership.STATUS_ACTIVE
+                )
             return (
                 profile.mode == 'school_linked'
                 and profile.school_membership_status == 'active'
@@ -169,13 +230,9 @@ class StudentReportView(APIView):
             ).exists()
         return False
 
-    def _get_subjects_data(self, profile):
-        enrollments = (
-            StudentSubject.objects
-            .filter(student_profile=profile)
-            .select_related('subject')
-            .prefetch_related('grades')
-        )
+    def _get_subjects_data(self, profile, enrollments=None):
+        if enrollments is None:
+            enrollments = academic_support_enrolments(profile)
         subjects = []
         for enrollment in enrollments:
             grades = [
@@ -184,6 +241,21 @@ class StudentReportView(APIView):
                     'year': g.year,
                     'level': g.level,
                     'label': GRADE_LABELS.get(g.level, g.level),
+                    'framework': {
+                        'code': g.framework.code,
+                        'version': g.framework.version,
+                    },
+                    'source': g.source,
+                    'verified_school': (
+                        g.verified_school.name
+                        if g.verified_school_id is not None
+                        else None
+                    ),
+                    'verified_at': (
+                        timezone.localtime(g.verified_at).strftime('%d %B %Y')
+                        if g.verified_at is not None
+                        else None
+                    ),
                 }
                 for g in enrollment.grades.all()
             ]

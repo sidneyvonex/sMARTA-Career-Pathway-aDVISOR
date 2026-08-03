@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 import {
   studentsApi,
@@ -7,6 +8,7 @@ import {
   GRADE_LEVEL_LABELS,
   GRADE_LEVEL_ORDER,
 } from '../../api/students'
+import { academicGoalKeys } from '../../hooks/useAcademicGoalMutations'
 
 interface Props {
   studentSubjectId: number
@@ -14,6 +16,19 @@ interface Props {
 
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 6 }, (_, index) => CURRENT_YEAR - 5 + index + 1).reverse()
+
+function gradeErrorMessage(error: unknown): string {
+  const axiosError = error as AxiosError<{ message?: unknown }>
+  if (!axiosError.response) return 'Connection error. Please check your internet.'
+  const status = axiosError.response.status
+  if (status === 403) return "You don't have permission to do that."
+  if (status === 404) return 'That item no longer exists.'
+  if (status >= 500) return 'Server error. Please try again in a moment.'
+  const message = axiosError.response.data?.message
+  return typeof message === 'string' && message.trim()
+    ? message
+    : 'Something went wrong. Please try again.'
+}
 
 export default function GradeEntryForm({ studentSubjectId }: Props) {
   const [term, setTerm] = useState<1 | 2 | 3>(1)
@@ -24,10 +39,12 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
   const mutation = useMutation({
     mutationFn: () => studentsApi.addGrade(studentSubjectId, { term, year, level }),
     onSuccess: () => {
-      toast.success('Grade added.')
+      toast.success(`Grade saved for Term ${term}.`)
       queryClient.invalidateQueries({ queryKey: ['grades', studentSubjectId] })
+      queryClient.invalidateQueries({ queryKey: ['students', 'academic-progress'] })
+      queryClient.invalidateQueries({ queryKey: academicGoalKeys.all })
     },
-    onError: () => toast.error('Could not add grade. That term/year may already have a grade.'),
+    onError: (error) => toast.error(gradeErrorMessage(error)),
   })
 
   return (

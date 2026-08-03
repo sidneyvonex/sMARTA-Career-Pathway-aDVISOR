@@ -3,7 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { useAuthStore } from '../../store/authStore'
+import { server } from '../msw/server'
 import SystemAdminDashboard from '../../components/system-admin/SystemAdminDashboard'
 import SystemAdminSchoolsPage from '../../pages/system-admin/SystemAdminSchoolsPage'
 import SystemAdminUsersPage from '../../pages/system-admin/SystemAdminUsersPage'
@@ -161,6 +163,81 @@ describe('SystemAdminCataloguePage', () => {
     expect(screen.getByText('Advanced Mathematics, Physics, Chemistry')).toBeInTheDocument()
     expect(screen.getByText('Biology, Chemistry, Agriculture')).toBeInTheDocument()
     expect(screen.getByText('Inactive')).toBeInTheDocument()
+  })
+
+  it('manages sourced assessment and tertiary metadata without rewriting provenance', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Academic source metadata' })).toBeInTheDocument()
+    expect(await screen.findByText('CBC-JUNIOR-SCHOOL pilot-2026')).toBeInTheDocument()
+    expect(screen.getByText('Test University 1')).toBeInTheDocument()
+    expect(screen.getAllByText('KCSE · 2025/2026').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Open source for Test University 1' })).toHaveAttribute(
+      'href',
+      'https://students.kuccps.net/institutions/',
+    )
+    expect(screen.queryByRole('button', { name: 'Mark Test University 1 unavailable' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Retire CBC-JUNIOR-SCHOOL pilot-2026' }))
+    const toastModule = await import('react-hot-toast')
+    await waitFor(() => expect(toastModule.default.success).toHaveBeenCalledWith('Framework status updated.'))
+  })
+
+  it('shows source metadata when no guidance framework is active', async () => {
+    server.use(
+      http.get('/api/v1/system-admin/catalogue/', () => HttpResponse.json({
+        data: { framework: null, combinations: [] },
+        error: null,
+        message: '',
+      })),
+    )
+
+    renderPage()
+
+    expect(await screen.findByRole('heading', {
+      name: 'Academic source metadata',
+    })).toBeInTheDocument()
+    expect(await screen.findByText('CBC-JUNIOR-SCHOOL pilot-2026')).toBeInTheDocument()
+    expect(screen.getByText('No active framework')).toBeInTheDocument()
+  })
+
+  it('reactivates a retired assessment framework and exposes draft transition', async () => {
+    let requestedStatus = ''
+    server.use(
+      http.get('/api/v1/system-admin/source-metadata/', () => HttpResponse.json({
+        data: {
+          assessment_frameworks: [{
+            id: 10, record_type: 'assessment_framework', code: 'CBC-JUNIOR-SCHOOL', version: 'pilot-2026', title: 'Junior school performance levels', scope: 'junior_school', source_url: 'https://kicd.ac.ke/curriculum-reform/', effective_date: '2026-01-01', status: 'retired', level_count: 4, evidence_count: 12, can_change_status: true,
+          }],
+          tertiary_sources: [],
+        },
+        error: null,
+        message: '',
+      })),
+      http.patch(
+        '/api/v1/system-admin/source-metadata/assessment_framework/10/',
+        async ({ request }) => {
+          const body = await request.json() as { status: string }
+          requestedStatus = body.status
+          return HttpResponse.json({
+            data: { status: body.status },
+            error: null,
+            message: 'Source status updated.',
+          })
+        },
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('button', {
+      name: 'Move CBC-JUNIOR-SCHOOL pilot-2026 to draft',
+    })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', {
+      name: 'Reactivate CBC-JUNIOR-SCHOOL pilot-2026',
+    }))
+
+    await waitFor(() => expect(requestedStatus).toBe('active'))
   })
 
   it('filters combinations by search term', async () => {

@@ -351,6 +351,23 @@
   overflow-wrap: anywhere;
 }
 
+.admin-evidence {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-evidence small {
+  color: var(--color-text-secondary);
+}
+
+.admin-evidence .btn-ghost {
+  min-height: var(--min-touch-target);
+  justify-self: start;
+}
+
 .admin-workload {
   display: inline-flex;
   padding: var(--space-1) var(--space-2);

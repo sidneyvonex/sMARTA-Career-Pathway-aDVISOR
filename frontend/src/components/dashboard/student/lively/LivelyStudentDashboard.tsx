@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import DashboardHero from './DashboardHero'
 import Avatar from '../../../common/Avatar'
 import SectionHeader from '../../../common/dashboard/SectionHeader'
+import { hasSelectedPathway, type JourneyStatus } from '../../../../api/students'
 import type { RadarDatum } from './PersonalityRadar'
-import type { GradePoint } from './GradeTrend'
+import type { GradeChronology } from './GradeTrend'
 import '../../../../styles/dashboard-lively.css'
 
 const PersonalityRadar = lazy(() => import('./PersonalityRadar'))
@@ -18,6 +19,7 @@ export interface LivelyData {
   photoUrl?: string | null
   gradeLabel?: string
   county?: string | null
+  journeyStatus: JourneyStatus
   quizDone: boolean
   subjectsCount: number
   academicReady: boolean
@@ -29,7 +31,7 @@ export interface LivelyData {
   topStrength: string | null
   radar: RadarDatum[] | null
   pathways: { name: string; rank: number }[] | null
-  gradeTrend: GradePoint[] | null
+  gradeTrend: GradeChronology[] | null
   counselor: { name: string; role: string; message?: string; photoUrl?: string | null } | null
   activity: { text: string; time: string; actor?: string }[]
   interventions: {
@@ -50,19 +52,59 @@ const TASK_ICONS = {
   plan: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3h12v18H6z" /><path d="m9 8 1.5 1.5L14 6M9 14h6M9 18h4" /></svg>,
 }
 
-function JourneyPanel({ data }: { data: LivelyData }) {
-  const tasks = [
+interface JourneyTask {
+  to: string
+  label: string
+  detail: string
+  complete: boolean
+  optional?: boolean
+  icon: JSX.Element
+}
+
+function progressTasks(data: LivelyData): JourneyTask[] {
+  return [
     {
       to: '/grades',
-      label: 'Evidence',
-      detail: data.academicReady ? 'Academic evidence ready' : 'Add subjects and current grades',
-      complete: data.academicReady,
+      label: 'Subjects',
+      detail: data.subjectsCount > 0
+        ? `${data.subjectsCount} subject${data.subjectsCount === 1 ? '' : 's'} on record`
+        : 'Record the subjects you already chose',
+      complete: data.subjectsCount > 0,
       icon: TASK_ICONS.subjects,
+    },
+    {
+      to: '/grades',
+      label: 'Grades',
+      detail: data.academicReady
+        ? 'Your grades are up to date'
+        : 'Add your latest grades to track progress',
+      complete: data.academicReady,
+      icon: TASK_ICONS.plan,
     },
     {
       to: data.quizDone ? '/assessment/results' : '/assessment',
       label: 'Interests',
-      detail: data.quizDone ? 'Interest profile complete' : 'Complete the career interest quiz',
+      detail: data.quizDone
+        ? 'Interest profile complete'
+        : 'Optional — explore careers linked to your subjects',
+      complete: data.quizDone,
+      optional: true,
+      icon: TASK_ICONS.quiz,
+    },
+  ]
+}
+
+function explorationTasks(data: LivelyData): JourneyTask[] {
+  const reconsidering = data.journeyStatus === 'reconsidering'
+  return [
+    {
+      to: data.quizDone ? '/assessment/results' : '/assessment',
+      label: 'Interests',
+      detail: data.quizDone
+        ? 'Interest profile complete'
+        : reconsidering
+          ? 'Reflect on how your interests fit your pathway'
+          : 'Complete the career interest quiz',
       complete: data.quizDone,
       icon: TASK_ICONS.quiz,
     },
@@ -77,25 +119,32 @@ function JourneyPanel({ data }: { data: LivelyData }) {
     },
     {
       to: '/plan',
-      label: 'Plan',
-      detail: data.planStatus === 'not_started'
-        ? 'Turn a provisional choice into actions'
-        : data.planStatus === 'draft'
-          ? 'Build milestones and prepare for review'
-          : data.planStatus === 'ready_for_review'
-            ? 'Plan is ready for counsellor review'
-            : 'Plan reviewed',
+      label: reconsidering ? 'Counsellor' : 'Plan',
+      detail: reconsidering
+        ? 'Talk to a counsellor before changing subjects'
+        : data.planStatus === 'not_started'
+          ? 'Turn a provisional choice into actions'
+          : data.planStatus === 'draft'
+            ? 'Build milestones and prepare for review'
+            : data.planStatus === 'ready_for_review'
+              ? 'Plan is ready for counsellor review'
+              : 'Plan reviewed',
       complete: data.planStatus === 'reviewed',
       icon: TASK_ICONS.plan,
     },
   ]
+}
+
+function JourneyPanel({ data }: { data: LivelyData }) {
+  const selected = hasSelectedPathway(data.journeyStatus)
+  const tasks = selected ? progressTasks(data) : explorationTasks(data)
 
   return (
     <aside className="lv-journey lv-anim" style={{ ['--i' as string]: 1 }} aria-labelledby="journey-title">
       <SectionHeader
         className="lv-section-head"
-        eyebrow="Decision journey"
-        title="Evidence to action"
+        eyebrow={selected ? 'My progress' : 'Decision journey'}
+        title={selected ? 'Track and improve' : 'Evidence to action'}
         titleId="journey-title"
         aside={<span className="lv-journey__count">{tasks.length} steps</span>}
       />
@@ -104,7 +153,10 @@ function JourneyPanel({ data }: { data: LivelyData }) {
           <Link to={task.to} className="lv-task" key={task.label}>
             <span className={`lv-task__icon lv-task__icon--${index}${task.complete ? ' lv-task__icon--complete' : ''}`}>{task.icon}</span>
             <span className="lv-task__copy">
-              <strong>{task.label}</strong>
+              <strong>
+                {task.label}
+                {task.optional && <span className="lv-task__badge">Optional</span>}
+              </strong>
               <small>{task.detail}</small>
             </span>
             <svg className="lv-task__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

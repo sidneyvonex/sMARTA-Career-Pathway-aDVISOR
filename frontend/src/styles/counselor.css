@@ -527,6 +527,18 @@
   font-size: var(--font-size-sm);
 }
 
+.detail-progress-evidence {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-divider);
+}
+
+.detail-progress-evidence h3 {
+  font-size: var(--font-size-base);
+}
+
 .detail-evidence-grid,
 .detail-choice-list {
   display: grid;

@@ -1,13 +1,18 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from django.urls import reverse
+from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
+    AcademicGoalFactory, CBCGradeFactory,
     CounselorFactory, SchoolFactory, StudentProfileFactory,
     VerifiedUserFactory, CounselorAssignmentFactory, CounselorNoteFactory,
-    SubjectCombinationFactory,
+    StudentSubjectFactory, SubjectCombinationFactory, SubjectFactory,
+    LearnerEducationGoalFactory,
 )
-from counselors.models import CounselorIntervention
+from counselors.models import CounselorAssignment, CounselorIntervention
 from guidance.models import LearnerCombinationChoice, LearnerPlan
 from guidance.models import PlanMilestone
 from system_admin.models import AuditLog
@@ -233,6 +238,98 @@ class TestCounselorStudentDetailView:
         r = client.get(reverse('counselor-student-detail', args=[other_student.id]))
         assert r.status_code == 404
 
+    def test_returns_read_only_progress_and_goals_for_assigned_learner(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        enrollment = StudentSubjectFactory(
+            student_profile=assigned_student,
+            subject=SubjectFactory(code='COUN9', grade=9),
+        )
+        evidence = CBCGradeFactory(
+            student_subject=enrollment,
+            term=1,
+            year=2026,
+            level='ME2',
+        )
+        academic_goal = AcademicGoalFactory(
+            learner=assigned_student,
+            current_evidence=evidence,
+            target_academic_grade=9,
+        )
+        education_goal = LearnerEducationGoalFactory(learner=assigned_student)
+        _auth(client, counselor)
+
+        response = client.get(
+            reverse('counselor-student-detail', args=[assigned_student.user_id])
+        )
+
+        assert response.status_code == 200
+        data = response.json()['data']
+        progress = data['academic_progress']
+        assert progress['subjects'][0]['continuity_code'] == 'COUN'
+        assert progress['subjects'][0]['rule_code'] == 'one_non_be_insufficient'
+        assert progress['subjects'][0]['explanation']
+        assert progress['subjects'][0]['records_used'][0]['id'] == evidence.id
+        assert progress['advisory_disclaimer'].startswith('Academic progress is advisory')
+        assert data['academic_goals'][0]['id'] == academic_goal.id
+        assert data['academic_goals'][0]['action_plan'] == academic_goal.action_plan
+        assert data['education_goals'][0]['id'] == education_goal.id
+        assert data['education_goals'][0]['institution']['source_url']
+        assert 'private_notes' not in data
+
+    def test_detail_queries_stay_bounded_with_representative_progress_context(
+        self,
+        counselor,
+        assigned_student,
+    ):
+        for index in range(5):
+            enrollment = StudentSubjectFactory(
+                student_profile=assigned_student,
+                subject=SubjectFactory(code=f'CQRY{index}9', grade=9),
+            )
+            evidence = CBCGradeFactory(
+                student_subject=enrollment,
+                term=1,
+                year=2026,
+                level='ME1',
+            )
+            AcademicGoalFactory(
+                learner=assigned_student,
+                current_evidence=evidence,
+                created_by=assigned_student.user,
+            )
+        LearnerEducationGoalFactory(learner=assigned_student)
+        LearnerEducationGoalFactory(
+            learner=assigned_student,
+            kind='alternative',
+            priority=1,
+        )
+        LearnerEducationGoalFactory(
+            learner=assigned_student,
+            kind='alternative',
+            priority=2,
+        )
+        api_client = APIClient()
+        api_client.force_authenticate(counselor)
+
+        with CaptureQueriesContext(connection) as captured:
+            response = api_client.get(
+                reverse(
+                    'counselor-student-detail',
+                    args=[assigned_student.user_id],
+                )
+            )
+
+        assert response.status_code == 200
+        data = response.data['data']
+        assert len(data['academic_progress']['subjects']) == 5
+        assert len(data['academic_goals']) == 5
+        assert len(data['education_goals']) == 3
+        assert len(captured) <= 17
+
     def test_returns_attention_evidence_choices_plan_and_interventions(
         self,
         client,
@@ -334,6 +431,61 @@ class TestCounselorStatsView:
 
 
 class TestCounselorNotesView:
+    def test_list_hides_notes_after_assignment_ends(
+        self,
+        client,
+        counselor,
+        assigned_student,
+    ):
+        CounselorNoteFactory(
+            counselor=counselor,
+            student=assigned_student.user,
+        )
+        CounselorAssignment.objects.filter(
+            counselor=counselor,
+            student_profile=assigned_student,
+        ).update(is_active=False)
+        _auth(client, counselor)
+
+        response = client.get(reverse('counselor-notes'))
+
+        assert response.status_code == 200
+        assert response.json()['data'] == []
+
+    @pytest.mark.parametrize('method', ['patch', 'delete'])
+    def test_note_mutations_are_denied_after_assignment_ends(
+        self,
+        client,
+        counselor,
+        assigned_student,
+        method,
+    ):
+        note = CounselorNoteFactory(
+            counselor=counselor,
+            student=assigned_student.user,
+            body='Transfer-safe note.',
+        )
+        CounselorAssignment.objects.filter(
+            counselor=counselor,
+            student_profile=assigned_student,
+        ).update(is_active=False)
+        _auth(client, counselor)
+        url = reverse('counselor-note-detail', args=[note.id])
+
+        if method == 'patch':
+            response = client.patch(
+                url,
+                {'body': 'Former counsellor edit.'},
+                content_type='application/json',
+            )
+        else:
+            response = client.delete(url)
+
+        assert response.status_code == 404
+        note.refresh_from_db()
+        assert note.body == 'Transfer-safe note.'
+        assert note.deleted_at is None
+
     def test_list_notes(self, client, counselor, assigned_student):
         CounselorNoteFactory(counselor=counselor, student=assigned_student.user, body='Note 1')
         _auth(client, counselor)
