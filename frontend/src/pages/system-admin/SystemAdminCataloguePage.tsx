@@ -12,6 +12,7 @@ import ErrorState from '../../components/common/dashboard/ErrorState'
 import SectionHeader from '../../components/common/dashboard/SectionHeader'
 import Pagination from '../../components/common/management/Pagination'
 import type { PaginationState } from '../../components/common/management/types'
+import { formatDate, humanize } from '../../lib/format'
 import '../../styles/dashboard.css'
 import '../../styles/system-admin.css'
 
@@ -168,9 +169,9 @@ export default function SystemAdminCataloguePage() {
                 <article className="source-metadata__card" key={`framework-${item.id}`}>
                   <strong>{item.code} {item.version}</strong>
                   <span>{item.title}</span>
-                  <span>{item.scope} · effective {item.effective_date}</span>
+                  <span>{humanize(item.scope)} · effective {formatDate(item.effective_date)}</span>
                   <span>{item.level_count} levels · {item.evidence_count} evidence records</span>
-                  <span className="sysadmin-badge">{item.status}</span>
+                  <span className="sysadmin-badge">{humanize(item.status)}</span>
                   <a
                     href={item.source_url}
                     target="_blank"
@@ -225,9 +226,9 @@ export default function SystemAdminCataloguePage() {
               {sourceMetadataQ.data.tertiary_sources.map(item => (
                 <article className="source-metadata__card" key={`${item.record_type}-${item.id}`}>
                   <strong>{item.name}</strong>
-                  <span>{item.record_type} · {item.external_key}</span>
-                  <span>{item.education_framework} · {item.admission_cycle}</span>
-                  <span>Effective {item.effective_date} · {item.verification_status}</span>
+                  <span>{humanize(item.record_type)} · {item.external_key}</span>
+                  <span>{humanize(item.education_framework)} · {humanize(item.admission_cycle)}</span>
+                  <span>Effective {formatDate(item.effective_date)} · {humanize(item.verification_status)}</span>
                   <a
                     href={item.source_url}
                     target="_blank"

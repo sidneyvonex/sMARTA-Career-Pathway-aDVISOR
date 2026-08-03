@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { parentApi } from '../../api/parent'
-import { initials } from '../../lib/format'
+import { formatCounty, initials } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
@@ -99,7 +99,7 @@ export default function ChildDetailPage() {
           <span>Learner-approved summary</span>
           <h1 id="child-detail-title">{profile.first_name} {profile.last_name}</h1>
           <p>
-            Grade {profile.grade} · {profile.county ?? 'County not recorded'} ·{' '}
+            Grade {profile.grade} · {formatCounty(profile.county) || 'County not recorded'} ·{' '}
             {profile.mode === 'school_linked' ? 'School-linked' : 'Self-guided'}
           </p>
         </div>

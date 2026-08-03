@@ -140,6 +140,12 @@ function AppRoutes() {
               title="Page not found"
               description="This page does not exist or is not available for your account."
               secondaryAction={{ label: 'Return to dashboard', to: '/' }}
+              mark={(
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path strokeLinecap="round" d="m20 20-3.2-3.2" />
+                </svg>
+              )}
             />
           )} />
         </Route>
@@ -158,9 +164,10 @@ export default function App() {
           <Toaster
             position="top-right"
             toastOptions={{
-              style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' },
+              style: { fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: '0.875rem' },
+              // Match theme tokens: --color-primary and --color-error.
               success: { iconTheme: { primary: '#1A5C38', secondary: '#fff' } },
-              error: { iconTheme: { primary: '#B91C1C', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#C53030', secondary: '#fff' } },
             }}
           />
         </ErrorBoundary>

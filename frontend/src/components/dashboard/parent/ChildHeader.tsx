@@ -1,5 +1,5 @@
 import type { LinkedChild } from '../../../api/dashboard'
-import { initials } from '../../../lib/format'
+import { formatCounty, initials } from '../../../lib/format'
 
 interface Props {
   child: LinkedChild
@@ -20,7 +20,7 @@ export default function ChildHeader({ child }: Props) {
         <div className="greeting-strip__name">{child.first_name} {child.last_name}</div>
         <div className="greeting-strip__chips">
           <span className="greeting-chip">Grade {child.grade}</span>
-          {child.county && <span className="greeting-chip child-header-card__county">{child.county}</span>}
+          {child.county && <span className="greeting-chip child-header-card__county">{formatCounty(child.county)}</span>}
           <span className={`greeting-chip${child.quiz_status === 'done' ? ' greeting-chip--gold' : ''}`}>
             {child.quiz_status === 'done' ? 'Interest quiz done' : 'Interest quiz still to do'}
           </span>

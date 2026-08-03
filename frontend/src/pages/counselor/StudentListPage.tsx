@@ -8,7 +8,7 @@ import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
 import StatusBadge from '../../components/common/dashboard/StatusBadge'
-import { initials, isNewStudent } from '../../lib/format'
+import { formatCounty, initials, isNewStudent } from '../../lib/format'
 import '../../styles/counselor.css'
 
 export default function StudentListPage() {
@@ -105,7 +105,7 @@ export default function StudentListPage() {
                 <div aria-hidden="true">{initials(student.first_name, student.last_name)}</div>
                 <div>
                   <h2>{student.first_name} {student.last_name}</h2>
-                  <p>Grade {student.grade} · {student.county ?? 'County not set'}</p>
+                  <p>Grade {student.grade} · {formatCounty(student.county) ?? 'County not set'}</p>
                 </div>
                 <StatusBadge tone={student.needs_attention ? 'warning' : 'positive'}>
                   {student.needs_attention ? 'Needs attention' : 'Up to date'}

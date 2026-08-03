@@ -36,20 +36,14 @@ function getPageContext(pathname: string): PageContext {
       parent: { label: 'My progress', to: '/grades' },
     }
   }
+  // Explore, Compare, Plan, Career quiz and Career profile are all top-level
+  // sidebar destinations (siblings), so their breadcrumb is just Workspace › page.
+  // The learner journey between them is conveyed on the dashboard, not here.
   if (pathname === '/explore') return { title: 'Explore combinations' }
-  if (pathname === '/compare') return {
-    title: 'Compare combinations',
-    parent: { label: 'Explore combinations', to: '/explore' },
-  }
-  if (pathname === '/plan') return {
-    title: 'My learner plan',
-    parent: { label: 'Compare combinations', to: '/compare' },
-  }
+  if (pathname === '/compare') return { title: 'Compare combinations' }
+  if (pathname === '/plan') return { title: 'My learner plan' }
   if (pathname === '/access') return { title: 'Parent access' }
-  if (pathname === '/assessment/results') return {
-    title: 'Career profile',
-    parent: { label: 'Career quiz', to: '/assessment' },
-  }
+  if (pathname === '/assessment/results') return { title: 'Career profile' }
   if (pathname === '/assessment') return { title: 'Career quiz' }
   if (pathname === '/profile') return { title: 'My profile' }
   if (/^\/counselor\/students\/[^/]+$/.test(pathname)) return {

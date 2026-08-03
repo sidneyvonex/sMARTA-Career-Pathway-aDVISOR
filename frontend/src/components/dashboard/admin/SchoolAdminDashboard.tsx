@@ -87,7 +87,7 @@ export default function SchoolAdminDashboard() {
         <div className="db-metrics-grid school-operations__overview">
           <MetricCard label="Learners" value={stats?.total_students ?? 0} detail="Approved learners" to="/admin/students" tone="positive" />
           <MetricCard label="Pending school links" value={stats?.pending_memberships ?? 0} detail="Awaiting a decision" to="/admin/students" tone="warning" />
-          <MetricCard label="Unassigned" value={stats?.unassigned ?? 0} detail="Approved learners" to="/admin/students" tone="attention" />
+          <MetricCard label="Unassigned" value={stats?.unassigned ?? 0} detail="Learners without a counsellor" to="/admin/students" tone="attention" />
           <MetricCard label="Counsellors" value={stats?.total_counselors ?? 0} detail="School team" to="/admin/counselors" tone="info" />
         </div>
       </section>

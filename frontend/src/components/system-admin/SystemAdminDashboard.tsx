@@ -7,6 +7,7 @@ import EmptyState from '../common/dashboard/EmptyState'
 import ErrorState from '../common/dashboard/ErrorState'
 import MetricCard from '../common/dashboard/MetricCard'
 import SectionHeader from '../common/dashboard/SectionHeader'
+import { formatDate } from '../../lib/format'
 import '../../styles/dashboard.css'
 import '../../styles/system-admin.css'
 
@@ -52,7 +53,7 @@ function formatTime(iso: string): string {
   if (minutes < 60) return `${Math.max(minutes, 0)}m ago`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
-  return date.toLocaleDateString()
+  return formatDate(iso)
 }
 
 export default function SystemAdminDashboard() {
@@ -153,7 +154,7 @@ export default function SystemAdminDashboard() {
             <div className="pilot-framework">
               <strong>{stats.framework.code}</strong>
               <h3>{stats.framework.title}</h3>
-              <p>Effective {new Date(stats.framework.effective_date).toLocaleDateString()}</p>
+              <p>Effective {formatDate(stats.framework.effective_date)}</p>
               <a href={stats.framework.source_url} target="_blank" rel="noreferrer">
                 Open official source
               </a>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Avatar from '../../../common/Avatar'
+import { formatCounty } from '../../../../lib/format'
 
 interface Props {
   firstName: string
@@ -88,7 +89,7 @@ export default function DashboardHero({
             </svg>
           </Link>
           <span className="lv-hero__meta">
-            {[gradeLabel, county].filter(Boolean).join(' · ')}
+            {[gradeLabel, formatCounty(county)].filter(Boolean).join(' · ')}
           </span>
         </div>
       </div>

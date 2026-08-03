@@ -14,6 +14,7 @@ import StatusBadge from '../../components/common/dashboard/StatusBadge'
 import ResponsiveDataList from '../../components/common/dashboard/ResponsiveDataList'
 import { GRADE_LEVEL_LABELS } from '../../api/students'
 import { evidenceOrigin, evidenceVerification } from '../../lib/academicEvidence'
+import { formatCounty } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/counselor.css'
 
@@ -202,7 +203,7 @@ export default function StudentDetailPage() {
           disabled={downloadingId !== null}
           style={{ minHeight: 'var(--min-touch-target)' }}
         >
-          {downloadingId !== null ? 'Generating…' : 'Download Report'}
+          {downloadingId !== null ? 'Generating…' : 'Download report'}
         </button>
       </div>
 
@@ -516,7 +517,7 @@ export default function StudentDetailPage() {
               </div>
               <div className="quick-info-card__item">
                 <dt>County</dt>
-                <dd>{student.county ?? 'Not set'}</dd>
+                <dd>{formatCounty(student.county) || 'Not set'}</dd>
               </div>
               <div className="quick-info-card__item">
                 <dt>School</dt>

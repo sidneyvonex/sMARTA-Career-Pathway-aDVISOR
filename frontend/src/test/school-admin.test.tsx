@@ -181,7 +181,10 @@ describe('CounselorManagementPage', () => {
     expect(await screen.findByText('Alice Wanjiku')).toBeInTheDocument()
     expect(screen.getByText('Bob Ochieng')).toBeInTheDocument()
     const email = screen.getByText('alice@school.co.ke')
-    expect(getComputedStyle(email).overflowWrap).toBe('anywhere')
+    // Long emails truncate on one line (with the full value in a title tooltip)
+    // rather than breaking mid-domain.
+    expect(getComputedStyle(email).textOverflow).toBe('ellipsis')
+    expect(email).toHaveAttribute('title', 'alice@school.co.ke')
     expect(screen.getByRole('button', { name: 'View workload for Alice Wanjiku' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'More actions for Alice Wanjiku' })).toBeInTheDocument()
   })

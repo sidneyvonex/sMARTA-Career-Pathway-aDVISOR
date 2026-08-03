@@ -4,6 +4,7 @@ import { studentsApi, StudentProfile } from '../api/students'
 import ProfileForm from '../components/students/ProfileForm'
 import PhotoUpload from '../components/students/PhotoUpload'
 import Avatar from '../components/common/Avatar'
+import { formatCounty } from '../lib/format'
 import '../styles/student-pages.css'
 
 export default function StudentProfilePage() {
@@ -43,7 +44,7 @@ export default function StudentProfilePage() {
           <p>{current.email}</p>
           <div className="profile-hero__chips">
             <span>Grade {current.grade}</span>
-            <span>{current.county || 'County not set'}</span>
+            <span>{formatCounty(current.county) || 'County not set'}</span>
             <span>{learningModeLabel}</span>
           </div>
         </div>
@@ -72,7 +73,7 @@ export default function StudentProfilePage() {
             </div>
             <div>
               <dt>County</dt>
-              <dd>{current.county || 'Not set'}</dd>
+              <dd>{formatCounty(current.county) || 'Not set'}</dd>
             </div>
             <div>
               <dt>Learning mode</dt>
