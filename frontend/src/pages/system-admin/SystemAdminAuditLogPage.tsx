@@ -132,7 +132,7 @@ export default function SystemAdminAuditLogPage() {
       render: entry => (
         <div className="admin-person">
           <strong>{entry.actor_name ?? 'System event'}</strong>
-          <span>{entry.actor_email ?? 'No account email'}</span>
+          <span title={entry.actor_email ?? undefined}>{entry.actor_email ?? 'No account email'}</span>
         </div>
       ),
     },

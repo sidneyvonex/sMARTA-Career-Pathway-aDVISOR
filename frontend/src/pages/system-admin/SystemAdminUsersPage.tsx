@@ -112,7 +112,7 @@ export default function SystemAdminUsersPage() {
       render: user => (
         <div className="admin-person">
           <strong>{userName(user)}</strong>
-          <span>{user.email}</span>
+          <span title={user.email}>{user.email}</span>
         </div>
       ),
     },

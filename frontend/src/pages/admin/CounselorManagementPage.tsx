@@ -71,7 +71,7 @@ export default function CounselorManagementPage() {
       render: counsellor => (
         <div className="admin-person">
           <strong>{getCounsellorName(counsellor)}</strong>
-          <span>{counsellor.email}</span>
+          <span title={counsellor.email}>{counsellor.email}</span>
         </div>
       ),
     },

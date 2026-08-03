@@ -348,7 +348,13 @@
 }
 
 .admin-person span {
-  overflow-wrap: anywhere;
+  /* Keep long emails on one line with an ellipsis (full value on hover via
+     title) instead of breaking mid-domain like "parent@demo.s martashauri.test". */
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .admin-evidence {
