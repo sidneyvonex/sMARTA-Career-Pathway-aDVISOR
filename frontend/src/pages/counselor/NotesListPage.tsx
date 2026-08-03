@@ -6,6 +6,7 @@ import { counselorApi } from '../../api/counselor'
 import type { CounselorNote } from '../../api/counselor'
 import NoteCard from '../../components/counselor/NoteCard'
 import NoteForm from '../../components/counselor/NoteForm'
+import EmptyState from '../../components/common/dashboard/EmptyState'
 import { initials } from '../../lib/format'
 import '../../styles/counselor.css'
 
@@ -116,11 +117,21 @@ export default function NotesListPage() {
       )}
 
       {!isLoading && filtered.length === 0 && (
-        <div className="notes-list__empty">
-          {query
-            ? `No notes matching "${search}".`
-            : 'No notes yet. Visit a student’s profile to add one.'}
-        </div>
+        query ? (
+          <div className="notes-list__empty">{`No notes matching "${search}".`}</div>
+        ) : (
+          <EmptyState
+            icon={(
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2Z" />
+                <path strokeLinecap="round" d="M9 8h6M9 11h4" />
+              </svg>
+            )}
+            title="No notes yet"
+            description="Notes you write from a learner’s profile show up here. Open a student to record your first note."
+            action={{ label: 'Go to my students', to: '/counselor/students' }}
+          />
+        )
       )}
 
       {!isLoading && filtered.length > 0 && (
