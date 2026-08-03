@@ -202,7 +202,7 @@ export default function StudentDetailPage() {
           disabled={downloadingId !== null}
           style={{ minHeight: 'var(--min-touch-target)' }}
         >
-          {downloadingId !== null ? 'Generating…' : 'Download Report'}
+          {downloadingId !== null ? 'Generating…' : 'Download report'}
         </button>
       </div>
 

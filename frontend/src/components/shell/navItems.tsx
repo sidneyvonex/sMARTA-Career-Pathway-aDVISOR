@@ -47,7 +47,7 @@ export function getBaseNavItems(role: User['role']): NavItem[] {
   }
   if (role === 'counselor') {
     return [
-      { to: '/', label: 'Home', icon: NAV_ICONS.grid },
+      { to: '/', label: 'Dashboard', short: 'Home', icon: NAV_ICONS.grid },
       { to: '/counselor/students', label: 'My Students', short: 'Students', icon: NAV_ICONS.users },
       { to: '/counselor/notes', label: 'Notes', icon: NAV_ICONS.note },
     ]
@@ -75,7 +75,7 @@ export function getBaseNavItems(role: User['role']): NavItem[] {
       { to: '/', label: 'Dashboard', short: 'Home', icon: NAV_ICONS.grid },
     ]
   }
-  return [{ to: '/', label: 'Home', icon: NAV_ICONS.grid }]
+  return [{ to: '/', label: 'Dashboard', short: 'Home', icon: NAV_ICONS.grid }]
 }
 
 const MOBILE_PRIMARY_PATHS: Partial<Record<User['role'], string[]>> = {
