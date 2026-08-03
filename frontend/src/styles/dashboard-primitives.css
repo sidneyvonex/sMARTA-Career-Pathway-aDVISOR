@@ -136,6 +136,21 @@
   background: var(--color-overlay-light);
 }
 
+/* The system (dark) hero is near-black, so the default translucent secondary
+   button reads as a low-contrast grey. Give it a clearer light border and keep
+   its text light — including on hover, where the generic rule below would
+   otherwise flip the text to the dark role colour. */
+.db-hero--system .db-hero__action--secondary {
+  color: var(--color-text-on-primary);
+  border-color: color-mix(in srgb, var(--color-text-on-primary) 55%, transparent);
+  background: color-mix(in srgb, var(--color-text-on-primary) 14%, transparent);
+}
+
+.db-hero--system .db-hero__action--secondary:hover {
+  color: var(--color-text-on-primary);
+  background: color-mix(in srgb, var(--color-text-on-primary) 24%, transparent);
+}
+
 .db-hero__action:hover {
   color: inherit;
   transform: translateY(-2px);
