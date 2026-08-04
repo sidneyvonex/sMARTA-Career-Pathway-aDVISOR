@@ -95,6 +95,12 @@ export default function LettersPage() {
           {selectedId === null && (
             <p className="letters-detail-hint">Select an email to read it.</p>
           )}
+          {selectedId !== null && detailQuery.isLoading && (
+            <p className="letters-detail-hint">Loading…</p>
+          )}
+          {selectedId !== null && detailQuery.isError && (
+            <p className="letters-detail-hint letters-detail-error">Could not load this email.</p>
+          )}
           {detailQuery.data && (
             <>
               <h2>{detailQuery.data.subject}</h2>

@@ -110,9 +110,11 @@ def test_clear_inbox_deletes_all_letters(api_client):
 
 @override_settings(DEBUG=False)
 def test_endpoints_return_404_in_production_mode(api_client):
-    CapturedEmailFactory()
+    letter = CapturedEmailFactory()
 
     assert api_client.get('/api/v1/dev/letters/').status_code == 404
+    assert api_client.get(f'/api/v1/dev/letters/{letter.pk}/').status_code == 404
+    assert api_client.delete('/api/v1/dev/letters/').status_code == 404
 
 
 @override_settings(EMAIL_BACKEND='devmail.backend.DevMailBackend')
