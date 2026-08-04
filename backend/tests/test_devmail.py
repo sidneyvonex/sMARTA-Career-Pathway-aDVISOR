@@ -3,8 +3,9 @@ from django.core import mail
 from django.test import override_settings
 from rest_framework.test import APIClient
 
+from accounts.emails import send_verification_email
 from devmail.models import CapturedEmail
-from tests.factories import CapturedEmailFactory
+from tests.factories import CapturedEmailFactory, UserFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -112,3 +113,16 @@ def test_endpoints_return_404_in_production_mode(api_client):
     CapturedEmailFactory()
 
     assert api_client.get('/api/v1/dev/letters/').status_code == 404
+
+
+@override_settings(EMAIL_BACKEND='devmail.backend.DevMailBackend')
+def test_verification_email_flows_into_the_mailbox():
+    user = UserFactory(email='new.grad@test.com', first_name='Njeri')
+
+    # Eager Celery in test settings runs this synchronously.
+    send_verification_email(user.id, user.email, user.first_name)
+
+    captured = CapturedEmail.objects.get()
+    assert captured.to_email == 'new.grad@test.com'
+    assert captured.subject == 'Verify your CBC Guidance account'
+    assert '/verify-email?token=' in captured.body
