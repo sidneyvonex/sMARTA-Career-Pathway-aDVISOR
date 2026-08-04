@@ -2047,4 +2047,32 @@ export const handlers = [
       },
     })
   }),
+
+  http.get('/api/v1/dev/letters/', () =>
+    HttpResponse.json({
+      data: [
+        { id: 2, to_email: 'new@test.com', subject: 'Verify your CBC Guidance account', created_at: '2026-08-03T10:05:00Z' },
+        { id: 1, to_email: 'old@test.com', subject: 'Reset your CBC Guidance password', created_at: '2026-08-03T10:00:00Z' },
+      ],
+      error: null,
+      message: '',
+    }),
+  ),
+  http.get('/api/v1/dev/letters/:id/', ({ params }) =>
+    HttpResponse.json({
+      data: {
+        id: Number(params.id),
+        to_email: 'new@test.com',
+        from_email: 'noreply@cbcguidance.co.ke',
+        subject: 'Verify your CBC Guidance account',
+        body: 'Hi Njeri,\n\nPlease verify your email address by clicking the link below:\n\nhttp://localhost:5173/verify-email?token=abc123\n\nThis link expires in 24 hours.',
+        created_at: '2026-08-03T10:05:00Z',
+      },
+      error: null,
+      message: '',
+    }),
+  ),
+  http.delete('/api/v1/dev/letters/', () =>
+    HttpResponse.json({ data: { deleted: 2 }, error: null, message: 'Inbox cleared.' }),
+  ),
 ]
