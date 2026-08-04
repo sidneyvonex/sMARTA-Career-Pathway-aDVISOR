@@ -11,6 +11,7 @@ interface Props {
   status?: ReactNode
   meta?: ReactNode
   tone?: SurfaceTone
+  disabled?: boolean
 }
 
 export default function ActionCard({
@@ -22,6 +23,7 @@ export default function ActionCard({
   status,
   meta,
   tone = 'neutral',
+  disabled = false,
 }: Props) {
   const className = `db-action-card db-action-card--${tone}`
   const content = (
@@ -43,5 +45,5 @@ export default function ActionCard({
     return <Link to={to} className={className}>{content}</Link>
   }
 
-  return <button type="button" className={className} onClick={onClick}>{content}</button>
+  return <button type="button" className={className} onClick={onClick} disabled={disabled}>{content}</button>
 }

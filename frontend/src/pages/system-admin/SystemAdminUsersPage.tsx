@@ -49,7 +49,7 @@ function userName(user: UserItem) {
 
 export default function SystemAdminUsersPage() {
   const queryClient = useQueryClient()
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   const [role, setRole] = useState('')
   const [county, setCounty] = useState('')
   const [school, setSchool] = useState('')
@@ -225,7 +225,7 @@ export default function SystemAdminUsersPage() {
               id: 'download',
               label: 'Download PDF',
               disabled: downloadingId === user.id,
-              onSelect: () => downloadReport(user.id),
+              onSelect: () => downloadStudentReport(user.id),
             }] : []),
             {
               id: 'status',

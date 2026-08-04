@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { systemAdminApi } from '../../api/systemAdmin'
+import { reportsApi } from '../../api/reports'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
+import ActionCard from '../common/dashboard/ActionCard'
 import ActivityList from '../common/dashboard/ActivityList'
 import DashboardHero from '../common/dashboard/DashboardHero'
 import EmptyState from '../common/dashboard/EmptyState'
@@ -57,6 +60,7 @@ function formatTime(iso: string): string {
 }
 
 export default function SystemAdminDashboard() {
+  const { downloadReport, downloadingKey } = useDownloadReport()
   const dashboardQ = useQuery({
     queryKey: ['system-admin', 'dashboard'],
     queryFn: () => systemAdminApi.getDashboard().then(response => response.data.data),
@@ -189,6 +193,39 @@ export default function SystemAdminDashboard() {
           />
         </section>
       </div>
+
+      <section aria-labelledby="platform-reports-title">
+        <SectionHeader
+          eyebrow="Exports"
+          title="Platform reports"
+          titleId="platform-reports-title"
+          description="Download rollout metrics or the registered schools directory."
+        />
+        <div className="report-download-controls report-download-controls--two">
+          <ActionCard
+            title={downloadingKey === 'platform-overview' ? 'Generating overview…' : 'Download platform overview'}
+            description="User, verification, assignment and completion metrics."
+            onClick={() => downloadReport(
+              reportsApi.downloadPlatformOverviewPdf,
+              'smarta-shauri-platform-overview.pdf',
+              'platform-overview',
+            )}
+            disabled={downloadingKey !== null}
+            tone="info"
+          />
+          <ActionCard
+            title={downloadingKey === 'schools-directory' ? 'Generating directory…' : 'Download schools directory'}
+            description="School status and learner/counsellor totals."
+            onClick={() => downloadReport(
+              reportsApi.downloadSchoolsDirectoryPdf,
+              'smarta-shauri-schools-directory.pdf',
+              'schools-directory',
+            )}
+            disabled={downloadingKey !== null}
+            tone="positive"
+          />
+        </div>
+      </section>
     </div>
   )
 }

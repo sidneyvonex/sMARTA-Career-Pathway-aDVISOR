@@ -27,7 +27,7 @@ const PLAN_STATUS = {
 
 export default function ParentDashboard() {
   const { user } = useAuthStore()
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null)
 
   const childrenQ = useQuery({
@@ -173,7 +173,7 @@ export default function ParentDashboard() {
                   <button
                     type="button"
                     disabled={downloadingId === child.id}
-                    onClick={() => downloadReport(child.id)}
+                    onClick={() => downloadStudentReport(child.id)}
                   >
                     {downloadingId === child.id ? 'Preparing report...' : 'Download report'}
                   </button>

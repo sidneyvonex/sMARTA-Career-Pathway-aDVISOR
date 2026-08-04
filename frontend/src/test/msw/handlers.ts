@@ -2048,6 +2048,17 @@ export const handlers = [
     })
   }),
 
+  http.get(/\/api\/v1\/reports\/(school|counselor|system)\/(overview|roster|schools)\/pdf\//, ({ request }) => {
+    const reportType = new URL(request.url).pathname.split('/').slice(-3, -1).join('-')
+    return new HttpResponse('%PDF-1.4 mock role report content', {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="smarta-shauri-${reportType}.pdf"`,
+      },
+    })
+  }),
+
   http.get('/api/v1/dev/letters/', () =>
     HttpResponse.json({
       data: [

@@ -31,7 +31,7 @@ export default function StudentDetailPage() {
   const studentId = Number(id)
   const queryClient = useQueryClient()
 
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   const [editingNote, setEditingNote] = useState<CounselorNote | null>(null)
   const [category, setCategory] = useState<'assessment' | 'academic_evidence' | 'combination' | 'plan' | 'follow_up' | 'other'>('plan')
   const [actionAgreed, setActionAgreed] = useState('')
@@ -199,7 +199,7 @@ export default function StudentDetailPage() {
         <button
           type="button"
           className="btn-primary"
-          onClick={() => downloadReport(studentId)}
+          onClick={() => downloadStudentReport(studentId)}
           disabled={downloadingId !== null}
           style={{ minHeight: 'var(--min-touch-target)' }}
         >

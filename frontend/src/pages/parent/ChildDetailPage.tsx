@@ -31,7 +31,7 @@ const PLAN_LABELS = {
 export default function ChildDetailPage() {
   const { id } = useParams<{ id: string }>()
   const studentId = Number(id)
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   const detailQ = useQuery({
     queryKey: ['parent-child-detail', studentId],
     queryFn: () => parentApi.getChildDetail(studentId).then((response) => response.data.data),
@@ -105,7 +105,7 @@ export default function ChildDetailPage() {
         </div>
         <button
           type="button"
-          onClick={() => downloadReport(studentId)}
+          onClick={() => downloadStudentReport(studentId)}
           disabled={downloadingId === studentId}
         >
           {downloadingId === studentId ? 'Preparing report...' : 'Download report'}
@@ -431,7 +431,7 @@ export default function ChildDetailPage() {
         </div>
         <button
           type="button"
-          onClick={() => downloadReport(studentId)}
+          onClick={() => downloadStudentReport(studentId)}
           disabled={downloadingId === studentId}
         >
           {downloadingId === studentId ? 'Preparing report...' : 'Download report'}

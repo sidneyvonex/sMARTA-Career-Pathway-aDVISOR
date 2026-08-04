@@ -7,10 +7,10 @@ import { Toaster } from 'react-hot-toast'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 
 function TestDownloadButton({ studentId }: { studentId: number }) {
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   return (
     <button
-      onClick={() => downloadReport(studentId)}
+      onClick={() => downloadStudentReport(studentId)}
       disabled={downloadingId !== null}
     >
       {downloadingId !== null ? 'Generating…' : 'Download Report'}

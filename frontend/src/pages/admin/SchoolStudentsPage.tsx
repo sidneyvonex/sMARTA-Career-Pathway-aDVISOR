@@ -23,7 +23,7 @@ export default function SchoolStudentsPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([])
   const [bulkCounselorId, setBulkCounselorId] = useState('')
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
 
   const studentsQ = useQuery({
     queryKey: ['school-admin', 'students'],
@@ -302,7 +302,7 @@ export default function SchoolStudentsPage() {
         <button
           type="button"
           className="btn-ghost"
-          onClick={() => downloadReport(student.id)}
+          onClick={() => downloadStudentReport(student.id)}
           disabled={downloadingId === student.id || membershipStatus(student) !== 'active'}
           aria-label={`Download report for ${student.first_name} ${student.last_name}`}
         >
