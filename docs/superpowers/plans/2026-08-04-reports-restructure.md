@@ -31,13 +31,13 @@
 - Remove `backend/reports/pdf_builder.py` after imports are migrated
 - Modify `backend/tests/test_reports.py`
 
-- [ ] Add regression tests for the public builder import, `%PDF` output, optional logo, empty sections, and escaped dynamic text.
-- [ ] Move brand constants/styles into `theme.py`.
-- [ ] Implement shared component builders.
-- [ ] Move `build_student_report` into `student.py` and replace repeated table/heading/empty-state code where behavior remains equivalent.
-- [ ] Export `build_student_report` from `reports.pdf` and update imports.
-- [ ] Run `pytest tests/test_reports.py -v`.
-- [ ] Commit as `refactor(reports): extract shared PDF package`.
+- [x] Add regression tests for the public builder import, `%PDF` output, optional logo, empty sections, and escaped dynamic text.
+- [x] Move brand constants/styles into `theme.py`.
+- [x] Implement shared component builders.
+- [x] Move `build_student_report` into `student.py` and replace repeated table/heading/empty-state code where behavior remains equivalent.
+- [x] Export `build_student_report` from `reports.pdf` and update imports.
+- [x] Run `pytest tests/test_reports.py -v` (42 passed).
+- [x] Commit as `refactor(reports): extract shared PDF package`.
 
 ## Task 2: School reporting services and PDFs
 

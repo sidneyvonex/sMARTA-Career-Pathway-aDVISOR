@@ -21,7 +21,7 @@ from students.role_support import (
 )
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
-from .pdf_builder import build_student_report
+from .pdf import build_student_report
 
 GRADE_LABELS = dict(GRADE_LEVEL_CHOICES)
 

@@ -6,7 +6,8 @@ from pypdf import PdfReader
 from rest_framework.test import APIClient
 from django.utils import timezone
 from guidance.models import LearnerCombinationChoice, LearnerPlan, PlanMilestone
-from reports.pdf_builder import build_student_report
+from reports.pdf import build_student_report
+from reports.pdf_builder import build_student_report as legacy_build_student_report
 from system_admin.models import AuditLog
 from tests.factories import (
     VerifiedUserFactory, StudentProfileFactory, CounselorFactory,
@@ -194,6 +195,9 @@ class TestPDFBuilder:
         result = build_student_report(data)
         assert isinstance(result, bytes)
         assert result[:5] == b'%PDF-'
+
+    def test_legacy_builder_import_remains_compatible(self):
+        assert legacy_build_student_report is build_student_report
 
     def test_pdf_contains_student_name(self):
         data = self._make_data()
