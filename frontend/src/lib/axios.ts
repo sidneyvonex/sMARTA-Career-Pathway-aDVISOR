@@ -12,6 +12,11 @@ const api = axios.create({
 
 // Attach CSRF token from cookie on every mutating request
 api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    // Let the browser add the multipart boundary. Keeping the instance-wide
+    // JSON content type here makes Django treat file uploads as empty JSON.
+    config.headers.delete('Content-Type')
+  }
   if (['post', 'put', 'patch', 'delete'].includes(config.method ?? '')) {
     const csrfToken = document.cookie
       .split('; ')
