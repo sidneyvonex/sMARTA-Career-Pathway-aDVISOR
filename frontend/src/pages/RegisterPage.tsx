@@ -34,7 +34,7 @@ export default function RegisterPage() {
         role: 'student',
         ...(form.school_code ? { school_code: form.school_code } : {}),
       })
-      navigate('/verify-email')
+      navigate('/verify-email', { state: { email: form.email } })
     } catch (err: any) {
       const msg = err.response?.data?.message
       if (typeof msg === 'string') {

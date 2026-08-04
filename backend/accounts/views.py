@@ -87,7 +87,7 @@ def _clear_auth_cookies(response):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key='ip', rate='5/15m', method='POST', block=True))
+    @method_decorator(ratelimit(key='ip', rate='5/2m', method='POST', block=True))
     def post(self, request):
         email = request.data.get('email', '').lower().strip()
         password = request.data.get('password', '')
@@ -178,16 +178,28 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key='user', rate='3/h', method='POST', block=True))
+    @method_decorator(ratelimit(key='ip', rate='3/h', method='POST', block=True))
     def post(self, request):
-        if request.user.is_email_verified:
-            return _error('Email is already verified.')
-        send_verification_email.delay(
-            request.user.id, request.user.email, request.user.first_name
+        User = get_user_model()
+        user = request.user if request.user.is_authenticated else None
+
+        if user is None:
+            email = request.data.get('email', '').lower().strip()
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                user = None
+
+        if user is not None and not user.is_email_verified:
+            send_verification_email.delay(user.id, user.email, user.first_name)
+
+        # Keep the response generic so this public endpoint cannot be used to
+        # discover whether an email address has an account.
+        return _success(
+            message='If an unverified account exists, a verification email has been sent.'
         )
-        return _success(message='Verification email sent.')
 
 
 class PasswordResetView(APIView):

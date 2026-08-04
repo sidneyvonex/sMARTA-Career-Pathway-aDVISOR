@@ -27,7 +27,8 @@ export const authApi = {
   logout: () => api.post('/auth/logout/'),
   me: () => api.get<{ data: { user: User } }>('/auth/me/'),
   verifyEmail: (token: string) => api.get(`/auth/verify-email/?token=${token}`),
-  resendVerification: () => api.post('/auth/resend-verification/'),
+  resendVerification: (email?: string) =>
+    api.post('/auth/resend-verification/', email ? { email } : {}),
   inviteParent: (parentEmail: string) =>
     api.post('/auth/invite-parent/', { parent_email: parentEmail }),
   requestPasswordReset: (email: string) => api.post('/auth/password-reset/', { email }),
