@@ -159,6 +159,7 @@ describe('authenticated shell layout', () => {
     ['school_admin', ['Dashboard', 'Learners', 'Offerings', 'Team', 'More']],
     ['system_admin', ['Home', 'Schools', 'Catalogue', 'Users', 'More']],
   ] as const)('renders the approved %s phone destinations', (role, labels) => {
+    vi.stubEnv('VITE_ACADEMIC_PROGRESS_V1', 'false')
     useAuthStore.setState({ user: roleUsers[role] })
     renderShell()
 
