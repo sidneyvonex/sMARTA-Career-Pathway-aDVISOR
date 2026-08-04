@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -54,7 +54,7 @@ const queryClient = new QueryClient({
 })
 
 function RootRoute() {
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { isAuthenticated, isEmailVerified, isLoading } = useAuthStore()
 
   if (isLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
@@ -62,6 +62,10 @@ function RootRoute() {
 
   if (!isAuthenticated) {
     return <LandingPage />
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />
   }
 
   return (

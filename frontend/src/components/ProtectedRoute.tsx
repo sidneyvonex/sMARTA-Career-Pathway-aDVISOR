@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function ProtectedRoute({ roles }: Props) {
-  const { user, isAuthenticated, isLoading } = useAuthStore()
+  const { user, isAuthenticated, isEmailVerified, isLoading } = useAuthStore()
 
   if (isLoading) {
     return <div role="status" aria-live="polite" style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
@@ -15,6 +15,10 @@ export default function ProtectedRoute({ roles }: Props) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
+  }
+
+  if (!isEmailVerified) {
+    return <Navigate to="/verify-email" replace />
   }
 
   if (roles && user && !roles.includes(user.role)) {
