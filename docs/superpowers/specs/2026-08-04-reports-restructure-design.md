@@ -72,7 +72,7 @@ Scope is always derived from the authenticated user. No school or counsellor ide
 ## 6. Request and response behavior
 
 - A school admin without a school receives the existing 404 message: `No school assigned to your account.`
-- `grade` is optional and validated against `GRADE_LEVEL_CHOICES`. Invalid input returns `_error('Invalid grade filter.', 400)`.
+- `grade` is optional and validated against `StudentProfile.GRADE_CHOICES`. Invalid input returns `_error('Invalid grade filter.', 400)`.
 - An empty cohort generates a valid PDF and displays `No learners match this filter.`
 - Standard permission failures remain DRF 403 responses.
 - Filenames follow `smarta-shauri-<report-type>-<scope>-<date>.pdf` and are sanitized for header safety.

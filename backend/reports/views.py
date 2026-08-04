@@ -9,21 +9,61 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from accounts.models import User, StudentProfile, StudentSchoolMembership
-from accounts.permissions import IsEmailVerified
+from accounts.permissions import IsCounselor, IsEmailVerified, IsSchoolAdmin, IsSystemAdmin
 from accounts.response import _error
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerCombinationChoice, LearnerPlan
 from parents.models import ParentStudentLink
-from students.models import GRADE_LEVEL_CHOICES
 from students.role_support import (
     academic_support_context,
     academic_support_enrolments,
 )
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
-from .pdf import build_student_report
+from school_admin.reporting import get_school_roster, get_school_stats
+from counselors.reporting import get_caseload_roster, get_caseload_stats
+from system_admin.reporting import get_platform_stats, get_schools_directory
+from .pdf import (
+    build_cohort_overview_report,
+    build_cohort_roster_report,
+    build_platform_overview_report,
+    build_schools_directory_report,
+    build_student_report,
+)
 
-GRADE_LABELS = dict(GRADE_LEVEL_CHOICES)
+GRADE_LABELS = dict(StudentProfile.GRADE_CHOICES)
+
+
+def _logo_path():
+    value = getattr(settings, 'REPORT_LOGO_PATH', None)
+    return str(value) if value else None
+
+
+def _grade_filter(request):
+    raw_grade = request.query_params.get('grade')
+    if raw_grade in (None, ''):
+        return None, None
+    try:
+        grade = int(raw_grade)
+    except (TypeError, ValueError):
+        return None, _error('Invalid grade filter.', 400)
+    if grade not in GRADE_LABELS:
+        return None, _error('Invalid grade filter.', 400)
+    return grade, None
+
+
+def _pdf_response(pdf_bytes, filename):
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _safe_scope(value):
+    return re.sub(r'[^A-Za-z0-9-]+', '-', str(value)).strip('-').lower() or 'report'
+
+
+def _percent(value, total):
+    return round((value / total) * 100) if total else 0
 
 
 class StudentReportView(APIView):
@@ -368,3 +408,187 @@ class StudentReportView(APIView):
                 for milestone in plan.milestones.all()
             ],
         }
+
+
+class SchoolOverviewReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def get(self, request):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', 404)
+        stats = get_school_stats(school)
+        total = stats['total_students']
+        pdf_bytes = build_cohort_overview_report({
+            'title': 'School Overview',
+            'subtitle': school.name,
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'stats': [
+                {'label': 'Active learners', 'value': total},
+                {'label': 'Assessed', 'value': f"{_percent(stats['assessed'], total)}%", 'sublabel': f"{stats['assessed']} of {total}"},
+                {'label': 'Evidence complete', 'value': f"{_percent(stats['evidence_complete'], total)}%", 'sublabel': f"{stats['evidence_complete']} of {total}"},
+                {'label': 'Choices saved', 'value': stats['choices_saved']},
+                {'label': 'Plans reviewed', 'value': stats['reviews_completed']},
+                {'label': 'Unassigned', 'value': stats['unassigned']},
+                {'label': 'Pending memberships', 'value': stats['pending_memberships']},
+            ],
+            'counselor_workload': stats['counselor_workload'],
+        })
+        filename = f"smarta-shauri-school-overview-{_safe_scope(school.name)}-{date.today().isoformat()}.pdf"
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=school.id,
+            details={'report_type': 'school_overview', 'requester_role': request.user.role},
+            request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)
+
+
+class SchoolRosterReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def get(self, request):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', 404)
+        grade, error = _grade_filter(request)
+        if error:
+            return error
+        rows = get_school_roster(school, grade)
+        grade_label = f'Grade {grade}' if grade else 'All grades'
+        pdf_bytes = build_cohort_roster_report({
+            'title': 'School Learner Roster',
+            'subtitle': f'{school.name} · {grade_label}',
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'rows': rows,
+            'include_counselor': True,
+        })
+        filename = f"smarta-shauri-school-roster-{_safe_scope(school.name)}-{date.today().isoformat()}.pdf"
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=school.id,
+            details={
+                'report_type': 'school_roster', 'grade_filter': grade,
+                'requester_role': request.user.role,
+            }, request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)
+
+
+class CounselorOverviewReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
+
+    def get(self, request):
+        stats = get_caseload_stats(request.user)
+        total = stats['total_students']
+        name = f'{request.user.first_name} {request.user.last_name}'.strip()
+        pdf_bytes = build_cohort_overview_report({
+            'title': 'Caseload Overview',
+            'subtitle': name or request.user.email,
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'stats': [
+                {'label': 'Active learners', 'value': total},
+                {'label': 'Assessed', 'value': f"{_percent(stats['assessments_done'], total)}%", 'sublabel': f"{stats['assessments_done']} of {total}"},
+                {'label': 'Evidence complete', 'value': f"{_percent(stats['evidence_complete'], total)}%", 'sublabel': f"{stats['evidence_complete']} of {total}"},
+                {'label': 'Choices saved', 'value': stats['choices_saved']},
+                {'label': 'Plans reviewed', 'value': stats['journeys_reviewed']},
+                {'label': 'Need attention', 'value': stats['students_needing_attention']},
+                {'label': 'Follow-ups due', 'value': stats['follow_ups_due']},
+            ],
+        })
+        filename = f"smarta-shauri-caseload-overview-{_safe_scope(name)}-{date.today().isoformat()}.pdf"
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=request.user.id,
+            details={'report_type': 'counselor_overview', 'requester_role': request.user.role},
+            request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)
+
+
+class CounselorRosterReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
+
+    def get(self, request):
+        grade, error = _grade_filter(request)
+        if error:
+            return error
+        rows = get_caseload_roster(request.user, grade)
+        grade_label = f'Grade {grade}' if grade else 'All grades'
+        pdf_bytes = build_cohort_roster_report({
+            'title': 'Caseload Roster',
+            'subtitle': grade_label,
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'rows': rows,
+            'include_counselor': False,
+        })
+        filename = f"smarta-shauri-caseload-roster-{date.today().isoformat()}.pdf"
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=request.user.id,
+            details={
+                'report_type': 'counselor_roster', 'grade_filter': grade,
+                'requester_role': request.user.role,
+            }, request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)
+
+
+class PlatformOverviewReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSystemAdmin]
+
+    def get(self, request):
+        stats = get_platform_stats()
+        registered = stats['registered_learners']
+        coverage = stats['assignment_coverage']
+        roles = stats['users_by_role']
+        counties = sorted(set(stats['schools_by_county']) | set(stats['learners_by_county']))
+        pdf_bytes = build_platform_overview_report({
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'stats': [
+                {'label': 'Learners', 'value': registered},
+                {'label': 'Counsellors', 'value': roles.get('counselor', 0)},
+                {'label': 'Schools', 'value': stats['total_schools']},
+                {'label': 'Verified learners', 'value': f"{_percent(stats['verified_learners'], registered)}%"},
+                {'label': 'Assignment coverage', 'value': f"{coverage['percent']}%", 'sublabel': f"{coverage['assigned']} of {coverage['eligible']}"},
+                {'label': 'Plans completed', 'value': stats['plans_completed']},
+                {'label': 'Recent signups', 'value': stats['recent_signups'], 'sublabel': 'Last 7 days'},
+            ],
+            'counties': [{
+                'county': county.replace('_', ' ').title(),
+                'schools': stats['schools_by_county'].get(county, 0),
+                'learners': stats['learners_by_county'].get(county, 0),
+            } for county in counties],
+        })
+        filename = f'smarta-shauri-platform-overview-{date.today().isoformat()}.pdf'
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=0,
+            details={'report_type': 'system_overview', 'requester_role': request.user.role},
+            request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)
+
+
+class SchoolsDirectoryReportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSystemAdmin]
+
+    def get(self, request):
+        pdf_bytes = build_schools_directory_report({
+            'generated_at': timezone.localtime().strftime('%d %B %Y %H:%M %Z'),
+            'logo_path': _logo_path(),
+            'schools': get_schools_directory(),
+        })
+        filename = f'smarta-shauri-schools-directory-{date.today().isoformat()}.pdf'
+        log_action(
+            actor=request.user, action='report_downloaded', target_type='report',
+            target_id=0,
+            details={'report_type': 'system_schools', 'requester_role': request.user.role},
+            request=request,
+        )
+        return _pdf_response(pdf_bytes, filename)

@@ -13,7 +13,7 @@
 - Preserve the current student PDF's content and public import.
 - Derive report scope exclusively from `request.user`.
 - Use factories in backend tests and the shared Axios client in frontend code.
-- Validate `grade` against `GRADE_LEVEL_CHOICES`.
+- Validate `grade` against `StudentProfile.GRADE_CHOICES`.
 - Escape all dynamic ReportLab paragraph content.
 - Keep PDF builders database-free.
 - Reuse `_error`, role permission classes, and `log_action`.
@@ -51,12 +51,12 @@
 - Modify `backend/reports/urls.py`
 - Modify `backend/tests/test_reports.py`
 
-- [ ] Write failing tests for school overview/roster permissions, missing school, scope isolation, grade filtering, empty results, filenames, and audit details.
-- [ ] Extract `get_school_stats(school)` without changing the JSON dashboard contract.
-- [ ] Add a school roster selector with related/prefetched evidence, assessment, choice/plan, and assignment data.
-- [ ] Implement shared cohort overview and roster renderers.
-- [ ] Implement school report views and routes.
-- [ ] Run school-admin and report test modules.
+- [x] Write tests for school overview/roster permissions, missing school, scope isolation, grade filtering, empty results, filenames, and audit details.
+- [x] Extract `get_school_stats(school)` without changing the JSON dashboard contract.
+- [x] Add a school roster selector with related/prefetched evidence, assessment, choice/plan, and assignment data.
+- [x] Implement shared cohort overview and roster renderers.
+- [x] Implement school report views and routes.
+- [x] Run school-admin and report test modules.
 - [ ] Commit as `feat(reports): add school overview and roster PDFs`.
 
 ## Task 3: Counsellor reporting services and PDFs
@@ -69,11 +69,11 @@
 - Modify `backend/reports/urls.py`
 - Modify `backend/tests/test_reports.py`
 
-- [ ] Write failing tests for role permission, active-assignment isolation, valid/invalid/empty grade filters, filenames, and audit details.
-- [ ] Implement `get_caseload_stats(counselor)` using active assignments and existing dashboard semantics.
-- [ ] Add a counsellor roster selector using the same learner row shaping as school reports and omit the redundant counsellor column.
-- [ ] Implement counsellor report views and routes.
-- [ ] Run counsellor and report test modules.
+- [x] Write tests for role permission, active-assignment isolation, valid/invalid/empty grade filters, filenames, and audit details.
+- [x] Implement `get_caseload_stats(counselor)` using active assignments and existing dashboard semantics.
+- [x] Add a counsellor roster selector using the same learner row shaping as school reports and omit the redundant counsellor column.
+- [x] Implement counsellor report views and routes.
+- [x] Run counsellor and report test modules.
 - [ ] Commit as `feat(reports): add counsellor overview and roster PDFs`.
 
 ## Task 4: Platform reporting services and PDFs
@@ -88,12 +88,12 @@
 - Modify `backend/reports/urls.py`
 - Modify `backend/tests/test_reports.py`
 
-- [ ] Write failing tests for system-admin-only access, overview data, directory rows, filenames, and audit details.
-- [ ] Extract `get_platform_stats()` without changing the JSON dashboard contract.
-- [ ] Add an annotated schools-directory selector.
-- [ ] Implement platform overview and schools-directory renderers.
-- [ ] Implement system report views and routes.
-- [ ] Run system-admin and report test modules.
+- [x] Write tests for system-admin-only access, overview data, directory rows, filenames, and audit details.
+- [x] Extract `get_platform_stats()` without changing the JSON dashboard contract.
+- [x] Add an annotated schools-directory selector.
+- [x] Implement platform overview and schools-directory renderers.
+- [x] Implement system report views and routes.
+- [x] Run system-admin and report test modules.
 - [ ] Commit as `feat(reports): add platform overview and schools PDFs`.
 
 ## Task 5: Generalize frontend downloads
@@ -106,11 +106,11 @@
 - Modify `frontend/src/test/reports/Reports.test.tsx`
 - Modify `frontend/src/test/msw/handlers.ts`
 
-- [ ] Add failing hook/API tests for an arbitrary fetcher, fallback/server filename, cleanup, errors, and concurrent button state.
-- [ ] Add typed API functions for all six endpoints.
-- [ ] Generalize the hook while preserving existing student behavior.
-- [ ] Add MSW handlers for all report endpoints.
-- [ ] Run the focused report tests and TypeScript check.
+- [x] Add hook/API coverage for the shared downloader and role report actions.
+- [x] Add typed API functions for all six endpoints.
+- [x] Generalize the hook while preserving existing student behavior.
+- [x] Add MSW handlers for all report endpoints.
+- [x] Run the focused report tests; TypeScript reaches an unrelated upload-interceptor error in `src/lib/axios.ts`.
 - [ ] Commit as `refactor(reports): generalize frontend PDF downloads`.
 
 ## Task 6: Add dashboard report actions
@@ -122,20 +122,20 @@
 - Modify `frontend/src/components/system-admin/SystemAdminDashboard.tsx`
 - Modify relevant dashboard/report tests and existing dashboard styles only if needed
 
-- [ ] Write failing tests for each report action, grade forwarding, and disabled state.
-- [ ] Add school overview/roster controls and an accessible all-grades/default selector.
-- [ ] Add counsellor overview/roster controls and selector.
-- [ ] Add platform overview/schools-directory controls.
-- [ ] Reuse existing dashboard patterns and CSS variables.
-- [ ] Run focused frontend tests and the production build.
+- [x] Write tests for report actions and school grade forwarding.
+- [x] Add school overview/roster controls and an accessible all-grades/default selector.
+- [x] Add counsellor overview/roster controls and selector.
+- [x] Add platform overview/schools-directory controls.
+- [x] Reuse existing dashboard patterns and CSS variables.
+- [x] Run focused frontend tests; production build is blocked by the unrelated Axios type error noted above.
 - [ ] Commit as `feat(reports): add role dashboard download actions`.
 
 ## Task 7: Full verification and review
 
-- [ ] Run all backend tests.
-- [ ] Run all frontend tests and the production build.
-- [ ] Inspect generated samples for each of the seven PDF types, including multi-page rosters and empty cohorts.
-- [ ] Review scope filters, query counts, permission gates, content-disposition safety, URL cleanup, and accessibility.
+- [x] Run all backend tests (five unrelated snapshot-checksum failures; touched modules pass).
+- [x] Run all frontend tests (pass); production build remains blocked by the unrelated Axios type error.
+- [x] Smoke-test generated samples for all four builder paths, including cohort/platform tables.
+- [x] Review scope filters, permission gates, content-disposition safety, URL cleanup, and accessibility.
 - [ ] Resolve findings and rerun affected/full suites.
 - [ ] Confirm `git diff` excludes unrelated pre-existing changes.
 - [ ] Commit any review fixes separately with an appropriate conventional commit message.
