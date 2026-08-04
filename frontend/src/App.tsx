@@ -47,6 +47,7 @@ const SystemAdminSchoolsPage = lazy(() => import('./pages/system-admin/SystemAdm
 const SystemAdminUsersPage = lazy(() => import('./pages/system-admin/SystemAdminUsersPage'))
 const SystemAdminAuditLogPage = lazy(() => import('./pages/system-admin/SystemAdminAuditLogPage'))
 const SystemAdminCataloguePage = lazy(() => import('./pages/system-admin/SystemAdminCataloguePage'))
+const LettersPage = lazy(() => import('./pages/LettersPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 1000 * 60 * 5 } },
@@ -89,6 +90,16 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      {import.meta.env.DEV && (
+        <Route
+          path="/letters"
+          element={(
+            <Suspense fallback={<LoadingSkeleton label="Loading mailbox" rows={4} />}>
+              <LettersPage />
+            </Suspense>
+          )}
+        />
+      )}
 
       {/* Authenticated pages — wrapped in Shell */}
       <Route element={<ProtectedRoute />}>
