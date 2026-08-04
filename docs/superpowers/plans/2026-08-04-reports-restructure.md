@@ -57,7 +57,7 @@
 - [x] Implement shared cohort overview and roster renderers.
 - [x] Implement school report views and routes.
 - [x] Run school-admin and report test modules.
-- [ ] Commit as `feat(reports): add school overview and roster PDFs`.
+- [x] Commit in `e89d98c` (`feat(reports): add scoped administrative PDF reports`).
 
 ## Task 3: Counsellor reporting services and PDFs
 
@@ -74,7 +74,7 @@
 - [x] Add a counsellor roster selector using the same learner row shaping as school reports and omit the redundant counsellor column.
 - [x] Implement counsellor report views and routes.
 - [x] Run counsellor and report test modules.
-- [ ] Commit as `feat(reports): add counsellor overview and roster PDFs`.
+- [x] Commit in `e89d98c` (`feat(reports): add scoped administrative PDF reports`).
 
 ## Task 4: Platform reporting services and PDFs
 
@@ -94,7 +94,7 @@
 - [x] Implement platform overview and schools-directory renderers.
 - [x] Implement system report views and routes.
 - [x] Run system-admin and report test modules.
-- [ ] Commit as `feat(reports): add platform overview and schools PDFs`.
+- [x] Commit in `e89d98c` (`feat(reports): add scoped administrative PDF reports`).
 
 ## Task 5: Generalize frontend downloads
 
@@ -110,8 +110,8 @@
 - [x] Add typed API functions for all six endpoints.
 - [x] Generalize the hook while preserving existing student behavior.
 - [x] Add MSW handlers for all report endpoints.
-- [x] Run the focused report tests; TypeScript reaches an unrelated upload-interceptor error in `src/lib/axios.ts`.
-- [ ] Commit as `refactor(reports): generalize frontend PDF downloads`.
+- [x] Run the focused report tests and TypeScript production build.
+- [x] Commit in `db6dceb` (`feat(reports): add role dashboard PDF downloads`).
 
 ## Task 6: Add dashboard report actions
 
@@ -127,15 +127,15 @@
 - [x] Add counsellor overview/roster controls and selector.
 - [x] Add platform overview/schools-directory controls.
 - [x] Reuse existing dashboard patterns and CSS variables.
-- [x] Run focused frontend tests; production build is blocked by the unrelated Axios type error noted above.
-- [ ] Commit as `feat(reports): add role dashboard download actions`.
+- [x] Run focused frontend tests and the production build.
+- [x] Commit in `db6dceb` (`feat(reports): add role dashboard PDF downloads`).
 
 ## Task 7: Full verification and review
 
-- [x] Run all backend tests (five unrelated snapshot-checksum failures; touched modules pass).
-- [x] Run all frontend tests (pass); production build remains blocked by the unrelated Axios type error.
+- [x] Run all backend tests (1,153 passed).
+- [x] Run all frontend tests and the production build (passed).
 - [x] Smoke-test generated samples for all four builder paths, including cohort/platform tables.
 - [x] Review scope filters, permission gates, content-disposition safety, URL cleanup, and accessibility.
-- [ ] Resolve findings and rerun affected/full suites.
-- [ ] Confirm `git diff` excludes unrelated pre-existing changes.
-- [ ] Commit any review fixes separately with an appropriate conventional commit message.
+- [x] Resolve findings and rerun affected/full suites.
+- [x] Confirm report commits exclude unrelated pre-existing changes.
+- [x] Commit review and verification fixes separately with appropriate conventional commit messages.
