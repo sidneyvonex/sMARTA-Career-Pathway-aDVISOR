@@ -27,7 +27,7 @@ describe('useNotificationPoll', () => {
   beforeEach(() => {
     qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     useNotificationStore.setState({ unreadCount: 0, drawerOpen: false })
-    useAuthStore.setState({ isAuthenticated: true, user: null, isEmailVerified: false, isLoading: false })
+    useAuthStore.setState({ isAuthenticated: true, user: null, isEmailVerified: true, isLoading: false })
   })
 
   afterEach(() => {
@@ -50,6 +50,15 @@ describe('useNotificationPoll', () => {
       expect(useNotificationStore.getState().unreadCount).toBe(1)
     })
     expect(toastFn).not.toHaveBeenCalled()
+  })
+
+  it('does not request notifications for an unverified user', () => {
+    useAuthStore.setState({ isEmailVerified: false })
+
+    renderHook(() => useNotificationPoll(), { wrapper: makeWrapper(qc) })
+
+    expect(qc.getQueryState(['notification-unread-count'])?.fetchStatus).toBe('idle')
+    expect(useNotificationStore.getState().unreadCount).toBe(0)
   })
 })
 

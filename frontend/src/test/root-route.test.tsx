@@ -45,4 +45,26 @@ describe('RootRoute at /', () => {
     expect(screen.queryByRole('link', { name: /get started/i })).not.toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /main navigation/i })).toBeInTheDocument()
   })
+
+  it('sends an authenticated user to email verification until their address is verified', () => {
+    useAuthStore.setState({
+      isLoading: false,
+      isAuthenticated: true,
+      user: {
+        id: 2,
+        email: 'unverified@example.com',
+        first_name: 'Amani',
+        last_name: 'Otieno',
+        role: 'student',
+        county: 'kiambu',
+        is_email_verified: false,
+      },
+      isEmailVerified: false,
+    })
+
+    renderApp()
+
+    expect(screen.getByRole('heading', { name: /check your email/i })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: /main navigation/i })).not.toBeInTheDocument()
+  })
 })

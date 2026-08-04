@@ -1,5 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.test import override_settings
 from rest_framework.test import APIClient
 from accounts.models import School
 from accounts.tokens import (
@@ -206,6 +208,21 @@ class TestLogin:
         }, format='json')
         assert response.status_code == 401
 
+    @override_settings(RATELIMIT_ENABLE=True)
+    def test_login_sixth_attempt_within_window_is_rate_limited(self, client):
+        cache.clear()
+        payload = {'email': 'nobody@test.com', 'password': 'WrongPass!'}
+
+        for _ in range(5):
+            response = client.post('/api/v1/auth/login/', payload, format='json')
+            assert response.status_code == 401
+
+        response = client.post('/api/v1/auth/login/', payload, format='json')
+
+        assert response.status_code == 429
+        assert response.data['message'] == 'Rate limit exceeded. Please try again later.'
+        cache.clear()
+
 
 @pytest.mark.django_db
 class TestLogout:
@@ -281,6 +298,32 @@ class TestEmailVerification:
         response = client.post('/api/v1/auth/resend-verification/')
         assert response.status_code == 200
         assert len(mailoutbox) == 1
+
+    def test_logged_out_user_can_resend_verification_by_email(self, client, mailoutbox):
+        from tests.factories import UserFactory
+        UserFactory(email='loggedout@test.com', is_email_verified=False)
+
+        response = client.post(
+            '/api/v1/auth/resend-verification/',
+            {'email': 'loggedout@test.com'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert len(mailoutbox) == 1
+
+    def test_resend_does_not_reveal_unknown_email(self, client, mailoutbox):
+        response = client.post(
+            '/api/v1/auth/resend-verification/',
+            {'email': 'nobody@test.com'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert len(mailoutbox) == 0
+        assert response.data['message'] == (
+            'If an unverified account exists, a verification email has been sent.'
+        )
 
 
 @pytest.mark.django_db
