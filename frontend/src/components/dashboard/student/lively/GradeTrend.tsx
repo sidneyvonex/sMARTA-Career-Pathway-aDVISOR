@@ -1,3 +1,4 @@
+import GradeSparkline from '../../../common/GradeSparkline'
 import { GRADE_LEVEL_LABELS, type GradeLevel } from '../../../../api/students'
 
 export interface GradeChronologyRecord {
@@ -17,7 +18,10 @@ export default function GradeTrend({ data }: { data: GradeChronology[] }) {
       <ul>
         {data.map((subject) => (
           <li key={subject.subject}>
-            <strong>{subject.subject}</strong>
+            <div className="lv-grade-chronology__heading">
+              <strong>{subject.subject}</strong>
+              <GradeSparkline records={subject.records} />
+            </div>
             <div>
               {subject.records.map((record) => (
                 <span
