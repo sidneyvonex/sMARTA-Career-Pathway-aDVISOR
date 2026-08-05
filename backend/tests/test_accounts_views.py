@@ -515,3 +515,50 @@ class TestParentInvite:
         link = ParentStudentLink.objects.get(parent=parent, student=profile.user)
         assert link.status == ParentStudentLink.STATUS_PENDING
         assert link.claimed_relationship == ParentStudentLink.RELATIONSHIP_MOTHER
+
+
+@pytest.mark.django_db
+class TestChangePasswordView:
+    def test_rejects_wrong_current_password(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'WrongPass123!', 'new_password': 'NewPass456!',
+        }, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.check_password('CorrectPass123!')
+
+    def test_rejects_weak_new_password(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'CorrectPass123!', 'new_password': '123',
+        }, format='json')
+        assert response.status_code == 400
+
+    def test_changes_password_on_success(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'CorrectPass123!', 'new_password': 'BrandNewPass789!',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.check_password('BrandNewPass789!')
+        assert not user.check_password('CorrectPass123!')
+
+    def test_requires_authentication(self, client):
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'a', 'new_password': 'b',
+        }, format='json')
+        assert response.status_code == 401

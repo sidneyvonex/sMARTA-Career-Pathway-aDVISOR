@@ -262,6 +262,32 @@ class PasswordResetConfirmView(APIView):
         return _success(message='Password reset successfully.')
 
 
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password', '')
+        new_password = request.data.get('new_password', '')
+        user = request.user
+
+        if not user.check_password(current_password):
+            return _error('Current password is incorrect.')
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            return _error(e.messages[0] if e.messages else 'Invalid password.')
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        log_action(
+            actor=user, action='password_changed_self', target_type='user',
+            target_id=user.id, request=request,
+        )
+        return _success(message='Password updated.')
+
+
 class InviteStaffView(APIView):
     permission_classes = [IsAuthenticated, IsSystemAdmin]
 
