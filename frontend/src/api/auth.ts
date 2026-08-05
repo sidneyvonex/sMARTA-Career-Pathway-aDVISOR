@@ -26,6 +26,10 @@ export const authApi = {
   login: (email: string, password: string) => api.post('/auth/login/', { email, password }),
   logout: () => api.post('/auth/logout/'),
   me: () => api.get<{ data: { user: User } }>('/auth/me/'),
+  updateMe: (data: { first_name?: string; last_name?: string }) =>
+    api.patch<{ data: { user: User } }>('/auth/me/', data),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post('/auth/me/password/', data),
   verifyEmail: (token: string) => api.get(`/auth/verify-email/?token=${token}`),
   resendVerification: (email?: string) =>
     api.post('/auth/resend-verification/', email ? { email } : {}),

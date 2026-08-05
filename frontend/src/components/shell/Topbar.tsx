@@ -64,6 +64,7 @@ function getPageContext(pathname: string): PageContext {
   if (pathname === '/system-admin/catalogue') return { title: 'Framework catalogue' }
   if (pathname === '/system-admin/users') return { title: 'Users' }
   if (pathname === '/system-admin/audit-log') return { title: 'Audit log' }
+  if (pathname === '/account') return { title: 'Account settings' }
   return { title: 'Page not found', parent: { label: 'Dashboard', to: '/' } }
 }
 
@@ -128,6 +129,10 @@ export default function Topbar() {
             shape="squircle"
             className="topbar__avatar"
           />
+        </Link>
+
+        <Link className="topbar__account-link" to="/account" aria-label="Account settings">
+          Settings
         </Link>
       </div>
     </header>

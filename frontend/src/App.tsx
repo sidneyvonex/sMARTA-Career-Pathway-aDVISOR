@@ -16,6 +16,7 @@ import AboutPage from './pages/AboutPage'
 import PathwaysPage from './pages/PathwaysPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 import ForSchoolsPage from './pages/ForSchoolsPage'
+import AccountSettingsPage from './pages/AccountSettingsPage'
 import { useAuth } from './hooks/useAuth'
 import { useAuthStore } from './store/authStore'
 import { useNotificationPoll } from './hooks/useNotificationPoll'
@@ -112,6 +113,8 @@ function AppRoutes() {
             <Shell />
           </Suspense>
         )}>
+          <Route path="/account" element={<AccountSettingsPage />} />
+
           <Route element={<ProtectedRoute roles={['student']} />}>
             <Route path="/profile" element={<StudentProfilePage />} />
             <Route path="/grades" element={<GradesPage />} />

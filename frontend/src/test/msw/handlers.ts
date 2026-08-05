@@ -188,6 +188,19 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: true, message: 'Not authenticated.' }, { status: 401 })
   }),
 
+  http.patch(`${BASE}/me/`, async ({ request }) => {
+    const body = await request.json() as { first_name?: string; last_name?: string }
+    return HttpResponse.json({
+      data: { user: { id: 1, email: 'jane@test.com', first_name: body.first_name ?? 'Jane', last_name: body.last_name ?? 'Doe', role: 'student', county: 'kiambu', is_email_verified: true } },
+      error: null,
+      message: 'Profile updated.',
+    })
+  }),
+
+  http.post(`${BASE}/me/password/`, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password updated.' })
+  }),
+
   http.post(`${BASE}/logout/`, () => {
     return HttpResponse.json({ data: null, error: null, message: 'Logged out.' })
   }),
