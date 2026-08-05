@@ -11,6 +11,7 @@ ACTION_CHOICES = [
     ('invite_sent', 'Invite sent'),
     ('invite_accepted', 'Invite accepted'),
     ('school_created', 'School created'),
+    ('school_admin_provisioned', 'School admin provisioned'),
     ('school_edited', 'School edited'),
     ('school_deactivated', 'School deactivated'),
     ('school_activated', 'School activated'),
