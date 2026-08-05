@@ -65,6 +65,23 @@ def send_staff_invite_email(invitee_email, role):
 
 
 @shared_task
+def send_school_admin_welcome_email(user_id, email, first_name, temp_password, school_name):
+    send_mail(
+        subject=f'Your Smarta Shauri admin account for {school_name}',
+        message=(
+            f"Hi {first_name},\n\n"
+            f"A new school administrator account has been created for {school_name} on Smarta Shauri.\n\n"
+            f"You can log in with the email address {email} and this temporary password:\n\n"
+            f"{temp_password}\n\n"
+            f"{settings.FRONTEND_URL}/login\n\n"
+            f"Please change your password after logging in."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )
+
+
+@shared_task
 def send_parent_invite_email(student_id, parent_email, student_name):
     token = make_parent_invite_token(student_id=student_id, email=parent_email)
     accept_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"

@@ -9,9 +9,11 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from accounts.emails import send_school_admin_welcome_email
 from accounts.models import School, User, StudentProfile, COUNTY_CHOICES
 from accounts.permissions import IsSystemAdmin, IsEmailVerified
 from accounts.response import _success, _error
+from accounts.utils import _temporary_password
 from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, LearnerPlan, SubjectCombination
 from riasec.models import RIASECAssessment
@@ -433,8 +435,12 @@ class SchoolListView(APIView):
             return _error(f'County must be one of: {", ".join(sorted(VALID_COUNTIES))}.')
         if not school_code:
             return _error('School code is required.')
+        if not email:
+            return _error('Email is required.')
         if School.objects.filter(school_code=school_code).exists():
             return _error('A school with this code already exists.')
+        if User.objects.filter(email=email).exists():
+            return _error('An account with this email already exists.')
 
         school = School(
             name=name,
@@ -451,7 +457,28 @@ class SchoolListView(APIView):
             for field_errors in e.message_dict.values():
                 messages.extend(field_errors)
             return _error(messages[0] if messages else 'Invalid data.')
-        school.save()
+
+        temp_password = _temporary_password()
+        with transaction.atomic():
+            school.save()
+            admin_user = User.objects.create_user(
+                email=email,
+                password=temp_password,
+                first_name=name,
+                last_name='Administrator',
+                role='school_admin',
+                school=school,
+                county=county,
+                is_email_verified=True,
+            )
+
+        send_school_admin_welcome_email.delay(
+            user_id=admin_user.id,
+            email=email,
+            first_name=name,
+            temp_password=temp_password,
+            school_name=name,
+        )
 
         log_action(
             actor=request.user,
@@ -459,6 +486,14 @@ class SchoolListView(APIView):
             target_type='school',
             target_id=school.id,
             details={'name': name, 'county': county, 'school_code': school_code},
+            request=request,
+        )
+        log_action(
+            actor=request.user,
+            action='school_admin_provisioned',
+            target_type='user',
+            target_id=admin_user.id,
+            details={'school_id': school.id, 'email': email},
             request=request,
         )
 

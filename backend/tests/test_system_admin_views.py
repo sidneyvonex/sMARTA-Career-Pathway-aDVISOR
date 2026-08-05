@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
@@ -22,6 +23,8 @@ from students.models import AssessmentFramework
 from system_admin.models import AuditLog
 from accounts.models import School, StudentProfile
 from guidance.models import LearnerCombinationChoice, LearnerPlan
+
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
@@ -492,6 +495,7 @@ class TestSchoolListView:
             'name': 'New School',
             'county': 'kiambu',
             'school_code': 'KIA999',
+            'email': 'admin@newschool.ac.ke',
         })
         assert response.status_code == 201
         data = response.data['data']
@@ -507,6 +511,7 @@ class TestSchoolListView:
             'name': 'Another School',
             'county': 'kiambu',
             'school_code': 'DUP001',
+            'email': 'admin@another.ac.ke',
         })
         assert response.status_code == 400
 
@@ -897,13 +902,13 @@ class TestInputValidation:
         }, format='json')
         assert response.status_code == 400
 
-    def test_create_school_empty_email_accepted(self):
+    def test_create_school_empty_email_rejected(self):
         response = self.client.post('/api/v1/system-admin/schools/', {
             'name': 'No Email School',
             'county': 'kiambu',
             'school_code': 'NOEML01',
         }, format='json')
-        assert response.status_code == 201
+        assert response.status_code == 400
 
     def test_create_school_valid_email_accepted(self):
         response = self.client.post('/api/v1/system-admin/schools/', {
@@ -913,3 +918,59 @@ class TestInputValidation:
             'email': 'school@example.com',
         }, format='json')
         assert response.status_code == 201
+
+
+@pytest.fixture
+def client():
+    return APIClient()
+
+
+class TestSchoolCreationProvisionsAdmin:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+
+    def test_create_school_without_email_fails(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-001',
+        }, format='json')
+        assert response.status_code == 400
+
+    def test_create_school_with_taken_email_fails(self, client):
+        client.force_authenticate(self.admin)
+        User.objects.create_user(
+            email='taken@kilimani.ac.ke', password='TestPass123!', role='counselor', county='kiambu',
+        )
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-002',
+            'email': 'taken@kilimani.ac.ke',
+        }, format='json')
+        assert response.status_code == 400
+        assert 'already exists' in str(response.data['message'])
+
+    def test_create_school_provisions_admin_account(self, client, mailoutbox):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-003',
+            'email': 'admin@kilimani.ac.ke',
+        }, format='json')
+        assert response.status_code == 201
+        school = School.objects.get(school_code='KIL-003')
+        user = User.objects.get(email='admin@kilimani.ac.ke')
+        assert user.role == 'school_admin'
+        assert user.school == school
+        assert user.is_email_verified is True
+        assert user.first_name == 'Kilimani Girls'
+        assert user.last_name == 'Administrator'
+        assert len(mailoutbox) == 1
+        assert 'admin@kilimani.ac.ke' in mailoutbox[0].to
+        assert user.check_password(_extract_temp_password(mailoutbox[0].body))
+
+
+def _extract_temp_password(email_body):
+    for line in email_body.splitlines():
+        if line.strip() and not line.startswith(('Hi', 'A new', 'This', 'You can')):
+            candidate = line.strip()
+            if len(candidate) >= 8:
+                return candidate
+    raise AssertionError('Could not find temp password in email body')
