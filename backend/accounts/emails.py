@@ -82,6 +82,23 @@ def send_school_admin_welcome_email(user_id, email, first_name, temp_password, s
 
 
 @shared_task
+def send_password_reset_temp_email(user_id, email, first_name, temp_password):
+    send_mail(
+        subject='Your Smarta Shauri password has been reset',
+        message=(
+            f"Hi {first_name},\n\n"
+            f"An administrator has reset your Smarta Shauri password.\n\n"
+            f"New temporary password: {temp_password}\n\n"
+            f"{settings.FRONTEND_URL}/login\n\n"
+            f"Please change your password after logging in. "
+            f"If you did not expect this, contact your school or system administrator."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )
+
+
+@shared_task
 def send_parent_invite_email(student_id, parent_email, student_name):
     token = make_parent_invite_token(student_id=student_id, email=parent_email)
     accept_url = f"{settings.FRONTEND_URL}/accept-invite?token={token}"

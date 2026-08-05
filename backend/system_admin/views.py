@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from accounts.emails import send_school_admin_welcome_email
+from accounts.emails import send_school_admin_welcome_email, send_password_reset_temp_email
 from accounts.models import School, User, StudentProfile, COUNTY_CHOICES
 from accounts.permissions import IsSystemAdmin, IsEmailVerified
 from accounts.response import _success, _error
@@ -837,6 +837,31 @@ class UserDeactivateView(APIView):
         )
 
         return _success(message=f'{user.first_name} {user.last_name} has been deactivated.')
+
+
+class UserPasswordResetView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return _error('User not found.', status.HTTP_404_NOT_FOUND)
+
+        temp_password = _temporary_password()
+        user.set_password(temp_password)
+        user.save(update_fields=['password'])
+
+        send_password_reset_temp_email.delay(
+            user_id=user.id, email=user.email, first_name=user.first_name,
+            temp_password=temp_password,
+        )
+
+        log_action(
+            actor=request.user, action='password_reset_by_admin', target_type='user',
+            target_id=user.id, details={'reset_by': request.user.id}, request=request,
+        )
+        return _success(message=f'Password reset. New credentials sent to {user.email}.')
 
 
 class UserActivateView(APIView):

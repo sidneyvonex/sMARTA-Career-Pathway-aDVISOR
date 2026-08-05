@@ -974,3 +974,32 @@ def _extract_temp_password(email_body):
             if len(candidate) >= 8:
                 return candidate
     raise AssertionError('Could not find temp password in email body')
+
+
+@pytest.mark.django_db
+class TestSystemAdminUserPasswordReset:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+
+    def test_resets_any_users_password(self, client, mailoutbox):
+        client.force_authenticate(self.admin)
+        target = VerifiedUserFactory(role='counselor', email='counselor@test.com')
+        old_hash = target.password
+        response = client.post(f'/api/v1/system-admin/users/{target.id}/reset-password/')
+        assert response.status_code == 200
+        target.refresh_from_db()
+        assert target.password != old_hash
+        assert len(mailoutbox) == 1
+        assert 'counselor@test.com' in mailoutbox[0].to
+
+    def test_returns_404_for_missing_user(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/users/999999/reset-password/')
+        assert response.status_code == 404
+
+    def test_non_system_admin_cannot_reset(self, client):
+        target = VerifiedUserFactory(role='counselor')
+        counselor = CounselorFactory()
+        client.force_authenticate(counselor)
+        response = client.post(f'/api/v1/system-admin/users/{target.id}/reset-password/')
+        assert response.status_code == 403

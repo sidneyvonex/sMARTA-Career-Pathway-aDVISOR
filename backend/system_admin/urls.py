@@ -27,5 +27,6 @@ urlpatterns = [
     path('users/<int:user_id>/', views.UserDetailView.as_view(), name='system-admin-user-detail'),
     path('users/<int:user_id>/deactivate/', views.UserDeactivateView.as_view(), name='system-admin-user-deactivate'),
     path('users/<int:user_id>/activate/', views.UserActivateView.as_view(), name='system-admin-user-activate'),
+    path('users/<int:user_id>/reset-password/', views.UserPasswordResetView.as_view(), name='system-admin-user-reset-password'),
     path('audit-logs/', views.AuditLogListView.as_view(), name='system-admin-audit-logs'),
 ]
