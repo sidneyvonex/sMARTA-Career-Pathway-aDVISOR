@@ -615,6 +615,54 @@ class TestStudentReportViewEdgeCases:
         response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/')
         assert 'smarta-shauri-report-Jane-Doe' in response['Content-Disposition']
 
+    @pytest.mark.parametrize('query', ['year=not-a-year', 'year=1999', 'term=4', 'subject=bad subject!'])
+    def test_invalid_academic_progress_filters_return_400(self, query):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        enrollment = StudentSubjectFactory(student_profile=profile)
+        CBCGradeFactory(student_subject=enrollment)
+
+        response = self.client.get(f'/api/v1/reports/student/{student.id}/pdf/?{query}')
+
+        assert response.status_code == 400
+
+    def test_report_filters_progress_by_year_term_and_subject(self, monkeypatch):
+        student = VerifiedUserFactory(role='student')
+        profile = StudentProfileFactory(user=student, grade=9)
+        mathematics = StudentSubjectFactory(
+            student_profile=profile,
+            subject=SubjectFactory(name='Mathematics', code='MTH-FILTER-9', grade=9),
+        )
+        english = StudentSubjectFactory(
+            student_profile=profile,
+            subject=SubjectFactory(name='English', code='ENG-FILTER-9', grade=9),
+        )
+        CBCGradeFactory(student_subject=mathematics, year=2025, term=1, level='AE1')
+        selected = CBCGradeFactory(student_subject=mathematics, year=2026, term=2, level='ME1')
+        CBCGradeFactory(student_subject=english, year=2026, term=2, level='EE1')
+        captured = {}
+
+        monkeypatch.setattr(
+            'reports.views.build_student_report',
+            lambda data: captured.update(data) or b'%PDF-1.4 test',
+        )
+        response = self.client.get(
+            f'/api/v1/reports/student/{student.id}/pdf/',
+            {'year': 2026, 'term': 2, 'subject': mathematics.continuity_code},
+        )
+
+        assert response.status_code == 200
+        assert captured['report_filters'] == {
+            'year': 2026,
+            'term': 2,
+            'subject': mathematics.continuity_code,
+        }
+        assert [item['continuity_code'] for item in captured['subjects']] == [mathematics.continuity_code]
+        assert captured['subjects'][0]['grades'][0]['year'] == 2026
+        progress_subject = captured['academic_progress']['subjects'][0]
+        assert progress_subject['continuity_code'] == mathematics.continuity_code
+        assert [item['id'] for item in progress_subject['evidence']] == [selected.id]
+
     def test_report_assembles_choice_plan_evidence_and_versions(self, monkeypatch):
         student = VerifiedUserFactory(role='student')
         profile = StudentProfileFactory(user=student, grade=9)

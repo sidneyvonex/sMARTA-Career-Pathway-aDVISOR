@@ -2,12 +2,27 @@ from django.contrib import admin
 
 from .models import (
     AcademicGoal,
+    AcademicPeriod,
     AssessmentFramework,
     CBCGrade,
     PerformanceLevelDefinition,
     StudentSubject,
     Subject,
 )
+
+
+@admin.register(AcademicPeriod)
+class AcademicPeriodAdmin(admin.ModelAdmin):
+    list_display = (
+        'year',
+        'term',
+        'term_ends_at',
+        'entry_opens_at',
+        'entry_closes_at',
+        'published_at',
+    )
+    list_filter = ('year', 'term')
+    ordering = ('-year', '-term')
 
 
 class PerformanceLevelDefinitionInline(admin.TabularInline):

@@ -95,6 +95,18 @@ describe('SchoolAdminDashboard', () => {
     expect(offeringsStatus).toBeInTheDocument()
     expect(offeringsStatus.closest('.db-panel')).toHaveClass('school-offerings-panel')
   })
+
+  it('shows an aggregated cohort progress graph with year and subject filters', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByRole('heading', { name: 'Cohort progress by term' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Stacked bar chart of cohort CBC bands by term' })).toBeInTheDocument()
+    expect(screen.getByText('29')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Cohort subject'), 'MTH')
+    expect(screen.getAllByText('18').length).toBeGreaterThan(1)
+  })
 })
 
 describe('SchoolProfilePage', () => {
@@ -287,6 +299,102 @@ describe('SchoolStudentsPage', () => {
     expect(screen.getByText('Kevin Otieno')).toBeInTheDocument()
   })
 
+  it('imports a learner CSV and offers the one-time credentials download', async () => {
+    let uploadReceived = false
+    server.use(
+      http.post('/api/v1/school-admin/students/import/', () => {
+        uploadReceived = true
+        return HttpResponse.json({
+          data: {
+            created_count: 1,
+            linked_count: 1,
+            already_linked_count: 0,
+            error_count: 1,
+            created: [{
+              id: 44,
+              first_name: 'Amina',
+              last_name: 'Kamau',
+              email: 'amina@school.test',
+              grade: 9,
+              temporary_password: 'SecurePass123',
+            }],
+            linked: [{
+              id: 45,
+              first_name: 'Brian',
+              last_name: 'Otieno',
+              email: 'brian@school.test',
+              grade: 10,
+            }],
+            already_linked: [],
+            errors: [{ row: 3, email: 'bad', message: 'email is invalid' }],
+          },
+          error: null,
+          message: '1 learner account created.',
+        }, { status: 201 })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Jane Muthoni')
+
+    const file = new File(
+      ['first_name,last_name,email,grade\nAmina,Kamau,amina@school.test,9'],
+      'learners.csv',
+      { type: 'text/csv' },
+    )
+    await userEvent.upload(screen.getByLabelText('Learner CSV file'), file)
+    await userEvent.click(screen.getByRole('button', { name: 'Import learners' }))
+
+    await waitFor(() => expect(uploadReceived).toBe(true))
+    expect(screen.getByText('2 learners added')).toBeInTheDocument()
+    expect(screen.getByText(/1 new account created/)).toBeInTheDocument()
+    expect(screen.getByText(/1 existing account linked/)).toBeInTheDocument()
+    expect(screen.getByText(/Existing learners keep their current password/)).toBeInTheDocument()
+    expect(screen.getByText('1 row skipped')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download login credentials' })).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Review skipped rows'))
+    expect(screen.getByText(/Row 3 \(bad\): email is invalid/)).toBeInTheDocument()
+  })
+
+  it('previews school marks before importing them', async () => {
+    let marksRequestCount = 0
+    server.use(
+      http.post('/api/v1/school-admin/marks/import/', () => {
+        marksRequestCount += 1
+        const committed = marksRequestCount === 2
+        return HttpResponse.json({
+          data: {
+            period: { id: 11, year: 2026, term: 1, state: 'entry_open', can_submit: true },
+            row_count: 1,
+            valid_count: 1,
+            error_count: 0,
+            rows: [],
+            ...(committed ? { created_count: 1, replaced_count: 0 } : {}),
+          },
+          error: null,
+          message: committed ? 'School marks imported and verified.' : 'Marks file checked.',
+        }, { status: committed ? 201 : 200 })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Jane Muthoni')
+
+    expect(screen.getByRole('heading', { name: 'Upload school marks' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Term 2 2026/ })).toBeDisabled()
+
+    await userEvent.selectOptions(screen.getByLabelText('Academic period'), '11')
+    const file = new File(
+      ['student_email,subject_code,level,raw_score\njane@example.com,MAT9,ME1,72.5'],
+      'marks.csv',
+      { type: 'text/csv' },
+    )
+    await userEvent.upload(screen.getByLabelText('Marks CSV file'), file)
+    await userEvent.click(screen.getByRole('button', { name: 'Preview marks' }))
+
+    expect(await screen.findByText('1 valid row')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Import and verify marks' }))
+    expect(await screen.findByText(/1 result created/)).toBeInTheDocument()
+  })
+
   it('shows filter buttons', async () => {
     renderPage()
     await screen.findByText('Jane Muthoni')
@@ -302,7 +410,7 @@ describe('SchoolStudentsPage', () => {
   it('shows assignment dropdowns', async () => {
     renderPage()
     await screen.findByText('Jane Muthoni')
-    const selects = screen.getAllByRole('combobox')
+    const selects = screen.getAllByLabelText(/Assign counsellor for/)
     expect(selects.length).toBe(2)
   })
 

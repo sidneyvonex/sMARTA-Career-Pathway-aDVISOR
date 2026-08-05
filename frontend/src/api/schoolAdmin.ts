@@ -1,4 +1,5 @@
 import api from '../lib/axios'
+import type { AcademicPeriod, GradeLevel } from './students'
 
 export interface SchoolProfile {
   id: number
@@ -36,7 +37,7 @@ export interface SchoolStudent {
   membership: {
     id: number
     status: 'pending' | 'active'
-    record_source: 'legacy_backfill' | 'learner_request'
+    record_source: 'legacy_backfill' | 'learner_request' | 'admin_import'
     requested_at: string | null
     started_at: string | null
     ended_at: string | null
@@ -80,11 +81,78 @@ export interface SchoolStats {
   reviews_completed: number
   offerings_count: number
   offerings_configured: boolean
+  academic_progress: SchoolProgressAggregate[]
   counselor_workload: {
     counselor_id: number
     counselor_name: string
     student_count: number
   }[]
+}
+
+export interface SchoolProgressAggregate {
+  year: number
+  term: 1 | 2 | 3
+  level: string
+  continuity_code: string
+  subject_name: string
+  count: number
+}
+
+export interface StudentImportResult {
+  created_count: number
+  linked_count: number
+  already_linked_count: number
+  error_count: number
+  created: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+    grade: number
+    temporary_password: string
+  }[]
+  linked: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+    grade: number
+  }[]
+  already_linked: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+    grade: number
+  }[]
+  errors: { row: number; email: string; message: string }[]
+}
+
+export interface MarksImportRow {
+  row: number
+  student_email: string
+  subject_code: string
+  level: string
+  raw_score?: string | null
+  action: 'create' | 'replace_learner_entry' | 'error'
+  errors: string[]
+}
+
+export interface MarksImportResult {
+  period: AcademicPeriod
+  row_count: number
+  valid_count: number
+  error_count: number
+  created_count?: number
+  replaced_count?: number
+  rows: MarksImportRow[]
+}
+
+export interface MarksImportTemplateRow {
+  student_email: string
+  subject_code: string
+  level: GradeLevel
+  raw_score?: string
 }
 
 export const schoolAdminApi = {
@@ -114,6 +182,31 @@ export const schoolAdminApi = {
 
   getStudents: () =>
     api.get<{ data: SchoolStudent[] }>('/school-admin/students/'),
+
+  importStudents: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post<{ data: StudentImportResult; message: string }>(
+      '/school-admin/students/import/',
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
+
+  getAcademicPeriods: () =>
+    api.get<{ data: AcademicPeriod[] }>('/school-admin/academic-periods/'),
+
+  importMarks: (periodId: number, file: File, preview: boolean) => {
+    const form = new FormData()
+    form.append('period_id', String(periodId))
+    form.append('preview', String(preview))
+    form.append('file', file)
+    return api.post<{ data: MarksImportResult; message: string }>(
+      '/school-admin/marks/import/',
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
 
   getMembershipRequests: () =>
     api.get<{ data: SchoolMembershipRequest[] }>('/school-admin/membership-requests/'),

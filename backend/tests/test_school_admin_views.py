@@ -20,6 +20,7 @@ from tests.factories import (
     StudentSchoolMembershipFactory,
 )
 from django.utils import timezone
+from accounts.models import StudentProfile, StudentSchoolMembership, User
 from riasec.models import RIASECAssessment
 from counselors.models import CounselorAssignment
 from guidance.models import LearnerCombinationChoice, LearnerPlan
@@ -266,6 +267,185 @@ class TestSchoolStudentsView:
         response = self.client.get('/api/v1/school-admin/students/')
         assert response.status_code == 200
         assert len(response.data['data']) == 2
+
+    def test_import_students_creates_active_accounts_with_temporary_passwords(self):
+        upload = SimpleUploadedFile(
+            'learners.csv',
+            (
+                b'first_name,last_name,email,grade\n'
+                b'Amina,Kamau,amina@school.test,9\n'
+                b'Brian,Otieno,brian@school.test,10\n'
+            ),
+            content_type='text/csv',
+        )
+
+        response = self.client.post(
+            '/api/v1/school-admin/students/import/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        assert response.status_code == 201
+        result = response.data['data']
+        assert result['created_count'] == 2
+        assert result['linked_count'] == 0
+        assert result['already_linked_count'] == 0
+        assert result['error_count'] == 0
+        assert len(result['created']) == 2
+        assert response['Cache-Control'] == 'no-store'
+        for credential in result['created']:
+            user = User.objects.get(email=credential['email'])
+            assert user.check_password(credential['temporary_password'])
+            assert user.role == 'student'
+            assert user.is_email_verified is True
+            profile = StudentProfile.objects.get(user=user)
+            assert profile.school == self.school
+            assert profile.mode == 'school_linked'
+            assert profile.school_membership_status == 'active'
+            membership = StudentSchoolMembership.objects.get(
+                student_profile=profile,
+                school=self.school,
+                status=StudentSchoolMembership.STATUS_ACTIVE,
+            )
+            assert membership.record_source == StudentSchoolMembership.SOURCE_ADMIN_IMPORT
+            assert membership.decided_by == self.admin
+            assert membership.started_at is not None
+
+        audit = AuditLog.objects.get(action='students_bulk_imported')
+        assert audit.details == {
+            'school_id': self.school.id,
+            'created_count': 2,
+            'linked_count': 0,
+            'already_linked_count': 0,
+            'error_count': 0,
+        }
+        assert 'password' not in str(audit.details).lower()
+
+    def test_import_students_links_existing_students_and_skips_bad_rows(self):
+        existing = StudentProfileFactory(user__email='existing@school.test')
+        original_password = existing.user.password
+        upload = SimpleUploadedFile(
+            'learners.csv',
+            (
+                b'first_name,last_name,email,grade\n'
+                b'Valid,Learner,valid@school.test,11\n'
+                b'Wrong,Grade,wrong@school.test,8\n'
+                b'Existing,Learner,existing@school.test,9\n'
+                b'Repeated,Learner,valid@school.test,10\n'
+            ),
+            content_type='text/csv',
+        )
+
+        response = self.client.post(
+            '/api/v1/school-admin/students/import/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        assert response.status_code == 201
+        result = response.data['data']
+        assert result['created_count'] == 1
+        assert result['linked_count'] == 1
+        assert result['error_count'] == 2
+        assert User.objects.filter(email='valid@school.test').count() == 1
+        messages = {error['row']: error['message'] for error in result['errors']}
+        assert 'grade must be' in messages[3]
+        assert 'repeated in this file' in messages[5]
+        existing.refresh_from_db()
+        existing.user.refresh_from_db()
+        assert existing.school == self.school
+        assert existing.school_membership_status == 'active'
+        assert existing.grade == 9
+        assert existing.user.password == original_password
+        assert StudentSchoolMembership.objects.filter(
+            student_profile=existing,
+            school=self.school,
+            status=StudentSchoolMembership.STATUS_ACTIVE,
+        ).exists()
+
+    def test_import_students_explains_an_active_other_school_conflict(self):
+        other_school = SchoolFactory(name='Other School')
+        existing = StudentProfileFactory(
+            user__email='existing@school.test',
+            mode='school_linked',
+            school=other_school,
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=existing,
+            school=other_school,
+            status=StudentSchoolMembership.STATUS_ACTIVE,
+        )
+        upload = SimpleUploadedFile(
+            'learners.csv',
+            (
+                b'first_name,last_name,email,grade\n'
+                b'Existing,Learner,existing@school.test,9\n'
+            ),
+            content_type='text/csv',
+        )
+
+        response = self.client.post(
+            '/api/v1/school-admin/students/import/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        assert response.status_code == 200
+        result = response.data['data']
+        assert result['created_count'] == 0
+        assert result['linked_count'] == 0
+        assert result['error_count'] == 1
+        assert 'actively linked to Other School' in result['errors'][0]['message']
+
+    def test_import_students_reports_accounts_already_in_the_cohort(self):
+        existing = StudentProfileFactory(
+            user__email='existing@school.test',
+            mode='school_linked',
+            school=self.school,
+            school_membership_status='active',
+        )
+        StudentSchoolMembershipFactory(
+            student_profile=existing,
+            school=self.school,
+            status=StudentSchoolMembership.STATUS_ACTIVE,
+        )
+        upload = SimpleUploadedFile(
+            'learners.csv',
+            (
+                b'first_name,last_name,email,grade\n'
+                b'Existing,Learner,existing@school.test,9\n'
+            ),
+            content_type='text/csv',
+        )
+
+        response = self.client.post(
+            '/api/v1/school-admin/students/import/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        assert response.status_code == 200
+        result = response.data['data']
+        assert result['already_linked_count'] == 1
+        assert result['error_count'] == 0
+
+    def test_import_students_rejects_missing_columns(self):
+        upload = SimpleUploadedFile(
+            'learners.csv',
+            b'name,email\nAmina,amina@school.test\n',
+            content_type='text/csv',
+        )
+
+        response = self.client.post(
+            '/api/v1/school-admin/students/import/',
+            {'file': upload},
+            format='multipart',
+        )
+
+        assert response.status_code == 400
+        assert 'Missing required CSV column' in response.data['message']
+        assert not User.objects.filter(email='amina@school.test').exists()
 
     def test_student_entry_includes_counselor(self):
         sp = StudentProfileFactory(school=self.school, mode='school_linked')
@@ -645,6 +825,7 @@ class TestSchoolStatsView:
         assert data['reviews_completed'] == 0
         assert data['offerings_count'] == 0
         assert data['offerings_configured'] is False
+        assert data['academic_progress'] == []
         assert data['counselor_workload'] == []
 
     def test_stats_with_data(self):
@@ -733,6 +914,8 @@ class TestSchoolStatsView:
             'counselor_name': 'Alice Wanjiku',
             'student_count': 1,
         }]
+        assert len(data['academic_progress']) == 3
+        assert {row['term'] for row in data['academic_progress']} == {1, 2, 3}
         assert pending.user_id != learner.user_id
 
 

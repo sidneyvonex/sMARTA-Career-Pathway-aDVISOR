@@ -264,6 +264,35 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/students/academic-periods/', () => HttpResponse.json({
+    data: [
+      {
+        id: 11,
+        year: 2026,
+        term: 1,
+        term_ends_at: '2026-04-03T15:00:00+03:00',
+        entry_opens_at: '2026-04-03T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+      {
+        id: 12,
+        year: 2026,
+        term: 2,
+        term_ends_at: '2026-08-01T15:00:00+03:00',
+        entry_opens_at: '2026-08-01T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+    ],
+    error: null,
+    message: '',
+  })),
+
   http.get('/api/v1/students/evidence-summary/', () => {
     return HttpResponse.json({
       data: {
@@ -1493,6 +1522,65 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/school-admin/academic-periods/', () => HttpResponse.json({
+    data: [
+      {
+        id: 11,
+        year: 2026,
+        term: 1,
+        term_ends_at: '2026-04-03T15:00:00+03:00',
+        entry_opens_at: '2026-04-03T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+      {
+        id: 12,
+        year: 2026,
+        term: 2,
+        term_ends_at: '2026-08-07T15:00:00+03:00',
+        entry_opens_at: '2026-08-07T15:00:00+03:00',
+        entry_closes_at: '2026-08-21T23:59:00+03:00',
+        published_at: null,
+        state: 'upcoming',
+        can_submit: false,
+      },
+    ],
+    error: null,
+    message: '',
+  })),
+
+  http.post('/api/v1/school-admin/marks/import/', () => HttpResponse.json({
+      data: {
+        period: {
+          id: 11,
+          year: 2026,
+          term: 1,
+          term_ends_at: '2026-04-03T15:00:00+03:00',
+          entry_opens_at: '2026-04-03T15:00:00+03:00',
+          entry_closes_at: '2026-08-31T23:59:00+03:00',
+          published_at: null,
+          state: 'entry_open',
+          can_submit: true,
+        },
+        row_count: 1,
+        valid_count: 1,
+        error_count: 0,
+        rows: [{
+          row: 2,
+          student_email: 'jane@example.com',
+          subject_code: 'MAT9',
+          level: 'ME1',
+          raw_score: '72.50',
+          action: 'create',
+          errors: [],
+        }],
+      },
+      error: null,
+      message: 'Marks file checked.',
+    })),
+
   http.get('/api/v1/school-admin/membership-requests/', () => {
     return HttpResponse.json({
       data: [
@@ -1544,6 +1632,12 @@ export const handlers = [
         reviews_completed: 7,
         offerings_count: 12,
         offerings_configured: true,
+        academic_progress: [
+          { year: 2026, term: 1, level: 'ME1', continuity_code: 'MTH', subject_name: 'Mathematics', count: 8 },
+          { year: 2026, term: 2, level: 'ME1', continuity_code: 'MTH', subject_name: 'Mathematics', count: 10 },
+          { year: 2026, term: 2, level: 'AE1', continuity_code: 'ENG', subject_name: 'English', count: 4 },
+          { year: 2026, term: 3, level: 'EE2', continuity_code: 'ENG', subject_name: 'English', count: 7 },
+        ],
         counselor_workload: [
           { counselor_id: 10, counselor_name: 'Alice Wanjiku', student_count: 9 },
           { counselor_id: 11, counselor_name: 'Bob Ochieng', student_count: 8 },

@@ -1,7 +1,7 @@
 import type { AxiosResponse } from 'axios'
 import { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { reportsApi } from '../api/reports'
+import { reportsApi, type StudentReportFilters } from '../api/reports'
 
 type ReportFetcher = () => Promise<AxiosResponse<Blob>>
 type DownloadKey = number | string
@@ -55,9 +55,9 @@ export function useDownloadReport() {
     }
   }, [])
 
-  const downloadStudentReport = useCallback((studentId: number) => (
+  const downloadStudentReport = useCallback((studentId: number, filters?: StudentReportFilters) => (
     downloadReport(
-      () => reportsApi.downloadStudentPdf(studentId),
+      () => reportsApi.downloadStudentPdf(studentId, filters),
       'smarta-shauri-report.pdf',
       studentId,
     )

@@ -1,0 +1,257 @@
+.progress-explorer {
+  container-type: inline-size;
+  display: grid;
+  min-width: 0;
+  gap: var(--space-5);
+  padding: clamp(var(--space-4), 3cqi, var(--space-6));
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.progress-explorer__heading {
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+
+.progress-explorer__heading p { text-wrap: pretty; }
+.progress-explorer__heading .student-action { flex: 0 0 auto; }
+
+.progress-explorer__filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+}
+
+.progress-explorer__filters label {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.progress-explorer__filters select {
+  width: 100%;
+  min-height: var(--min-touch-target);
+  padding: 0 var(--space-3);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-explorer__filters select:focus-visible {
+  outline: 3px solid var(--color-primary-light);
+  outline-offset: 2px;
+}
+
+.progress-explorer__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+}
+
+.progress-explorer__metrics div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-right: 1px solid var(--color-divider);
+}
+
+.progress-explorer__metrics div:last-child { border-right: 0; }
+
+.progress-explorer__metrics span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-explorer__metrics strong {
+  color: var(--color-primary);
+  font-family: var(--font-family-display);
+  font-size: clamp(var(--font-size-lg), 4cqi, var(--font-size-xl));
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+}
+
+.progress-explorer__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+}
+
+.progress-explorer__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-explorer__legend i {
+  width: 22px;
+  height: 3px;
+  border-radius: var(--radius-full);
+}
+
+.progress-explorer__chart {
+  width: 100%;
+  min-height: 280px;
+  padding: var(--space-2);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-divider);
+  scrollbar-width: thin;
+}
+
+.progress-explorer__chart svg {
+  display: block;
+  width: 100%;
+  min-width: 600px;
+  height: 320px;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.progress-explorer__gridline {
+  stroke: var(--color-divider);
+  stroke-dasharray: 4 4;
+}
+
+.progress-explorer__table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.progress-explorer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.progress-explorer th,
+.progress-explorer td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+  text-align: left;
+  vertical-align: top;
+}
+
+.progress-explorer thead th {
+  color: var(--color-primary-dark);
+  background: var(--color-background);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.02em;
+}
+
+.progress-explorer tbody th { color: var(--color-text); }
+
+.progress-explorer__band {
+  color: var(--color-primary-dark);
+  font-weight: var(--font-weight-semibold);
+}
+
+.progress-explorer__verification {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.progress-explorer__verification.is-verified {
+  color: var(--color-primary-dark);
+  background: var(--color-primary-surface);
+}
+
+.progress-explorer__empty {
+  margin: 0;
+  padding: var(--space-6);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-lg);
+  background: var(--color-background);
+  text-align: center;
+}
+
+@container (max-width: 680px) {
+  .progress-explorer__heading { display: grid; }
+  .progress-explorer__heading .student-action { width: 100%; }
+
+  .progress-explorer__filters,
+  .progress-explorer__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progress-explorer__metrics div:nth-child(2) { border-right: 0; }
+
+  .progress-explorer__metrics div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-divider);
+  }
+}
+
+@container (max-width: 460px) {
+  .progress-explorer__filters { grid-template-columns: 1fr; }
+
+  .progress-explorer__legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progress-explorer table,
+  .progress-explorer tbody,
+  .progress-explorer tr,
+  .progress-explorer th,
+  .progress-explorer td { display: block; }
+
+  .progress-explorer thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .progress-explorer tbody {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .progress-explorer tbody tr {
+    padding: var(--space-3);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-lg);
+  }
+
+  .progress-explorer tbody th,
+  .progress-explorer tbody td {
+    display: grid;
+    grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.2fr);
+    gap: var(--space-3);
+    padding: var(--space-2);
+    border: 0;
+  }
+
+  .progress-explorer tbody th::before,
+  .progress-explorer tbody td::before {
+    color: var(--color-text-secondary);
+    content: attr(data-label);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+  }
+}

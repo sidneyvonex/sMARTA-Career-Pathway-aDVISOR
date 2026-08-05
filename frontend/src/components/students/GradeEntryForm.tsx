@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 import {
@@ -35,6 +35,14 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
   const [year, setYear] = useState(CURRENT_YEAR)
   const [level, setLevel] = useState<GradeLevel>('ME1')
   const queryClient = useQueryClient()
+  const periodsQ = useQuery({
+    queryKey: ['students', 'academic-periods'],
+    queryFn: () => studentsApi.getAcademicPeriods().then(response => response.data.data),
+  })
+  const openPeriods = (periodsQ.data ?? []).filter(period => period.can_submit)
+  const selectedPeriodOpen = openPeriods.some(
+    period => period.year === year && period.term === term,
+  )
 
   const mutation = useMutation({
     mutationFn: () => studentsApi.addGrade(studentSubjectId, { term, year, level }),
@@ -60,9 +68,9 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
           onChange={(event) => setTerm(Number(event.target.value) as 1 | 2 | 3)}
           className="student-field__control"
         >
-          <option value={1}>Term 1</option>
-          <option value={2}>Term 2</option>
-          <option value={3}>Term 3</option>
+          <option value={1} disabled={periodsQ.isSuccess && !openPeriods.some(period => period.year === year && period.term === 1)}>Term 1</option>
+          <option value={2} disabled={periodsQ.isSuccess && !openPeriods.some(period => period.year === year && period.term === 2)}>Term 2</option>
+          <option value={3} disabled={periodsQ.isSuccess && !openPeriods.some(period => period.year === year && period.term === 3)}>Term 3</option>
         </select>
       </div>
 
@@ -74,7 +82,15 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
           onChange={(event) => setYear(Number(event.target.value))}
           className="student-field__control"
         >
-          {YEARS.map((value) => <option key={value} value={value}>{value}</option>)}
+          {YEARS.map((value) => (
+            <option
+              key={value}
+              value={value}
+              disabled={periodsQ.isSuccess && !openPeriods.some(period => period.year === value)}
+            >
+              {value}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -92,7 +108,25 @@ export default function GradeEntryForm({ studentSubjectId }: Props) {
         </select>
       </div>
 
-      <button type="submit" disabled={mutation.isPending} className="student-action">
+      {periodsQ.isLoading && (
+        <p className="grade-entry-form__window">Checking the term submission windowâ€¦</p>
+      )}
+      {periodsQ.isError && (
+        <p className="grade-entry-form__window" role="alert">
+          The term submission window could not be checked. Try again before adding a grade.
+        </p>
+      )}
+      {!periodsQ.isLoading && !periodsQ.isError && !selectedPeriodOpen && (
+        <p className="grade-entry-form__window">
+          Marks entry is closed for this term. A completed term with an active submission window is required.
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={mutation.isPending || !selectedPeriodOpen}
+        className="student-action"
+      >
         {mutation.isPending ? 'Adding…' : 'Add grade'}
       </button>
     </form>

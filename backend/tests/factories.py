@@ -1,11 +1,14 @@
 from datetime import date
 
+from datetime import timedelta
+
 import factory
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from accounts.models import School, StudentProfile, StudentSchoolMembership
 from students.models import (
     AcademicGoal,
+    AcademicPeriod,
     AssessmentFramework,
     CBCGrade,
     PerformanceLevelDefinition,
@@ -202,6 +205,23 @@ class CBCGradeFactory(factory.django.DjangoModelFactory):
     term = 1
     year = 2026
     level = 'ME1'
+
+
+class AcademicPeriodFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AcademicPeriod
+
+    year = 2026
+    term = factory.Sequence(lambda n: (n % 3) + 1)
+    term_ends_at = factory.LazyFunction(
+        lambda: timezone.now() - timedelta(days=2)
+    )
+    entry_opens_at = factory.LazyFunction(
+        lambda: timezone.now() - timedelta(days=1)
+    )
+    entry_closes_at = factory.LazyFunction(
+        lambda: timezone.now() + timedelta(days=7)
+    )
 
 
 class AcademicGoalFactory(factory.django.DjangoModelFactory):

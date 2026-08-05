@@ -16,6 +16,7 @@ import { GRADE_LEVEL_LABELS } from '../../api/students'
 import { evidenceOrigin, evidenceVerification } from '../../lib/academicEvidence'
 import { formatCounty } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
+import AcademicProgressExplorer from '../../components/students/AcademicProgressExplorer'
 import '../../styles/counselor.css'
 
 
@@ -249,6 +250,12 @@ export default function StudentDetailPage() {
 
           <section className="student-detail__section detail-workspace-card">
             <h2 className="student-detail__section-title">Academic progress</h2>
+            <AcademicProgressExplorer
+              progress={academicProgress}
+              heading="Progress across terms and subjects"
+              onDownload={(filters) => downloadStudentReport(studentId, filters)}
+              downloading={downloadingId === studentId}
+            />
             <div className="detail-reason-list">
               {academicProgress.subjects.map(subject => (
                 <article key={subject.continuity_code}>

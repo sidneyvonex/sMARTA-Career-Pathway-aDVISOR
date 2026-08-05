@@ -205,9 +205,11 @@ class StudentProfile(models.Model):
 class StudentSchoolMembership(models.Model):
     SOURCE_LEGACY_BACKFILL = 'legacy_backfill'
     SOURCE_LEARNER_REQUEST = 'learner_request'
+    SOURCE_ADMIN_IMPORT = 'admin_import'
     SOURCE_CHOICES = [
         (SOURCE_LEGACY_BACKFILL, 'Legacy Backfill'),
         (SOURCE_LEARNER_REQUEST, 'Learner Request'),
+        (SOURCE_ADMIN_IMPORT, 'School Admin Import'),
     ]
 
     STATUS_PENDING = 'pending'
@@ -303,6 +305,10 @@ class StudentSchoolMembership(models.Model):
                         requested_at__isnull=True,
                     )
                     | models.Q(
+                        record_source='admin_import',
+                        requested_at__isnull=True,
+                    )
+                    | models.Q(
                         record_source='learner_request',
                         requested_at__isnull=False,
                     )
@@ -312,6 +318,13 @@ class StudentSchoolMembership(models.Model):
             models.CheckConstraint(
                 check=(
                     models.Q(record_source='legacy_backfill')
+                    | models.Q(
+                        record_source='admin_import',
+                        status='active',
+                        decided_at__isnull=False,
+                        started_at__isnull=False,
+                        ended_at__isnull=True,
+                    )
                     | models.Q(
                         record_source='learner_request',
                         status='pending',

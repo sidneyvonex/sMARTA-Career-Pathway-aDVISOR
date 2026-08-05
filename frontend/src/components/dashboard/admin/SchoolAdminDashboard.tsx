@@ -9,6 +9,7 @@ import ErrorState from '../../common/dashboard/ErrorState'
 import MetricCard from '../../common/dashboard/MetricCard'
 import SectionHeader from '../../common/dashboard/SectionHeader'
 import StatusBadge from '../../common/dashboard/StatusBadge'
+import CohortProgressExplorer from './CohortProgressExplorer'
 import '../../../styles/dashboard.css'
 import '../../../styles/school-admin.css'
 
@@ -112,6 +113,8 @@ export default function SchoolAdminDashboard() {
           <MetricCard label="Reviews completed" value={stats?.reviews_completed ?? 0} detail="Counsellor-reviewed plans" tone="positive" />
         </div>
       </section>
+
+      <CohortProgressExplorer records={stats?.academic_progress ?? []} />
 
       <div className="school-operations__workspace">
         <section className="db-panel db-panel--compact" aria-labelledby="school-workload-title">

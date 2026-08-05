@@ -1,8 +1,18 @@
 import api from '../lib/axios'
 
+export interface StudentReportFilters {
+  year?: number
+  term?: 1 | 2 | 3
+  subject?: string
+  academic?: boolean
+}
+
 export const reportsApi = {
-  downloadStudentPdf: (studentId: number) =>
-    api.get(`/reports/student/${studentId}/pdf/`, { responseType: 'blob' }),
+  downloadStudentPdf: (studentId: number, filters?: StudentReportFilters) =>
+    api.get(`/reports/student/${studentId}/pdf/`, {
+      responseType: 'blob',
+      params: filters,
+    }),
   downloadSchoolOverviewPdf: () =>
     api.get('/reports/school/overview/pdf/', { responseType: 'blob' }),
   downloadSchoolRosterPdf: (grade?: number) =>

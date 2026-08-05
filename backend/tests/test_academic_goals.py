@@ -18,6 +18,7 @@ from students.models import (
 )
 from tests.factories import (
     AcademicGoalFactory,
+    AcademicPeriodFactory,
     CBCGradeFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
@@ -369,6 +370,7 @@ def test_assigned_counselor_has_read_only_access_to_selected_learner_goals():
 @pytest.mark.django_db
 def test_creation_snapshot_survives_permitted_evidence_edit_and_goal_close():
     """Catches goal history depending on a learner-editable CBCGrade row."""
+    AcademicPeriodFactory(year=2026, term=1)
     profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
     client = APIClient()
     client.force_authenticate(profile.user)
@@ -450,6 +452,7 @@ def test_creation_snapshot_survives_permitted_evidence_edit_and_goal_close():
 @pytest.mark.django_db
 def test_deleted_creation_evidence_does_not_break_readiness_or_confirmation():
     """Catches a goal revoking deletion or losing its baseline after SET_NULL."""
+    AcademicPeriodFactory(year=2026, term=1)
     profile, enrollment, grade = learner_with_evidence(level='ME2', term=1)
     client = APIClient()
     client.force_authenticate(profile.user)
@@ -1056,6 +1059,7 @@ def test_cbc_grade_queryset_and_bulk_paths_reject_evidence_identity_rewrites():
 @pytest.mark.django_db
 def test_learner_grade_update_refreshes_stable_definition_identity():
     """Catches the supported learner API retaining a stale definition after level edit."""
+    AcademicPeriodFactory(year=2026, term=1)
     profile, enrollment, grade = learner_with_evidence(level='ME2')
     expected_definition = target_level(grade.framework, 'AE1')
     client = APIClient()

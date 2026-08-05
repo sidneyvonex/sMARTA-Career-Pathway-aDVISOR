@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
@@ -22,6 +22,9 @@ import GradeEntryForm from './GradeEntryForm'
 import GradeHistory from './GradeHistory'
 import ProgressSubjectCard from './ProgressSubjectCard'
 import SubjectList from './SubjectList'
+import AcademicProgressExplorer from './AcademicProgressExplorer'
+import { useDownloadReport } from '../../hooks/useDownloadReport'
+import { useAuthStore } from '../../store/authStore'
 
 
 type FilterValue = 'all' | string
@@ -54,10 +57,20 @@ function matchesFilters(
 
 export default function AcademicProgressDashboard() {
   const queryClient = useQueryClient()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
+  const authenticatedStudentId = useAuthStore((state) => state.user?.id)
   const [academicGrade, setAcademicGrade] = useState<FilterValue>('all')
   const [year, setYear] = useState<FilterValue>('all')
   const [recordOpen, setRecordOpen] = useState(false)
   const [activeSubjectId, setActiveSubjectId] = useState<number | null>(null)
+  const recordPanelRef = useRef<HTMLElement>(null)
+  const recordHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  useEffect(() => {
+    if (!recordOpen) return
+    recordPanelRef.current?.scrollIntoView?.({ block: 'start' })
+    recordHeadingRef.current?.focus()
+  }, [recordOpen])
 
   const progressQ = useQuery({
     queryKey: ['students', 'academic-progress'],
@@ -159,10 +172,13 @@ export default function AcademicProgressDashboard() {
   const availableSubjects = (catalogQ.data ?? []).filter(
     (subject) => !enrolledSubjectIds.has(subject.id),
   )
-  const openRecordPanel = () => {
-    setActiveSubjectId((current) => current ?? subjects[0]?.id ?? null)
+  const openRecordPanel = (subjectId?: number) => {
+    setActiveSubjectId((current) => subjectId ?? current ?? subjects[0]?.id ?? null)
     setRecordOpen(true)
   }
+  const studentSubjectIdByContinuityCode = new Map(
+    subjects.map((item) => [item.continuity_code, item.id]),
+  )
 
   return (
     <div className="student-page progress-page">
@@ -226,19 +242,32 @@ export default function AcademicProgressDashboard() {
 
       {progress.subjects.length === 0 ? (
         <>
-          <EmptyState
-            title="Start your academic evidence"
-            description="Record a term result to begin building an explainable subject progress view."
-            action={subjectsQ.isLoading || subjects.length === 0
-              ? undefined
-              : { label: 'Record your first result', onClick: openRecordPanel }}
-          />
           {subjectsQ.isLoading && (
             <LoadingSkeleton label="Loading enrolled subjects" rows={1} variant="list" />
+          )}
+          {!subjectsQ.isLoading && subjects.length === 0 && (
+            <EmptyState
+              title="Add a subject to get started"
+              description="Add a subject above, then record your first term result to begin building an explainable subject progress view."
+            />
+          )}
+          {!subjectsQ.isLoading && subjects.length > 0 && (
+            <EmptyState
+              title="Start your academic evidence"
+              description="Record a term result to begin building an explainable subject progress view."
+              action={{ label: 'Record your first result', onClick: () => openRecordPanel() }}
+            />
           )}
         </>
       ) : (
         <>
+          <AcademicProgressExplorer
+            progress={progress}
+            onDownload={authenticatedStudentId
+              ? (filters) => downloadStudentReport(authenticatedStudentId, filters)
+              : undefined}
+            downloading={authenticatedStudentId !== undefined && downloadingId === authenticatedStudentId}
+          />
           <section className="progress-overview" aria-labelledby="subject-progress-title">
             <div className="progress-section-heading">
               <div>
@@ -249,7 +278,7 @@ export default function AcademicProgressDashboard() {
                 <button
                   type="button"
                   className="student-action student-action--secondary"
-                  onClick={openRecordPanel}
+                  onClick={() => openRecordPanel()}
                   disabled={subjectsQ.isLoading}
                 >
                   Record a result
@@ -303,13 +332,20 @@ export default function AcademicProgressDashboard() {
               />
             ) : (
               <div className="progress-subject-list">
-                {visibleSubjects.map((item) => (
-                  <ProgressSubjectCard
-                    key={item.progress.continuity_code}
-                    progress={item.progress}
-                    evidence={item.evidence}
-                  />
-                ))}
+                {visibleSubjects.map((item) => {
+                  const subjectId = studentSubjectIdByContinuityCode.get(item.progress.continuity_code)
+                  return (
+                    <ProgressSubjectCard
+                      key={item.progress.continuity_code}
+                      progress={item.progress}
+                      evidence={item.evidence}
+                      onRecordResult={subjectId === undefined
+                        ? undefined
+                        : () => openRecordPanel(subjectId)}
+                      recordResultDisabled={subjectsQ.isLoading}
+                    />
+                  )
+                })}
               </div>
             )}
           </section>
@@ -317,10 +353,14 @@ export default function AcademicProgressDashboard() {
       )}
 
       {recordOpen && (
-        <section className="progress-panel progress-record" aria-labelledby="record-evidence-title">
+        <section
+          ref={recordPanelRef}
+          className="progress-panel progress-record"
+          aria-labelledby="record-evidence-title"
+        >
           <div className="progress-section-heading">
             <div>
-              <h2 id="record-evidence-title">Record academic evidence</h2>
+              <h2 id="record-evidence-title" ref={recordHeadingRef} tabIndex={-1}>Record academic evidence</h2>
               <p>Add a term result and review the subject history already saved.</p>
             </div>
             <button type="button" className="student-action student-action--secondary" onClick={() => setRecordOpen(false)}>

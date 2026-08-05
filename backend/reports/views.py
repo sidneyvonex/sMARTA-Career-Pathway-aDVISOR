@@ -52,6 +52,70 @@ def _grade_filter(request):
     return grade, None
 
 
+def _academic_progress_filters(request):
+    filters = {}
+    raw_year = request.query_params.get('year')
+    raw_term = request.query_params.get('term')
+    raw_subject = request.query_params.get('subject')
+    if raw_year not in (None, ''):
+        try:
+            year = int(raw_year)
+        except (TypeError, ValueError):
+            return None, _error('Invalid academic year filter.', 400)
+        if year < 2000 or year > 2100:
+            return None, _error('Invalid academic year filter.', 400)
+        filters['year'] = year
+    if raw_term not in (None, ''):
+        try:
+            term = int(raw_term)
+        except (TypeError, ValueError):
+            return None, _error('Invalid term filter.', 400)
+        if term not in (1, 2, 3):
+            return None, _error('Invalid term filter.', 400)
+        filters['term'] = term
+    if raw_subject not in (None, ''):
+        subject = str(raw_subject).strip()
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', subject):
+            return None, _error('Invalid subject filter.', 400)
+        filters['subject'] = subject
+    return filters, None
+
+
+def _filter_academic_report_data(subjects_data, support_context, filters):
+    def matches(record):
+        return (
+            (not filters.get('year') or record.get('year') == filters['year'])
+            and (not filters.get('term') or record.get('term') == filters['term'])
+        )
+
+    subject_filter = filters.get('subject')
+    filtered_subjects = []
+    for subject in subjects_data:
+        continuity_code = subject.get('continuity_code') or subject.get('code')
+        if subject_filter and continuity_code != subject_filter:
+            continue
+        filtered_subjects.append({
+            **subject,
+            'grades': [record for record in subject.get('grades', []) if matches(record)],
+        })
+
+    progress = support_context.get('academic_progress') or {}
+    progress_subjects = []
+    for subject in progress.get('subjects') or []:
+        if subject_filter and subject.get('continuity_code') != subject_filter:
+            continue
+        progress_subjects.append({
+            **subject,
+            'evidence': [record for record in subject.get('evidence', []) if matches(record)],
+            'records_used': [record for record in subject.get('records_used', []) if matches(record)],
+        })
+    support_context = {
+        **support_context,
+        'academic_progress': {**progress, 'subjects': progress_subjects},
+    }
+    return filtered_subjects, support_context
+
+
 def _pdf_response(pdf_bytes, filename):
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -70,6 +134,9 @@ class StudentReportView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified]
 
     def get(self, request, student_id):
+        report_filters, filter_error = _academic_progress_filters(request)
+        if filter_error:
+            return filter_error
         try:
             student = User.objects.get(pk=student_id, role='student')
         except (User.DoesNotExist, ValueError):
@@ -116,6 +183,11 @@ class StudentReportView(APIView):
         support_context = academic_support_context(
             profile,
             enrolments=support_enrolments,
+        )
+        subjects_data, support_context = _filter_academic_report_data(
+            subjects_data,
+            support_context,
+            report_filters,
         )
         riasec_data, recommendations_data = self._get_riasec_data(profile)
 
@@ -200,6 +272,8 @@ class StudentReportView(APIView):
             ),
             'generated_at': generated_at.strftime('%d %B %Y %H:%M %Z'),
             'logo_path': logo_path,
+            'report_filters': report_filters,
+            'academic_only': str(request.query_params.get('academic', '')).lower() in ('1', 'true', 'yes'),
         }
 
         pdf_bytes = build_student_report(data)
@@ -217,6 +291,7 @@ class StudentReportView(APIView):
                 'student_id': student.id,
                 'requester_role': request.user.role,
                 'filename': filename,
+                'filters': report_filters,
             },
             request=request,
         )
@@ -302,6 +377,7 @@ class StudentReportView(APIView):
             subjects.append({
                 'name': enrollment.subject.name,
                 'code': enrollment.subject.code,
+                'continuity_code': enrollment.continuity_code,
                 'grades': grades,
             })
         return subjects
@@ -434,6 +510,7 @@ class SchoolOverviewReportView(APIView):
                 {'label': 'Pending memberships', 'value': stats['pending_memberships']},
             ],
             'counselor_workload': stats['counselor_workload'],
+            'academic_progress': stats['academic_progress'],
         })
         filename = f"smarta-shauri-school-overview-{_safe_scope(school.name)}-{date.today().isoformat()}.pdf"
         log_action(

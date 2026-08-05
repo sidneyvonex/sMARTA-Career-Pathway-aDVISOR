@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { parentApi } from '../../api/parent'
 import { formatCounty, initials } from '../../lib/format'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
+import AcademicProgressExplorer from '../../components/students/AcademicProgressExplorer'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import LoadingSkeleton from '../../components/common/dashboard/LoadingSkeleton'
 import ResponsiveDataList from '../../components/common/dashboard/ResponsiveDataList'
@@ -237,6 +238,12 @@ export default function ChildDetailPage() {
       {academicProgress && (
         <section className="child-detail__section" aria-labelledby="progress-title">
           <SectionTitle eyebrow="Learner-approved evidence" title="Academic progress" id="progress-title" />
+          <AcademicProgressExplorer
+            progress={academicProgress}
+            heading="Progress across terms and subjects"
+            onDownload={(filters) => downloadStudentReport(studentId, filters)}
+            downloading={downloadingId === studentId}
+          />
           <div className="child-detail__subjects">
             {academicProgress.subjects.map(subject => (
               <article key={subject.continuity_code}>

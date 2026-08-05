@@ -1080,10 +1080,18 @@
 
 /* ── Responsive (student detail) ────────────────── */
 
-@media (max-width: 768px) {
+@media (max-width: 1100px) {
   .student-detail {
     grid-template-columns: 1fr;
   }
+
+  .student-detail__main,
+  .student-detail__sidebar {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
 
   .detail-evidence-grid,
   .detail-choice-list,

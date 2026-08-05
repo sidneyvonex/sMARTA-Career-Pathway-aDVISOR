@@ -936,3 +936,270 @@
     width: 100%;
   }
 }
+
+.student-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.marks-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.marks-import__copy,
+.marks-import__form,
+.marks-import__result {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.marks-import h2,
+.marks-import p {
+  margin: 0;
+}
+
+.marks-import__copy > .btn-ghost,
+.marks-import__result > .btn-primary {
+  width: fit-content;
+  margin-top: var(--space-2);
+}
+
+.marks-import__form {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.marks-import__form label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.marks-import__form select,
+.marks-import__form input[type='file'] {
+  width: 100%;
+  min-height: var(--min-touch-target);
+}
+
+.marks-import__form small,
+.marks-import__result span {
+  color: var(--color-text-secondary);
+}
+
+.marks-import__result {
+  grid-column: 1 / -1;
+  padding: var(--space-4);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-md);
+  background: var(--color-success-surface);
+}
+
+.marks-import__result--error {
+  border-color: var(--color-error);
+  background: var(--color-error-surface);
+}
+
+.marks-import__result > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.marks-import__result details ul {
+  margin-bottom: 0;
+}
+
+.student-import__copy,
+.student-import__form,
+.student-import__result {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.student-import h2,
+.student-import p {
+  margin: 0;
+}
+
+.student-import__copy > .btn-ghost {
+  width: fit-content;
+  margin-top: var(--space-2);
+}
+
+.student-import__form {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.student-import__form label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.student-import__form input[type='file'] {
+  width: 100%;
+}
+
+.student-import__form small,
+.student-import__result span {
+  color: var(--color-text-secondary);
+}
+
+.student-import__result {
+  grid-column: 1 / -1;
+  padding: var(--space-4);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-md);
+  background: var(--color-success-surface);
+}
+
+.student-import__result > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.student-import__result .btn-primary {
+  width: fit-content;
+}
+
+.student-import__result details ul {
+  margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .student-import,
+  .marks-import {
+    grid-template-columns: 1fr;
+  }
+
+  .student-import__result,
+  .marks-import__result {
+    grid-column: auto;
+  }
+}
+.cohort-progress {
+  display: grid;
+  gap: var(--space-5);
+  margin-block: var(--space-6);
+}
+
+.cohort-progress__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.cohort-progress__heading h2,
+.cohort-progress__heading p {
+  margin: 0;
+}
+
+.cohort-progress__eyebrow {
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cohort-progress__filters {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.cohort-progress__filters label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 170px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cohort-progress__filters select {
+  min-height: var(--min-touch-target);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.cohort-progress__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--color-divider);
+}
+
+.cohort-progress__summary div {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-right: 1px solid var(--color-divider);
+}
+
+.cohort-progress__summary div:last-child {
+  border-right: 0;
+}
+
+.cohort-progress__summary span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.cohort-progress__summary strong {
+  color: var(--color-primary);
+  font-size: var(--font-size-xl);
+}
+
+.cohort-progress__chart {
+  height: 330px;
+}
+
+.cohort-progress__chart svg {
+  width: 100%;
+  height: 100%;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.cohort-progress__gridline {
+  stroke: var(--color-divider);
+  stroke-dasharray: 4 4;
+}
+
+@media (max-width: 760px) {
+  .cohort-progress__heading,
+  .cohort-progress__filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cohort-progress__filters label {
+    min-width: 0;
+  }
+
+  .cohort-progress__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .cohort-progress__summary div {
+    border-right: 0;
+  }
+}

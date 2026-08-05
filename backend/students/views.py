@@ -49,6 +49,7 @@ from .serializers import (
     StudentSubjectSerializer, CBCGradeSerializer, ProgressAssessmentSerializer,
 )
 from .progress import ProgressConfigurationError, derive_progress_for_enrolments
+from .periods import ENTRY_CLOSED_MESSAGE, open_academic_period_for
 from .summaries import (
     academic_evidence_summary,
     assessment_summary,
@@ -1151,6 +1152,11 @@ class CBCGradeListView(APIView):
         serializer = CBCGradeSerializer(data=request.data)
         if not serializer.is_valid():
             return _error(serializer.errors)
+        if open_academic_period_for(
+            year=serializer.validated_data['year'],
+            term=serializer.validated_data['term'],
+        ) is None:
+            return _error(ENTRY_CLOSED_MESSAGE, status.HTTP_409_CONFLICT)
         if CBCGrade.objects.filter(
             student_subject=ss,
             term=serializer.validated_data['term'],
@@ -1201,11 +1207,21 @@ class CBCGradeDetailView(APIView):
                     'School-verified evidence cannot be edited by a learner.',
                     status.HTTP_403_FORBIDDEN,
                 )
+            if open_academic_period_for(
+                year=grade.year,
+                term=grade.term,
+            ) is None:
+                return _error(ENTRY_CLOSED_MESSAGE, status.HTTP_409_CONFLICT)
             serializer = CBCGradeSerializer(grade, data=request.data)
             if not serializer.is_valid():
                 return _error(serializer.errors)
             new_term = serializer.validated_data.get('term', grade.term)
             new_year = serializer.validated_data.get('year', grade.year)
+            if open_academic_period_for(
+                year=new_year,
+                term=new_term,
+            ) is None:
+                return _error(ENTRY_CLOSED_MESSAGE, status.HTTP_409_CONFLICT)
             if CBCGrade.objects.filter(
                 student_subject=grade.student_subject,
                 term=new_term,
@@ -1236,6 +1252,11 @@ class CBCGradeDetailView(APIView):
                     'School-verified evidence cannot be deleted by a learner.',
                     status.HTTP_403_FORBIDDEN,
                 )
+            if open_academic_period_for(
+                year=grade.year,
+                term=grade.term,
+            ) is None:
+                return _error(ENTRY_CLOSED_MESSAGE, status.HTTP_409_CONFLICT)
             list(
                 AcademicGoal.objects.select_for_update().filter(
                     current_evidence=grade,

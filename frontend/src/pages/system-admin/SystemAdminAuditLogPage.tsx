@@ -28,6 +28,7 @@ const ACTION_LABELS: Record<string, string> = {
   school_membership_approved: 'School link approved',
   school_membership_rejected: 'School link rejected',
   grade_verified: 'Grade verified',
+  school_marks_imported: 'School marks imported',
   grade_verification_removed: 'Grade verification removed',
   parent_link_approved: 'Parent link approved',
   parent_link_revoked: 'Parent link revoked',

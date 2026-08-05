@@ -2,12 +2,53 @@
 
 import io
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from .components import data_table, empty_state, footer_disclaimer, report_header, section_title, stat_grid, text
 from .theme import get_styles
+
+
+def _cohort_progress_chart(records):
+    if not records:
+        return None
+    bands = [
+        ('Below', ('BE1', 'BE2'), '#C24B3A'),
+        ('Approaching', ('AE1', 'AE2'), '#D58B00'),
+        ('Meeting', ('ME1', 'ME2'), '#247A62'),
+        ('Exceeding', ('EE1', 'EE2'), '#173F73'),
+    ]
+    totals = {}
+    for record in records:
+        term = record.get('term')
+        totals.setdefault(term, {})
+        totals[term][record.get('level')] = totals[term].get(record.get('level'), 0) + record.get('count', 0)
+    maximum = max((sum(values.values()) for values in totals.values()), default=1)
+    width, height = 165 * mm, 48 * mm
+    drawing = Drawing(width, height)
+    baseline, chart_height = 10 * mm, 30 * mm
+    bar_width = 23 * mm
+    for index, term in enumerate((1, 2, 3)):
+        x = 24 * mm + index * 48 * mm
+        y = baseline
+        term_total = sum(totals.get(term, {}).values())
+        for label, levels, color in bands:
+            count = sum(totals.get(term, {}).get(level, 0) for level in levels)
+            segment_height = chart_height * count / maximum
+            if segment_height:
+                drawing.add(Rect(x, y, bar_width, segment_height, fillColor=colors.HexColor(color), strokeColor=None))
+                y += segment_height
+        drawing.add(String(x + bar_width / 2, 4 * mm, f'Term {term}', textAnchor='middle', fontName='Helvetica-Bold', fontSize=8))
+        drawing.add(String(x + bar_width / 2, y + 2 * mm, str(term_total), textAnchor='middle', fontName='Helvetica-Bold', fontSize=8))
+    legend_x = 145 * mm
+    for index, (label, _levels, color) in enumerate(reversed(bands)):
+        y = height - 8 * mm - index * 8 * mm
+        drawing.add(Rect(legend_x, y, 4 * mm, 4 * mm, fillColor=colors.HexColor(color), strokeColor=None))
+        drawing.add(String(legend_x + 6 * mm, y + 0.5 * mm, label, fontName='Helvetica', fontSize=7))
+    return drawing
 
 
 def build_cohort_overview_report(data):
@@ -38,6 +79,17 @@ def build_cohort_overview_report(data):
                 ] for row in workload],
                 [125 * mm, 40 * mm],
             ),
+        ])
+    progress_chart = _cohort_progress_chart(data.get('academic_progress') or [])
+    if progress_chart:
+        elements.extend([
+            section_title('Cohort Academic Progress by Term', styles),
+            Paragraph(
+                'Counts aggregate CBC evidence bands across active learners. '
+                'They support curriculum planning and are not a learner ranking.',
+                styles['SmallGrey'],
+            ),
+            progress_chart,
         ])
     elements.extend([
         Spacer(1, 8 * mm),

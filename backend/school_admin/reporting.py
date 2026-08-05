@@ -7,6 +7,7 @@ from counselors.models import CounselorAssignment
 from guidance.models import FrameworkVersion, SchoolOffering
 from riasec.models import RIASECAssessment
 from reports.reporting import cohort_roster_queryset, cohort_roster_rows
+from students.models import CBCGrade
 
 
 def active_school_profiles(school):
@@ -78,6 +79,25 @@ def get_school_stats(school):
         ).count()
         if framework is not None else 0
     )
+    academic_progress = list(
+        CBCGrade.objects.filter(
+            student_subject__student_profile__in=profiles,
+        )
+        .values(
+            'year',
+            'term',
+            'level',
+            'student_subject__continuity_code',
+            'student_subject__subject__name',
+        )
+        .annotate(count=Count('id'))
+        .order_by(
+            'year',
+            'term',
+            'student_subject__subject__name',
+            'level',
+        )
+    )
     return {
         'total_students': total_students,
         'total_counselors': len(counselors),
@@ -90,6 +110,17 @@ def get_school_stats(school):
         'reviews_completed': reviews_completed,
         'offerings_count': offerings_count,
         'offerings_configured': offerings_count > 0,
+        'academic_progress': [
+            {
+                'year': row['year'],
+                'term': row['term'],
+                'level': row['level'],
+                'continuity_code': row['student_subject__continuity_code'],
+                'subject_name': row['student_subject__subject__name'],
+                'count': row['count'],
+            }
+            for row in academic_progress
+        ],
         'counselor_workload': [
             {
                 'counselor_id': counselor.id,

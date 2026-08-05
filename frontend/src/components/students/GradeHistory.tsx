@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
@@ -37,8 +37,13 @@ function gradeErrorMessage(error: unknown): string {
     : 'Something went wrong. Please try again.'
 }
 
-function isMutable(grade: CBCGrade): boolean {
-  return !grade.verified_by && !grade.verified_school && !grade.verified_at
+function isMutable(grade: CBCGrade, openPeriodKeys: Set<string>): boolean {
+  return (
+    !grade.verified_by
+    && !grade.verified_school
+    && !grade.verified_at
+    && openPeriodKeys.has(`${grade.year}-${grade.term}`)
+  )
 }
 
 function verificationLabel(grade: CBCGrade): string {
@@ -49,6 +54,16 @@ function verificationLabel(grade: CBCGrade): string {
 
 export default function GradeHistory({ grades, studentSubjectId }: Props) {
   const queryClient = useQueryClient()
+  const periodsQ = useQuery({
+    queryKey: ['students', 'academic-periods'],
+    queryFn: () => studentsApi.getAcademicPeriods().then(response => response.data.data),
+    enabled: studentSubjectId !== undefined,
+  })
+  const openPeriodKeys = new Set(
+    (periodsQ.data ?? [])
+      .filter(period => period.can_submit)
+      .map(period => `${period.year}-${period.term}`),
+  )
   const [draft, setDraft] = useState<GradeDraft | null>(null)
   const refreshEvidence = () => {
     queryClient.invalidateQueries({ queryKey: ['grades', studentSubjectId] })
@@ -147,18 +162,37 @@ export default function GradeHistory({ grades, studentSubjectId }: Props) {
                         onChange={(event) => setDraft({ ...draft, term: Number(event.target.value) as 1 | 2 | 3 })}
                         disabled={update.isPending}
                       >
-                        <option value={1}>Term 1</option>
-                        <option value={2}>Term 2</option>
-                        <option value={3}>Term 3</option>
+                        <option value={1} disabled={!openPeriodKeys.has(`${draft.year}-1`)}>Term 1</option>
+                        <option value={2} disabled={!openPeriodKeys.has(`${draft.year}-2`)}>Term 2</option>
+                        <option value={3} disabled={!openPeriodKeys.has(`${draft.year}-3`)}>Term 3</option>
                       </select>
                       <label className="sr-only" htmlFor={`edit-year-${grade.id}`}>Edit year for {label}</label>
-                      <input
+                      <select
                         id={`edit-year-${grade.id}`}
-                        type="number"
                         value={draft.year}
-                        onChange={(event) => setDraft({ ...draft, year: Number(event.target.value) })}
+                        onChange={(event) => {
+                          const nextYear = Number(event.target.value)
+                          const availableTerms = (periodsQ.data ?? [])
+                            .filter(period => period.can_submit && period.year === nextYear)
+                            .map(period => period.term)
+                          setDraft({
+                            ...draft,
+                            year: nextYear,
+                            term: availableTerms.includes(draft.term)
+                              ? draft.term
+                              : (availableTerms[0] ?? draft.term),
+                          })
+                        }}
                         disabled={update.isPending}
-                      />
+                      >
+                        {[...new Set(
+                          (periodsQ.data ?? [])
+                            .filter(period => period.can_submit)
+                            .map(period => period.year),
+                        )].map(openYear => (
+                          <option key={openYear} value={openYear}>{openYear}</option>
+                        ))}
+                      </select>
                       <button type="button" onClick={() => update.mutate(draft)} disabled={update.isPending}>
                         {update.isPending ? 'Saving…' : 'Save grade changes'}
                       </button>
@@ -166,7 +200,7 @@ export default function GradeHistory({ grades, studentSubjectId }: Props) {
                         Cancel
                       </button>
                     </div>
-                  ) : isMutable(grade) ? (
+                  ) : isMutable(grade, openPeriodKeys) ? (
                     <div className="grade-history__actions">
                       <button
                         type="button"
@@ -195,7 +229,9 @@ export default function GradeHistory({ grades, studentSubjectId }: Props) {
                       </button>
                     </div>
                   ) : (
-                    <span className="grade-history__locked">History locked</span>
+                    <span className="grade-history__locked">
+                      {periodsQ.isLoading ? 'Checking window' : 'History locked'}
+                    </span>
                   )}
                 </td>
               )}
