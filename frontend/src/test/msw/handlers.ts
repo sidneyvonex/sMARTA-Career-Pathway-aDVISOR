@@ -1928,6 +1928,10 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: 'User has been activated.' })
   }),
 
+  http.post(/\/api\/v1\/system-admin\/users\/\d+\/reset-password\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to jane@test.com.' })
+  }),
+
   http.get('/api/v1/system-admin/audit-logs/', () => {
     return HttpResponse.json({
       data: {

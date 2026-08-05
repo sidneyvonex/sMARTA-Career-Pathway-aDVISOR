@@ -226,6 +226,9 @@ export const systemAdminApi = {
   activateUser: (id: number) =>
     api.post(`/system-admin/users/${id}/activate/`),
 
+  resetUserPassword: (id: number) =>
+    api.post<{ message: string }>(`/system-admin/users/${id}/reset-password/`),
+
   getAuditLogs: (params?: { action?: string; actor?: string; date_from?: string; date_to?: string; page?: number }) =>
     api.get<{ data: PaginatedResponse<AuditEntry> }>('/system-admin/audit-logs/', { params }),
 }

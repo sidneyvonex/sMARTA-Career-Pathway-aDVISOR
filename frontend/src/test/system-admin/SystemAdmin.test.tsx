@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { server } from '../msw/server'
 import SystemAdminDashboard from '../../components/system-admin/SystemAdminDashboard'
@@ -436,6 +437,20 @@ describe('SystemAdminUsersPage', () => {
     expect(screen.getByRole('menuitem', { name: 'Download PDF' })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
     expect(screen.getByRole('dialog', { name: 'Deactivate Jane Doe?' })).toBeInTheDocument()
+  })
+
+  it('resets a user password after confirmation', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'More actions for Jane Doe' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Reset password' }))
+    expect(screen.getByRole('dialog', { name: 'Reset password for Jane Doe?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reset password' }))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
+      'Password reset. New credentials sent to jane@test.com.',
+    ))
   })
 })
 
