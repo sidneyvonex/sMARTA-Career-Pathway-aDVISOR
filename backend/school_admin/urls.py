@@ -25,6 +25,8 @@ urlpatterns = [
     path('counselors/', views.SchoolCounselorsView.as_view(), name='school-admin-counselors'),
     path('counselors/add/', views.SchoolCounselorAddView.as_view(), name='school-admin-counselor-add'),
     path('counselors/<int:counselor_id>/remove/', views.SchoolCounselorRemoveView.as_view(), name='school-admin-counselor-remove'),
+    path('counselors/<int:counselor_id>/reset-password/', views.CounselorPasswordResetView.as_view(), name='school-admin-counselor-reset-password'),
+    path('students/<int:student_id>/reset-password/', views.StudentPasswordResetView.as_view(), name='school-admin-student-reset-password'),
     path('students/', views.SchoolStudentsView.as_view(), name='school-admin-students'),
     path(
         'students/import/',

@@ -23,6 +23,7 @@ from accounts.models import (
     StudentSchoolMembership,
 )
 from accounts.response import _success, _error
+from accounts.emails import send_password_reset_temp_email
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
@@ -540,6 +541,63 @@ class SchoolCounselorRemoveView(APIView):
             request=request,
         )
         return _success(message=f'{counselor.first_name} {counselor.last_name} removed from {school.name}.')
+
+
+class CounselorPasswordResetView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request, counselor_id):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+        try:
+            counselor = User.objects.get(pk=counselor_id, role='counselor', school=school)
+        except User.DoesNotExist:
+            return _error('Counselor not found at your school.', status.HTTP_404_NOT_FOUND)
+
+        temp_password = _temporary_password()
+        counselor.set_password(temp_password)
+        counselor.save(update_fields=['password'])
+
+        send_password_reset_temp_email.delay(
+            user_id=counselor.id, email=counselor.email, first_name=counselor.first_name,
+            temp_password=temp_password,
+        )
+        log_action(
+            actor=request.user, action='password_reset_by_admin', target_type='user',
+            target_id=counselor.id, details={'reset_by': request.user.id}, request=request,
+        )
+        return _success(message=f'Password reset. New credentials sent to {counselor.email}.')
+
+
+class StudentPasswordResetView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request, student_id):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+        try:
+            profile = StudentProfile.objects.select_related('user').get(
+                user_id=student_id, school=school,
+            )
+        except StudentProfile.DoesNotExist:
+            return _error('Learner not found at your school.', status.HTTP_404_NOT_FOUND)
+        student = profile.user
+
+        temp_password = _temporary_password()
+        student.set_password(temp_password)
+        student.save(update_fields=['password'])
+
+        send_password_reset_temp_email.delay(
+            user_id=student.id, email=student.email, first_name=student.first_name,
+            temp_password=temp_password,
+        )
+        log_action(
+            actor=request.user, action='password_reset_by_admin', target_type='user',
+            target_id=student.id, details={'reset_by': request.user.id}, request=request,
+        )
+        return _success(message=f'Password reset. New credentials sent to {student.email}.')
 
 
 class SchoolStudentsView(APIView):

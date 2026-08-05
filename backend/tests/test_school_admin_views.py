@@ -1087,3 +1087,39 @@ class TestSchoolAssignmentView:
         }, format='json')
 
         assert response.status_code == 400
+
+
+class TestSchoolAdminPasswordReset:
+    def setup_method(self):
+        self.school = SchoolFactory()
+        self.admin = SchoolAdminFactory(school=self.school)
+        self.client = APIClient()
+        self.client.force_authenticate(self.admin)
+
+    def test_resets_own_school_counselor(self, mailoutbox):
+        counselor = CounselorFactory(school=self.school)
+        old_hash = counselor.password
+        response = self.client.post(f'/api/v1/school-admin/counselors/{counselor.id}/reset-password/')
+        assert response.status_code == 200
+        counselor.refresh_from_db()
+        assert counselor.password != old_hash
+        assert len(mailoutbox) == 1
+
+    def test_cannot_reset_counselor_at_another_school(self):
+        other_counselor = CounselorFactory(school=SchoolFactory())
+        response = self.client.post(f'/api/v1/school-admin/counselors/{other_counselor.id}/reset-password/')
+        assert response.status_code == 404
+
+    def test_resets_own_school_student(self, mailoutbox):
+        profile = StudentProfileFactory(school=self.school, mode='school_linked')
+        old_hash = profile.user.password
+        response = self.client.post(f'/api/v1/school-admin/students/{profile.user.id}/reset-password/')
+        assert response.status_code == 200
+        profile.user.refresh_from_db()
+        assert profile.user.password != old_hash
+        assert len(mailoutbox) == 1
+
+    def test_cannot_reset_student_at_another_school(self):
+        other_profile = StudentProfileFactory(school=SchoolFactory(), mode='school_linked')
+        response = self.client.post(f'/api/v1/school-admin/students/{other_profile.user.id}/reset-password/')
+        assert response.status_code == 404
