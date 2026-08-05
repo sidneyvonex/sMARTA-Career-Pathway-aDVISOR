@@ -146,6 +146,7 @@ describe('flagged My Progress dashboard', () => {
 
   it('summarises every readiness status with explainable evidence and an accessible trend table', async () => {
     server.use(http.get('/api/v1/students/progress/', () => progressResponse()))
+    const user = userEvent.setup()
 
     renderPage()
 
@@ -154,14 +155,23 @@ describe('flagged My Progress dashboard', () => {
     for (const label of ['Strong', 'On track', 'Needs attention', 'Support', 'Insufficient evidence']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0)
     }
+    expect(screen.getByText('Review the next Mathematics learning activity.')).toBeInTheDocument()
+    expect(screen.getByText('Mixed learner-entered and school-verified evidence')).toBeInTheDocument()
+    expect(screen.queryByText(
+      'Improving from Approaching Expectation - Level 2 to Meeting Expectation - Level 2 across 2 status records.',
+    )).not.toBeInTheDocument()
+    expect(screen.queryByRole('table', {
+      name: 'Mathematics evidence used for this status',
+    })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'View Mathematics details' }))
     expect(screen.getByText(
       'Improving from Approaching Expectation - Level 2 to Meeting Expectation - Level 2 across 2 status records.',
     )).toBeInTheDocument()
-    expect(screen.getByText('Mixed learner-entered and school-verified evidence')).toBeInTheDocument()
     expect(screen.getAllByText('CBC-SENIOR-SCHOOL pilot-2026').length).toBeGreaterThan(0)
-    expect(screen.getByText('Rule: latest_ee_or_improving_to_me2_strong')).toBeInTheDocument()
-    expect(screen.getByText('Review the next Mathematics learning activity.')).toBeInTheDocument()
+    expect(screen.queryByText('Rule: latest_ee_or_improving_to_me2_strong')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Review the next Mathematics learning activity.')).toHaveLength(1)
 
+    await user.click(screen.getByRole('button', { name: 'View Mathematics evidence history' }))
     const evidenceTable = screen.getByRole('table', { name: 'Mathematics evidence' })
     expect(within(evidenceTable).getByText('Grade 10, 2026, Term 1')).toBeInTheDocument()
     expect(within(evidenceTable).getByText(/School verified on/)).toBeInTheDocument()
@@ -176,6 +186,21 @@ describe('flagged My Progress dashboard', () => {
     expect(screen.getByText(progressFixture.advisory_disclaimer)).toBeInTheDocument()
   })
 
+  it('reveals a sparkline trend chart only once a subject card is expanded', async () => {
+    server.use(http.get('/api/v1/students/progress/', () => progressResponse()))
+    const user = userEvent.setup()
+
+    renderPage()
+    await screen.findByRole('heading', { name: 'Mathematics' })
+
+    const mathCard = screen.getByRole('heading', { name: 'Mathematics' }).closest('article')!
+    expect(within(mathCard).queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+    expect(mathCard.querySelector('svg.grade-sparkline')).not.toBeInTheDocument()
+
+    await user.click(within(mathCard).getByRole('button', { name: 'View Mathematics details' }))
+    expect(mathCard.querySelector('svg.grade-sparkline')).toBeInTheDocument()
+  })
+
   it('uses a singular subject label when one subject is reviewed', async () => {
     server.use(http.get('/api/v1/students/progress/', () => progressResponse({
       ...progressFixture,
@@ -187,6 +212,23 @@ describe('flagged My Progress dashboard', () => {
 
     expect(await screen.findByText('1 subject reviewed')).toBeInTheDocument()
     expect(screen.queryByText('1 subjects reviewed')).not.toBeInTheDocument()
+  })
+
+  it('filters the shared term chart and accessible evidence table by term and subject', async () => {
+    server.use(http.get('/api/v1/students/progress/', () => progressResponse()))
+    const user = userEvent.setup()
+    renderPage()
+
+    const table = await screen.findByRole('table', { name: 'Academic progress by subject and term' })
+    expect(within(table).getAllByText('Mathematics').length).toBeGreaterThan(0)
+    expect(within(table).getByText('2025, Term 3')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Report term'), '1')
+    await user.selectOptions(screen.getByLabelText('Report subject'), 'MTH')
+
+    expect(within(table).getByText('2026, Term 1')).toBeInTheDocument()
+    expect(within(table).queryByText('2025, Term 3')).not.toBeInTheDocument()
+    expect(within(table).queryByText('English')).not.toBeInTheDocument()
   })
 
   it('filters the evidence view by academic grade and year with associated labels', async () => {
@@ -235,7 +277,9 @@ describe('flagged My Progress dashboard', () => {
     const user = userEvent.setup()
 
     renderPage()
-    expect(await screen.findByText(
+    await screen.findByRole('heading', { name: 'Mathematics' })
+    await user.click(screen.getByRole('button', { name: 'View Mathematics details' }))
+    expect(screen.getByText(
       'Declining from Exceeding Expectation - Level 1 to Meeting Expectation - Level 1 across 2 status records.',
     )).toBeInTheDocument()
 
@@ -411,8 +455,11 @@ describe('flagged My Progress dashboard', () => {
 
     renderPage()
 
-    const recordResult = await screen.findByRole('button', { name: 'Record a result' })
-    expect(recordResult).toBeDisabled()
+    const recordResultButtons = await screen.findAllByRole('button', { name: /Record a result/ })
+    expect(recordResultButtons.length).toBeGreaterThan(0)
+    for (const recordResult of recordResultButtons) {
+      expect(recordResult).toBeDisabled()
+    }
     expect(screen.getByRole('status', { name: 'Loading enrolled subjects' })).toBeInTheDocument()
   })
 
@@ -466,6 +513,7 @@ describe('flagged My Progress dashboard', () => {
     const summary = await screen.findByLabelText('Academic progress summary')
     expect(within(summary).getByText('Support')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Record a result' }))
+    expect(screen.getByRole('heading', { name: 'Record academic evidence' })).toHaveFocus()
     await user.click(screen.getByRole('button', { name: 'Add grade' }))
 
     expect(await within(summary).findByText('Strong')).toBeInTheDocument()
