@@ -275,6 +275,47 @@ class TestMeView:
 
 
 @pytest.mark.django_db
+class TestMeViewPatch:
+    def test_updates_first_and_last_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old', last_name='Name')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'New', 'last_name': 'Person',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.first_name == 'New'
+        assert user.last_name == 'Person'
+
+    def test_ignores_email_in_body(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(email='original@test.com')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'New', 'email': 'hijacked@test.com',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.email == 'original@test.com'
+
+    def test_rejects_blank_first_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {'first_name': '  '}, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.first_name == 'Old'
+
+
+@pytest.mark.django_db
 class TestEmailVerification:
     def test_valid_token_verifies_email(self, client):
         from tests.factories import UserFactory

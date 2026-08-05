@@ -154,6 +154,20 @@ class MeView(APIView):
     def get(self, request):
         return _success(data={'user': UserSerializer(request.user).data})
 
+    def patch(self, request):
+        user = request.user
+        updated = []
+        for field in ('first_name', 'last_name'):
+            if field in request.data:
+                value = request.data[field]
+                if not isinstance(value, str) or not value.strip():
+                    return _error(f'{field.replace("_", " ").title()} is required.')
+                setattr(user, field, value.strip())
+                updated.append(field)
+        if updated:
+            user.save(update_fields=updated)
+        return _success(data={'user': UserSerializer(user).data}, message='Profile updated.')
+
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
