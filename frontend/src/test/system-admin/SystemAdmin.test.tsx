@@ -329,6 +329,14 @@ describe('SystemAdminSchoolsPage', () => {
     })
   })
 
+  it('requires an email to submit the create-school form', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Create school' }))
+    const emailInput = await screen.findByLabelText('Email') as HTMLInputElement
+    expect(emailInput).toBeRequired()
+  })
+
   it('coordinates school records with view, overflow, details, and confirmed status actions', async () => {
     const user = userEvent.setup()
     renderPage()

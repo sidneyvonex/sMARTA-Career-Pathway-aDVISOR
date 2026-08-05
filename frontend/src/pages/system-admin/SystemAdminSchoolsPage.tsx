@@ -73,7 +73,7 @@ export default function SystemAdminSchoolsPage() {
     }),
     onSuccess: () => {
       invalidateSchools()
-      toast.success('School created successfully.')
+      toast.success(`${createData.name} created. Login details sent to ${createData.email}.`)
       setCreateData({ name: '', county: '', school_code: '', phone: '', email: '' })
       setShowCreateForm(false)
     },
@@ -217,7 +217,8 @@ export default function SystemAdminSchoolsPage() {
         </div>
         <div className="form-field">
           <label htmlFor="create-email">Email</label>
-          <input id="create-email" type="email" value={createData.email} onChange={event => setCreateData(value => ({ ...value, email: event.target.value }))} />
+          <input id="create-email" type="email" value={createData.email} onChange={event => setCreateData(value => ({ ...value, email: event.target.value }))} required />
+          <p className="form-hint">Used to create the school's login account. A temporary password will be emailed here.</p>
         </div>
       </div>
       <div className="sysadmin-create-form__actions">
