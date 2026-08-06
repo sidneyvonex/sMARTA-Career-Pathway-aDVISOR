@@ -1051,6 +1051,46 @@ class TestSchoolAdminTransfer:
         )
         assert response.status_code == 404
 
+    def test_rejects_student_target(self, client, mailoutbox):
+        student = VerifiedUserFactory(role='student')
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': student.id}, format='json',
+        )
+        assert response.status_code == 400
+        assert response.data['error'] is True
+
+        student.refresh_from_db()
+        assert student.role == 'student'
+        assert student.school is None
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school == self.school
+        assert self.old_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 0
+
+    def test_rejects_inactive_target(self, client, mailoutbox):
+        inactive_admin = CounselorFactory(school=None, is_active=False)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': inactive_admin.id}, format='json',
+        )
+        assert response.status_code == 400
+        assert response.data['error'] is True
+
+        inactive_admin.refresh_from_db()
+        assert inactive_admin.school is None
+        assert inactive_admin.role == 'counselor'
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school == self.school
+        assert self.old_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 0
+
     def test_transfer_to_already_current_admin_is_idempotent(self, client, mailoutbox):
         existing_admin = self.old_admin
         client.force_authenticate(self.admin)

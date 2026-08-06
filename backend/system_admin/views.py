@@ -718,6 +718,11 @@ class SchoolAdminTransferView(APIView):
         except (User.DoesNotExist, ValueError, TypeError):
             return _error('The selected user could not be found.')
 
+        if new_admin.role not in ('school_admin', 'counselor'):
+            return _error('Only staff accounts (counselors or school admins) can be made school administrators.')
+        if not new_admin.is_active:
+            return _error('The selected user account is not active.')
+
         with transaction.atomic():
             old_admins = list(
                 User.objects.filter(school=school, role='school_admin').exclude(pk=new_admin.pk)
