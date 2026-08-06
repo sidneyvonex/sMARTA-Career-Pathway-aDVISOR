@@ -38,6 +38,9 @@ ACTION_CHOICES = [
     ('plan_review_status_changed', 'Plan review status changed'),
     ('report_downloaded', 'Report downloaded'),
     ('school_offerings_changed', 'School offerings changed'),
+    ('password_changed_self', 'Password changed (self-service)'),
+    ('password_reset_by_admin', 'Password reset by admin'),
+    ('school_admin_transferred', 'School admin transferred'),
 ]
 
 TARGET_TYPE_CHOICES = [
