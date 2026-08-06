@@ -58,7 +58,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="auth-page">
+    <div className="account-settings-page">
       <section className="auth-card">
         <h1 className="auth-heading">Your name</h1>
         <form onSubmit={handleNameSubmit} className="auth-form">
@@ -77,7 +77,7 @@ export default function AccountSettingsPage() {
       </section>
 
       <section className="auth-card">
-        <h1 className="auth-heading">Change password</h1>
+        <h2 className="account-settings-page__heading">Change password</h2>
         <form onSubmit={handlePasswordSubmit} className="auth-form">
           <div className="form-field">
             <label htmlFor="account-current-password">Current password</label>
