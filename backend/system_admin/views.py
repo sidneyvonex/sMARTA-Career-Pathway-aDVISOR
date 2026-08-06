@@ -719,7 +719,9 @@ class SchoolAdminTransferView(APIView):
             return _error('The selected user could not be found.')
 
         with transaction.atomic():
-            old_admins = list(User.objects.filter(school=school, role='school_admin'))
+            old_admins = list(
+                User.objects.filter(school=school, role='school_admin').exclude(pk=new_admin.pk)
+            )
             for old_admin in old_admins:
                 old_admin.school = None
                 old_admin.save(update_fields=['school'])

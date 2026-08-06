@@ -1050,3 +1050,46 @@ class TestSchoolAdminTransfer:
             {'new_admin_user_id': new_admin.id}, format='json',
         )
         assert response.status_code == 404
+
+    def test_transfer_to_already_current_admin_is_idempotent(self, client, mailoutbox):
+        existing_admin = self.old_admin
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': existing_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        existing_admin.refresh_from_db()
+        assert existing_admin.school == self.school
+        assert existing_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 1
+        assert existing_admin.email in mailoutbox[0].to
+        assert 'now the school admin' in mailoutbox[0].subject
+
+        log = AuditLog.objects.filter(action='school_admin_transferred').latest('created_at')
+        assert existing_admin.id not in log.details['old_admin_ids']
+
+    def test_transfers_multiple_old_admins(self, client, mailoutbox):
+        second_old_admin = SchoolAdminFactory(school=self.school)
+        new_admin = CounselorFactory(school=None)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        self.old_admin.refresh_from_db()
+        second_old_admin.refresh_from_db()
+        assert self.old_admin.school is None
+        assert self.old_admin.role == 'school_admin'
+        assert second_old_admin.school is None
+        assert second_old_admin.role == 'school_admin'
+
+        new_admin.refresh_from_db()
+        assert new_admin.school == self.school
+        assert new_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 3
