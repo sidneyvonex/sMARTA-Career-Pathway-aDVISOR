@@ -365,6 +365,11 @@ describe('SystemAdminSchoolsPage', () => {
     await user.type(screen.getByLabelText('New admin email'), 'bob@test.com')
     await user.click(screen.getByRole('button', { name: 'Transfer' }))
 
+    expect(await screen.findByRole('dialog', {
+      name: 'Transfer admin for Starehe Boys Centre to bob@test.com?',
+    })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Transfer admin' }))
+
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
       'Starehe Boys Centre admin transferred to bob@test.com.',
     ))

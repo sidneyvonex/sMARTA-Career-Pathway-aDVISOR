@@ -41,6 +41,7 @@ export default function SystemAdminSchoolsPage() {
   const [statusSchool, setStatusSchool] = useState<SchoolItem | null>(null)
   const [transferSchool, setTransferSchool] = useState<SchoolItem | null>(null)
   const [transferEmail, setTransferEmail] = useState('')
+  const [confirmingTransfer, setConfirmingTransfer] = useState<{ schoolId: number; email: string } | null>(null)
   const [editData, setEditData] = useState({ name: '', phone: '', email: '' })
   const [createData, setCreateData] = useState({
     name: '',
@@ -129,8 +130,10 @@ export default function SystemAdminSchoolsPage() {
       toast.success(response.data.message)
       setTransferSchool(null)
       setTransferEmail('')
+      setConfirmingTransfer(null)
     },
     onError: (error: any) => {
+      setConfirmingTransfer(null)
       if (error?.message === 'NOT_FOUND') {
         toast.error('No user found with that email.')
         return
@@ -369,7 +372,7 @@ export default function SystemAdminSchoolsPage() {
           </dl>
         )}
         {detailSchool && (
-          <button type="button" className="btn-ghost" onClick={() => { setTransferSchool(detailSchool); setTransferEmail('') }}>
+          <button type="button" className="btn-ghost" onClick={() => { setTransferSchool(detailSchool); setTransferEmail(''); setDetailSchool(null) }}>
             Transfer admin
           </button>
         )}
@@ -380,7 +383,8 @@ export default function SystemAdminSchoolsPage() {
           className="sysadmin-create-form"
           onSubmit={(event: FormEvent) => {
             event.preventDefault()
-            transferMutation.mutate({ schoolId: transferSchool.id, email: transferEmail })
+            if (!transferEmail.trim()) return
+            setConfirmingTransfer({ schoolId: transferSchool.id, email: transferEmail.trim() })
           }}
         >
           <div className="sysadmin-create-form__heading">
@@ -412,6 +416,16 @@ export default function SystemAdminSchoolsPage() {
         pending={statusMutation.isPending}
         onClose={() => setStatusSchool(null)}
         onConfirm={() => { if (statusSchool) statusMutation.mutate(statusSchool) }}
+      />
+
+      <ConfirmDialog
+        open={confirmingTransfer !== null}
+        title={transferSchool ? `Transfer admin for ${transferSchool.name} to ${confirmingTransfer?.email}?` : 'Transfer admin?'}
+        description="This changes who administers the school. The outgoing admin will lose access, and the new admin will be promoted if they aren't already staff."
+        confirmLabel={transferMutation.isPending ? 'Transferring…' : 'Transfer admin'}
+        pending={transferMutation.isPending}
+        onClose={() => setConfirmingTransfer(null)}
+        onConfirm={() => { if (confirmingTransfer) transferMutation.mutate(confirmingTransfer) }}
       />
     </>
   )
