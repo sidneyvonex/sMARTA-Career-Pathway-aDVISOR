@@ -579,7 +579,7 @@ class StudentPasswordResetView(APIView):
             return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
         try:
             profile = StudentProfile.objects.select_related('user').get(
-                user_id=student_id, school=school,
+                user_id=student_id, school=school, school_membership_status='active',
             )
         except StudentProfile.DoesNotExist:
             return _error('Learner not found at your school.', status.HTTP_404_NOT_FOUND)

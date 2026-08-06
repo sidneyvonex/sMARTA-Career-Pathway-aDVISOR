@@ -1123,3 +1123,13 @@ class TestSchoolAdminPasswordReset:
         other_profile = StudentProfileFactory(school=SchoolFactory(), mode='school_linked')
         response = self.client.post(f'/api/v1/school-admin/students/{other_profile.user.id}/reset-password/')
         assert response.status_code == 404
+
+    def test_cannot_reset_pending_membership_student(self):
+        profile = StudentProfileFactory(
+            school=self.school, mode='school_linked', school_membership_status='pending',
+        )
+        old_hash = profile.user.password
+        response = self.client.post(f'/api/v1/school-admin/students/{profile.user.id}/reset-password/')
+        assert response.status_code == 404
+        profile.user.refresh_from_db()
+        assert profile.user.password == old_hash
