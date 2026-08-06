@@ -355,6 +355,20 @@ describe('SystemAdminSchoolsPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
     expect(screen.getByRole('dialog', { name: 'Deactivate Starehe Boys Centre?' })).toBeInTheDocument()
   })
+
+  it('transfers the school admin to a new user', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'View Starehe Boys Centre' }))
+    await user.click(screen.getByRole('button', { name: 'Transfer admin' }))
+    await user.type(screen.getByLabelText('New admin email'), 'bob@test.com')
+    await user.click(screen.getByRole('button', { name: 'Transfer' }))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
+      'Starehe Boys Centre admin transferred to bob@test.com.',
+    ))
+  })
 })
 
 describe('SystemAdminUsersPage', () => {

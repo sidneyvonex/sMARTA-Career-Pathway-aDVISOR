@@ -214,6 +214,11 @@ export const systemAdminApi = {
   activateSchool: (id: number) =>
     api.post(`/system-admin/schools/${id}/activate/`),
 
+  transferSchoolAdmin: (schoolId: number, newAdminUserId: number) =>
+    api.post<{ message: string }>(`/system-admin/schools/${schoolId}/transfer-admin/`, {
+      new_admin_user_id: newAdminUserId,
+    }),
+
   getUsers: (params?: { role?: string; county?: string; school?: string; search?: string; active?: string; page?: number }) =>
     api.get<{ data: PaginatedResponse<UserItem> }>('/system-admin/users/', { params }),
 

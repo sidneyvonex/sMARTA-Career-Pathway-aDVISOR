@@ -21,6 +21,8 @@ export default function DetailDrawer({ open, title, children, onClose }: DetailD
   const titleId = useId()
   const panelRef = useRef<HTMLElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return undefined
@@ -31,7 +33,7 @@ export default function DetailDrawer({ open, title, children, onClose }: DetailD
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab' || !panelRef.current) return
@@ -54,7 +56,7 @@ export default function DetailDrawer({ open, title, children, onClose }: DetailD
       document.body.style.overflow = previousOverflow
       previouslyFocused?.focus()
     }
-  }, [onClose, open])
+  }, [open])
 
   if (!open) return null
 

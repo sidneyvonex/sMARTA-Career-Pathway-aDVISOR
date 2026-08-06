@@ -39,6 +39,8 @@ export default function SystemAdminSchoolsPage() {
   const [editingSchool, setEditingSchool] = useState<SchoolItem | null>(null)
   const [detailSchool, setDetailSchool] = useState<SchoolItem | null>(null)
   const [statusSchool, setStatusSchool] = useState<SchoolItem | null>(null)
+  const [transferSchool, setTransferSchool] = useState<SchoolItem | null>(null)
+  const [transferEmail, setTransferEmail] = useState('')
   const [editData, setEditData] = useState({ name: '', phone: '', email: '' })
   const [createData, setCreateData] = useState({
     name: '',
@@ -112,6 +114,29 @@ export default function SystemAdminSchoolsPage() {
     onError: (error: any) => {
       const message = error.response?.data?.message
       toast.error(typeof message === 'string' ? message : 'Failed to update school status.')
+    },
+  })
+
+  const transferMutation = useMutation({
+    mutationFn: async ({ schoolId, email }: { schoolId: number; email: string }) => {
+      const lookup = await systemAdminApi.getUsers({ search: email })
+      const match = lookup.data.data.results.find(u => u.email.toLowerCase() === email.toLowerCase())
+      if (!match) throw new Error('NOT_FOUND')
+      return systemAdminApi.transferSchoolAdmin(schoolId, match.id)
+    },
+    onSuccess: (response) => {
+      invalidateSchools()
+      toast.success(response.data.message)
+      setTransferSchool(null)
+      setTransferEmail('')
+    },
+    onError: (error: any) => {
+      if (error?.message === 'NOT_FOUND') {
+        toast.error('No user found with that email.')
+        return
+      }
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to transfer admin.')
     },
   })
 
@@ -343,7 +368,39 @@ export default function SystemAdminSchoolsPage() {
             <div><dt>Status</dt><dd>{detailSchool.is_active ? 'Active' : 'Inactive'}</dd></div>
           </dl>
         )}
+        {detailSchool && (
+          <button type="button" className="btn-ghost" onClick={() => { setTransferSchool(detailSchool); setTransferEmail('') }}>
+            Transfer admin
+          </button>
+        )}
       </DetailDrawer>
+
+      {transferSchool && (
+        <form
+          className="sysadmin-create-form"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault()
+            transferMutation.mutate({ schoolId: transferSchool.id, email: transferEmail })
+          }}
+        >
+          <div className="sysadmin-create-form__heading">
+            <div>
+              <h2>Transfer admin for {transferSchool.name}</h2>
+              <p>Enter the email of the existing account to make the new school admin. They'll be promoted if needed, and the outgoing admin will be unlinked from this school.</p>
+            </div>
+            <button type="button" className="btn-ghost" onClick={() => setTransferSchool(null)}>Close form</button>
+          </div>
+          <div className="form-field">
+            <label htmlFor="transfer-admin-email">New admin email</label>
+            <input id="transfer-admin-email" type="email" value={transferEmail} onChange={event => setTransferEmail(event.target.value)} required />
+          </div>
+          <div className="sysadmin-create-form__actions">
+            <button type="submit" className="btn-primary" disabled={transferMutation.isPending}>
+              {transferMutation.isPending ? 'Transferring…' : 'Transfer'}
+            </button>
+          </div>
+        </form>
+      )}
 
       <ConfirmDialog
         open={statusSchool !== null}

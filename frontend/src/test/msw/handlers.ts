@@ -1902,6 +1902,10 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: 'School has been activated.' })
   }),
 
+  http.post(/\/api\/v1\/system-admin\/schools\/\d+\/transfer-admin\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Starehe Boys Centre admin transferred to bob@test.com.' })
+  }),
+
   http.get('/api/v1/system-admin/users/', () => {
     return HttpResponse.json({
       data: {
