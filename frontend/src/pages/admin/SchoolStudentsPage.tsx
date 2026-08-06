@@ -419,7 +419,7 @@ export default function SchoolStudentsPage() {
           type="button"
           className="btn-ghost"
           onClick={() => setResettingStudent(student)}
-          disabled={resetPasswordMutation.isPending}
+          disabled={resetPasswordMutation.isPending || membershipStatus(student) !== 'active'}
           aria-label={`Reset password for ${student.first_name} ${student.last_name}`}
         >
           Reset password
