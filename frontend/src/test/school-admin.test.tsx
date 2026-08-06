@@ -317,6 +317,23 @@ describe('SchoolStudentsPage', () => {
     expect(screen.getByText('Kevin Otieno')).toBeInTheDocument()
   })
 
+  it('resets a student password after confirmation', async () => {
+    let resetCalled = false
+    server.use(
+      http.post(/\/api\/v1\/school-admin\/students\/\d+\/reset-password\//, () => {
+        resetCalled = true
+        return HttpResponse.json({ data: null, error: null, message: 'Password reset.' })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Jane Muthoni')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reset password for Jane Muthoni' }))
+    expect(screen.getByRole('dialog', { name: 'Reset password for Jane Muthoni?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reset password' }))
+    await waitFor(() => expect(resetCalled).toBe(true))
+  })
+
   it('imports a learner CSV and offers the one-time credentials download', async () => {
     let uploadReceived = false
     server.use(

@@ -11,6 +11,7 @@ import EmptyState from '../../components/common/dashboard/EmptyState'
 import ErrorState from '../../components/common/dashboard/ErrorState'
 import ResponsiveDataList, { type DataColumn } from '../../components/common/dashboard/ResponsiveDataList'
 import SectionHeader from '../../components/common/dashboard/SectionHeader'
+import ConfirmDialog from '../../components/common/management/ConfirmDialog'
 import ManagementToolbar from '../../components/common/management/ManagementToolbar'
 import { useDownloadReport } from '../../hooks/useDownloadReport'
 import '../../styles/dashboard.css'
@@ -49,6 +50,7 @@ export default function SchoolStudentsPage() {
   const [marksPeriodId, setMarksPeriodId] = useState('')
   const [marksPreview, setMarksPreview] = useState<MarksImportResult | null>(null)
   const marksInputRef = useRef<HTMLInputElement>(null)
+  const [resettingStudent, setResettingStudent] = useState<SchoolStudent | null>(null)
   const { downloadStudentReport, downloadingId } = useDownloadReport()
 
   const studentsQ = useQuery({
@@ -136,6 +138,17 @@ export default function SchoolStudentsPage() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message ?? 'Could not update grade verification.')
+    },
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: (studentId: number) => schoolAdminApi.resetStudentPassword(studentId),
+    onSuccess: (response) => {
+      toast.success(response.data.message)
+      setResettingStudent(null)
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message ?? 'Failed to reset password.')
     },
   })
 
@@ -394,6 +407,22 @@ export default function SchoolStudentsPage() {
           aria-label={`Download report for ${student.first_name} ${student.last_name}`}
         >
           {downloadingId === student.id ? 'Generating…' : 'Download PDF'}
+        </button>
+      ),
+    },
+    {
+      key: 'reset-password',
+      label: 'Password',
+      align: 'end',
+      render: student => (
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => setResettingStudent(student)}
+          disabled={resetPasswordMutation.isPending}
+          aria-label={`Reset password for ${student.first_name} ${student.last_name}`}
+        >
+          Reset password
         </button>
       ),
     },
@@ -762,6 +791,18 @@ export default function SchoolStudentsPage() {
         columns={columns}
         getKey={student => student.id}
         empty={<EmptyState title="No matching learners" description="Try a different search or cohort filter." />}
+      />
+
+      <ConfirmDialog
+        open={resettingStudent !== null}
+        title={resettingStudent ? `Reset password for ${resettingStudent.first_name} ${resettingStudent.last_name}?` : 'Reset password?'}
+        description={resettingStudent
+          ? `${resettingStudent.first_name} ${resettingStudent.last_name} will receive a new temporary password by email.`
+          : 'A new temporary password will be emailed to this learner.'}
+        confirmLabel={resetPasswordMutation.isPending ? 'Resetting…' : 'Reset password'}
+        pending={resetPasswordMutation.isPending}
+        onClose={() => setResettingStudent(null)}
+        onConfirm={() => { if (resettingStudent) resetPasswordMutation.mutate(resettingStudent.id) }}
       />
     </div>
   )

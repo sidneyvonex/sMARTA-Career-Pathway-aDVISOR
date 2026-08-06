@@ -229,6 +229,9 @@ export const schoolAdminApi = {
       { verified },
     ),
 
+  resetStudentPassword: (studentId: number) =>
+    api.post<{ message: string }>(`/school-admin/students/${studentId}/reset-password/`),
+
   getStats: () =>
     api.get<{ data: SchoolStats }>('/school-admin/stats/'),
 

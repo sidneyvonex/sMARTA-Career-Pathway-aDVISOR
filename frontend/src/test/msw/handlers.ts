@@ -1539,6 +1539,10 @@ export const handlers = [
     })
   }),
 
+  http.post(/\/api\/v1\/school-admin\/students\/\d+\/reset-password\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to jane@student.co.ke.' })
+  }),
+
   http.get('/api/v1/school-admin/academic-periods/', () => HttpResponse.json({
     data: [
       {
