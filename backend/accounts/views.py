@@ -162,6 +162,8 @@ class MeView(APIView):
                 value = request.data[field]
                 if not isinstance(value, str) or not value.strip():
                     return _error(f'{field.replace("_", " ").title()} is required.')
+                if len(value.strip()) > 150:
+                    return _error(f'{field.replace("_", " ").title()} must be 150 characters or less.')
                 setattr(user, field, value.strip())
                 updated.append(field)
         if updated:

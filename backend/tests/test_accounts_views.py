@@ -314,6 +314,19 @@ class TestMeViewPatch:
         user.refresh_from_db()
         assert user.first_name == 'Old'
 
+    def test_rejects_oversized_first_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'A' * 151,
+        }, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.first_name == 'Old'
+
 
 @pytest.mark.django_db
 class TestEmailVerification:
