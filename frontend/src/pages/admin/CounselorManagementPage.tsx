@@ -23,6 +23,7 @@ export default function CounselorManagementPage() {
   const [search, setSearch] = useState('')
   const [detailCounsellor, setDetailCounsellor] = useState<SchoolCounselor | null>(null)
   const [removingCounsellor, setRemovingCounsellor] = useState<SchoolCounselor | null>(null)
+  const [resettingCounsellor, setResettingCounsellor] = useState<SchoolCounselor | null>(null)
 
   const { data: counsellors, isLoading, isError, refetch } = useQuery({
     queryKey: ['school-admin', 'counselors'],
@@ -53,6 +54,17 @@ export default function CounselorManagementPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message ?? 'Failed to remove counsellor.')
+    },
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: (id: number) => schoolAdminApi.resetCounselorPassword(id),
+    onSuccess: (response) => {
+      toast.success(response.data.message)
+      setResettingCounsellor(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message ?? 'Failed to reset password.')
     },
   })
 
@@ -161,13 +173,21 @@ export default function CounselorManagementPage() {
             shortLabel: 'View',
             onSelect: () => setDetailCounsellor(counsellor),
           })}
-          getSecondaryActions={counsellor => [{
-            id: 'remove',
-            label: 'Remove',
-            tone: 'danger',
-            disabled: removeMutation.isPending,
-            onSelect: () => setRemovingCounsellor(counsellor),
-          }]}
+          getSecondaryActions={counsellor => [
+            {
+              id: 'reset-password',
+              label: 'Reset password',
+              disabled: resetPasswordMutation.isPending,
+              onSelect: () => setResettingCounsellor(counsellor),
+            },
+            {
+              id: 'remove',
+              label: 'Remove',
+              tone: 'danger',
+              disabled: removeMutation.isPending,
+              onSelect: () => setRemovingCounsellor(counsellor),
+            },
+          ]}
           empty={(
             <EmptyState
               title={search ? 'No matching counsellors' : 'No counsellors yet'}
@@ -214,6 +234,18 @@ export default function CounselorManagementPage() {
         onConfirm={() => {
           if (removingCounsellor) removeMutation.mutate(removingCounsellor.id)
         }}
+      />
+
+      <ConfirmDialog
+        open={resettingCounsellor !== null}
+        title={resettingCounsellor ? `Reset password for ${getCounsellorName(resettingCounsellor)}?` : 'Reset password?'}
+        description={resettingCounsellor
+          ? `${getCounsellorName(resettingCounsellor)} will receive a new temporary password by email.`
+          : 'A new temporary password will be emailed to this counsellor.'}
+        confirmLabel={resetPasswordMutation.isPending ? 'Resetting…' : 'Reset password'}
+        pending={resetPasswordMutation.isPending}
+        onClose={() => setResettingCounsellor(null)}
+        onConfirm={() => { if (resettingCounsellor) resetPasswordMutation.mutate(resettingCounsellor.id) }}
       />
     </>
   )

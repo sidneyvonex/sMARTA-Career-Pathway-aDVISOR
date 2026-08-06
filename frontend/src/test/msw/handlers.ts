@@ -1515,6 +1515,10 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: 'Counselor removed.' })
   }),
 
+  http.post('/api/v1/school-admin/counselors/:id/reset-password/', () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to alice@school.co.ke.' })
+  }),
+
   http.get('/api/v1/school-admin/students/', () => {
     return HttpResponse.json({
       data: [

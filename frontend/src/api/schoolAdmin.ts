@@ -180,6 +180,9 @@ export const schoolAdminApi = {
   removeCounselor: (counselorId: number) =>
     api.post('/school-admin/counselors/' + counselorId + '/remove/'),
 
+  resetCounselorPassword: (counselorId: number) =>
+    api.post<{ message: string }>('/school-admin/counselors/' + counselorId + '/reset-password/'),
+
   getStudents: () =>
     api.get<{ data: SchoolStudent[] }>('/school-admin/students/'),
 

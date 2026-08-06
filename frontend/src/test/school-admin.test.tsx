@@ -250,6 +250,24 @@ describe('CounselorManagementPage', () => {
     expect(requestCount).toBe(0)
   })
 
+  it('resets a counsellor password after confirmation', async () => {
+    let resetCalled = false
+    server.use(
+      http.post('/api/v1/school-admin/counselors/10/reset-password/', () => {
+        resetCalled = true
+        return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to alice@school.co.ke.' })
+      }),
+    )
+    renderPage()
+    await screen.findByText('Alice Wanjiku')
+
+    await userEvent.click(screen.getByRole('button', { name: 'More actions for Alice Wanjiku' }))
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Reset password' }))
+    expect(screen.getByRole('dialog', { name: 'Reset password for Alice Wanjiku?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reset password' }))
+    await waitFor(() => expect(resetCalled).toBe(true))
+  })
+
   it('uses a responsive workload list that can be searched', async () => {
     renderPage()
     expect(await screen.findByRole('table', { name: 'School counsellors' })).toBeInTheDocument()
