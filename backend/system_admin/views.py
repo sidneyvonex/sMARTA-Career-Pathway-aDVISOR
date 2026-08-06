@@ -9,7 +9,11 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from accounts.emails import send_school_admin_welcome_email, send_password_reset_temp_email
+from accounts.emails import (
+    send_school_admin_welcome_email,
+    send_password_reset_temp_email,
+    send_school_admin_transfer_email,
+)
 from accounts.models import School, User, StudentProfile, COUNTY_CHOICES
 from accounts.permissions import IsSystemAdmin, IsEmailVerified
 from accounts.response import _success, _error
@@ -697,6 +701,50 @@ class SchoolActivateView(APIView):
         )
 
         return _success(message=f'{school.name} has been activated.')
+
+
+class SchoolAdminTransferView(APIView):
+    permission_classes = SYSTEM_ADMIN_PERMS
+
+    def post(self, request, school_id):
+        try:
+            school = School.objects.get(pk=school_id)
+        except School.DoesNotExist:
+            return _error('School not found.', status.HTTP_404_NOT_FOUND)
+
+        new_admin_id = request.data.get('new_admin_user_id')
+        try:
+            new_admin = User.objects.get(pk=new_admin_id)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return _error('The selected user could not be found.')
+
+        with transaction.atomic():
+            old_admins = list(User.objects.filter(school=school, role='school_admin'))
+            for old_admin in old_admins:
+                old_admin.school = None
+                old_admin.save(update_fields=['school'])
+
+            new_admin.school = school
+            new_admin.role = 'school_admin'
+            new_admin.save(update_fields=['school', 'role'])
+
+        send_school_admin_transfer_email.delay(
+            user_id=new_admin.id, email=new_admin.email, first_name=new_admin.first_name,
+            school_name=school.name, is_incoming=True,
+        )
+        for old_admin in old_admins:
+            send_school_admin_transfer_email.delay(
+                user_id=old_admin.id, email=old_admin.email, first_name=old_admin.first_name,
+                school_name=school.name, is_incoming=False,
+            )
+
+        log_action(
+            actor=request.user, action='school_admin_transferred', target_type='school',
+            target_id=school.id,
+            details={'old_admin_ids': [a.id for a in old_admins], 'new_admin_id': new_admin.id},
+            request=request,
+        )
+        return _success(message=f'{school.name} admin transferred to {new_admin.email}.')
 
 
 class UserListView(APIView):

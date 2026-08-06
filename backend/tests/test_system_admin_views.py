@@ -1003,3 +1003,50 @@ class TestSystemAdminUserPasswordReset:
         client.force_authenticate(counselor)
         response = client.post(f'/api/v1/system-admin/users/{target.id}/reset-password/')
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestSchoolAdminTransfer:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+        self.school = SchoolFactory()
+        self.old_admin = SchoolAdminFactory(school=self.school)
+
+    def test_transfers_admin_role(self, client, mailoutbox):
+        new_admin = CounselorFactory(school=None)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school is None
+        assert self.old_admin.role == 'school_admin'
+
+        new_admin.refresh_from_db()
+        assert new_admin.school == self.school
+        assert new_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 2
+        recipients = {email for message in mailoutbox for email in message.to}
+        assert self.old_admin.email in recipients
+        assert new_admin.email in recipients
+
+    def test_rejects_nonexistent_target_user(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': 999999}, format='json',
+        )
+        assert response.status_code == 400
+
+    def test_rejects_nonexistent_school(self, client):
+        client.force_authenticate(self.admin)
+        new_admin = CounselorFactory(school=None)
+        response = client.post(
+            '/api/v1/system-admin/schools/999999/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 404
