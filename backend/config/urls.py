@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
@@ -22,3 +24,9 @@ urlpatterns = [
     path('api/v1/guidance/', include('guidance.urls')),
     path('api/v1/tertiary/', include('tertiary.urls')),
 ]
+
+if 'devmail' in settings.INSTALLED_APPS:
+    urlpatterns += [path('api/v1/dev/', include('devmail.urls'))]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

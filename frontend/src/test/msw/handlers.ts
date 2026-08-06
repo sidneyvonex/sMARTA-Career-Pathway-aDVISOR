@@ -188,6 +188,19 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: true, message: 'Not authenticated.' }, { status: 401 })
   }),
 
+  http.patch(`${BASE}/me/`, async ({ request }) => {
+    const body = await request.json() as { first_name?: string; last_name?: string }
+    return HttpResponse.json({
+      data: { user: { id: 1, email: 'jane@test.com', first_name: body.first_name ?? 'Jane', last_name: body.last_name ?? 'Doe', role: 'student', county: 'kiambu', is_email_verified: true } },
+      error: null,
+      message: 'Profile updated.',
+    })
+  }),
+
+  http.post(`${BASE}/me/password/`, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password updated.' })
+  }),
+
   http.post(`${BASE}/logout/`, () => {
     return HttpResponse.json({ data: null, error: null, message: 'Logged out.' })
   }),
@@ -263,6 +276,35 @@ export const handlers = [
       error: null, message: '',
     })
   }),
+
+  http.get('/api/v1/students/academic-periods/', () => HttpResponse.json({
+    data: [
+      {
+        id: 11,
+        year: 2026,
+        term: 1,
+        term_ends_at: '2026-04-03T15:00:00+03:00',
+        entry_opens_at: '2026-04-03T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+      {
+        id: 12,
+        year: 2026,
+        term: 2,
+        term_ends_at: '2026-08-01T15:00:00+03:00',
+        entry_opens_at: '2026-08-01T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+    ],
+    error: null,
+    message: '',
+  })),
 
   http.get('/api/v1/students/evidence-summary/', () => {
     return HttpResponse.json({
@@ -1473,6 +1515,10 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: 'Counselor removed.' })
   }),
 
+  http.post('/api/v1/school-admin/counselors/:id/reset-password/', () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to alice@school.co.ke.' })
+  }),
+
   http.get('/api/v1/school-admin/students/', () => {
     return HttpResponse.json({
       data: [
@@ -1492,6 +1538,69 @@ export const handlers = [
       error: null, message: '',
     })
   }),
+
+  http.post(/\/api\/v1\/school-admin\/students\/\d+\/reset-password\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to jane@student.co.ke.' })
+  }),
+
+  http.get('/api/v1/school-admin/academic-periods/', () => HttpResponse.json({
+    data: [
+      {
+        id: 11,
+        year: 2026,
+        term: 1,
+        term_ends_at: '2026-04-03T15:00:00+03:00',
+        entry_opens_at: '2026-04-03T15:00:00+03:00',
+        entry_closes_at: '2026-08-31T23:59:00+03:00',
+        published_at: null,
+        state: 'entry_open',
+        can_submit: true,
+      },
+      {
+        id: 12,
+        year: 2026,
+        term: 2,
+        term_ends_at: '2026-08-07T15:00:00+03:00',
+        entry_opens_at: '2026-08-07T15:00:00+03:00',
+        entry_closes_at: '2026-08-21T23:59:00+03:00',
+        published_at: null,
+        state: 'upcoming',
+        can_submit: false,
+      },
+    ],
+    error: null,
+    message: '',
+  })),
+
+  http.post('/api/v1/school-admin/marks/import/', () => HttpResponse.json({
+      data: {
+        period: {
+          id: 11,
+          year: 2026,
+          term: 1,
+          term_ends_at: '2026-04-03T15:00:00+03:00',
+          entry_opens_at: '2026-04-03T15:00:00+03:00',
+          entry_closes_at: '2026-08-31T23:59:00+03:00',
+          published_at: null,
+          state: 'entry_open',
+          can_submit: true,
+        },
+        row_count: 1,
+        valid_count: 1,
+        error_count: 0,
+        rows: [{
+          row: 2,
+          student_email: 'jane@example.com',
+          subject_code: 'MAT9',
+          level: 'ME1',
+          raw_score: '72.50',
+          action: 'create',
+          errors: [],
+        }],
+      },
+      error: null,
+      message: 'Marks file checked.',
+    })),
 
   http.get('/api/v1/school-admin/membership-requests/', () => {
     return HttpResponse.json({
@@ -1544,6 +1653,12 @@ export const handlers = [
         reviews_completed: 7,
         offerings_count: 12,
         offerings_configured: true,
+        academic_progress: [
+          { year: 2026, term: 1, level: 'ME1', continuity_code: 'MTH', subject_name: 'Mathematics', count: 8 },
+          { year: 2026, term: 2, level: 'ME1', continuity_code: 'MTH', subject_name: 'Mathematics', count: 10 },
+          { year: 2026, term: 2, level: 'AE1', continuity_code: 'ENG', subject_name: 'English', count: 4 },
+          { year: 2026, term: 3, level: 'EE2', continuity_code: 'ENG', subject_name: 'English', count: 7 },
+        ],
         counselor_workload: [
           { counselor_id: 10, counselor_name: 'Alice Wanjiku', student_count: 9 },
           { counselor_id: 11, counselor_name: 'Bob Ochieng', student_count: 8 },
@@ -1787,6 +1902,10 @@ export const handlers = [
     return HttpResponse.json({ data: null, error: null, message: 'School has been activated.' })
   }),
 
+  http.post(/\/api\/v1\/system-admin\/schools\/\d+\/transfer-admin\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Starehe Boys Centre admin transferred to bob@test.com.' })
+  }),
+
   http.get('/api/v1/system-admin/users/', () => {
     return HttpResponse.json({
       data: {
@@ -1819,6 +1938,10 @@ export const handlers = [
 
   http.post(/\/api\/v1\/system-admin\/users\/\d+\/activate\//, () => {
     return HttpResponse.json({ data: null, error: null, message: 'User has been activated.' })
+  }),
+
+  http.post(/\/api\/v1\/system-admin\/users\/\d+\/reset-password\//, () => {
+    return HttpResponse.json({ data: null, error: null, message: 'Password reset. New credentials sent to jane@test.com.' })
   }),
 
   http.get('/api/v1/system-admin/audit-logs/', () => {
@@ -2047,4 +2170,43 @@ export const handlers = [
       },
     })
   }),
+
+  http.get(/\/api\/v1\/reports\/(school|counselor|system)\/(overview|roster|schools)\/pdf\//, ({ request }) => {
+    const reportType = new URL(request.url).pathname.split('/').slice(-3, -1).join('-')
+    return new HttpResponse('%PDF-1.4 mock role report content', {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="smarta-shauri-${reportType}.pdf"`,
+      },
+    })
+  }),
+
+  http.get('/api/v1/dev/letters/', () =>
+    HttpResponse.json({
+      data: [
+        { id: 2, to_email: 'new@test.com', subject: 'Verify your CBC Guidance account', created_at: '2026-08-03T10:05:00Z' },
+        { id: 1, to_email: 'old@test.com', subject: 'Reset your CBC Guidance password', created_at: '2026-08-03T10:00:00Z' },
+      ],
+      error: null,
+      message: '',
+    }),
+  ),
+  http.get('/api/v1/dev/letters/:id/', ({ params }) =>
+    HttpResponse.json({
+      data: {
+        id: Number(params.id),
+        to_email: 'new@test.com',
+        from_email: 'noreply@cbcguidance.co.ke',
+        subject: 'Verify your CBC Guidance account',
+        body: 'Hi Njeri,\n\nPlease verify your email address by clicking the link below:\n\nhttp://localhost:5173/verify-email?token=abc123\n\nThis link expires in 24 hours.',
+        created_at: '2026-08-03T10:05:00Z',
+      },
+      error: null,
+      message: '',
+    }),
+  ),
+  http.delete('/api/v1/dev/letters/', () =>
+    HttpResponse.json({ data: { deleted: 2 }, error: null, message: 'Inbox cleared.' }),
+  ),
 ]

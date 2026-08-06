@@ -49,7 +49,7 @@ function userName(user: UserItem) {
 
 export default function SystemAdminUsersPage() {
   const queryClient = useQueryClient()
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
   const [role, setRole] = useState('')
   const [county, setCounty] = useState('')
   const [school, setSchool] = useState('')
@@ -58,6 +58,7 @@ export default function SystemAdminUsersPage() {
   const [page, setPage] = useState(1)
   const [detailUser, setDetailUser] = useState<UserItem | null>(null)
   const [statusUser, setStatusUser] = useState<UserItem | null>(null)
+  const [resetUser, setResetUser] = useState<UserItem | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['system-admin', 'users', { role, county, school, search, active, page }],
@@ -91,6 +92,18 @@ export default function SystemAdminUsersPage() {
     onError: (error: any) => {
       const message = error.response?.data?.message
       toast.error(typeof message === 'string' ? message : 'Failed to update user status.')
+    },
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: (user: UserItem) => systemAdminApi.resetUserPassword(user.id),
+    onSuccess: (response) => {
+      toast.success(response.data.message)
+      setResetUser(null)
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message
+      toast.error(typeof message === 'string' ? message : 'Failed to reset password.')
     },
   })
 
@@ -225,8 +238,14 @@ export default function SystemAdminUsersPage() {
               id: 'download',
               label: 'Download PDF',
               disabled: downloadingId === user.id,
-              onSelect: () => downloadReport(user.id),
+              onSelect: () => downloadStudentReport(user.id),
             }] : []),
+            {
+              id: 'reset-password',
+              label: 'Reset password',
+              disabled: resetPasswordMutation.isPending,
+              onSelect: () => setResetUser(user),
+            },
             {
               id: 'status',
               label: user.is_active ? 'Deactivate' : 'Activate',
@@ -270,6 +289,18 @@ export default function SystemAdminUsersPage() {
         pending={statusMutation.isPending}
         onClose={() => setStatusUser(null)}
         onConfirm={() => { if (statusUser) statusMutation.mutate(statusUser) }}
+      />
+
+      <ConfirmDialog
+        open={resetUser !== null}
+        title={resetUser ? `Reset password for ${userName(resetUser)}?` : 'Reset password?'}
+        description={resetUser
+          ? `${userName(resetUser)} will receive a new temporary password by email and should sign in with it.`
+          : 'A new temporary password will be emailed to this user.'}
+        confirmLabel={resetPasswordMutation.isPending ? 'Resetting…' : 'Reset password'}
+        pending={resetPasswordMutation.isPending}
+        onClose={() => setResetUser(null)}
+        onConfirm={() => { if (resetUser) resetPasswordMutation.mutate(resetUser) }}
       />
     </>
   )

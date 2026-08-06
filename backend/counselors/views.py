@@ -19,6 +19,7 @@ from notifications.models import Notification
 from parents.models import ParentStudentLink
 from .attention import attention_profiles, attention_reasons_for
 from .models import CounselorAssignment, CounselorIntervention, CounselorNote
+from .reporting import get_caseload_stats
 from .serializers import (
     CounselorInterventionCreateSerializer,
     CounselorInterventionSerializer,
@@ -324,46 +325,17 @@ class CounselorStatsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsCounselor]
 
     def get(self, request):
-        profiles = list(
-            attention_profiles(_get_assigned_profiles(request.user))
-        )
-        total = len(profiles)
-        assessed = sum(
-            bool(profile.attention_assessments) for profile in profiles
-        )
-        needing_attention = sum(
-            bool(attention_reasons_for(profile)) for profile in profiles
-        )
-        journeys_reviewed = sum(
-            getattr(profile, 'learner_plan', None) is not None
-            and profile.learner_plan.review_status == 'reviewed'
-            for profile in profiles
-        )
-        notes = CounselorNote.objects.filter(
-            counselor=request.user,
-            deleted_at__isnull=True,
-            student__student_profile__counselor_assignments__counselor=(
-                request.user
-            ),
-            student__student_profile__counselor_assignments__is_active=True,
-        ).count()
-        follow_ups_due = CounselorIntervention.objects.filter(
-            counselor=request.user,
-            student__student_profile__counselor_assignments__counselor=(
-                request.user
-            ),
-            student__student_profile__counselor_assignments__is_active=True,
-            status=CounselorIntervention.STATUS_OPEN,
-            follow_up_date__lte=timezone.localdate(),
-        ).count()
-
+        stats = get_caseload_stats(request.user)
         return _success(data={
-            'total_students': total,
-            'assessments_done': assessed,
-            'students_needing_attention': needing_attention,
-            'follow_ups_due': follow_ups_due,
-            'journeys_reviewed': journeys_reviewed,
-            'notes_written': notes,
+            key: stats[key]
+            for key in (
+                'total_students',
+                'assessments_done',
+                'students_needing_attention',
+                'follow_ups_due',
+                'journeys_reviewed',
+                'notes_written',
+            )
         })
 
 

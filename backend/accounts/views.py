@@ -87,7 +87,7 @@ def _clear_auth_cookies(response):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key='ip', rate='5/15m', method='POST', block=True))
+    @method_decorator(ratelimit(key='ip', rate='5/2m', method='POST', block=True))
     def post(self, request):
         email = request.data.get('email', '').lower().strip()
         password = request.data.get('password', '')
@@ -154,6 +154,22 @@ class MeView(APIView):
     def get(self, request):
         return _success(data={'user': UserSerializer(request.user).data})
 
+    def patch(self, request):
+        user = request.user
+        updated = []
+        for field in ('first_name', 'last_name'):
+            if field in request.data:
+                value = request.data[field]
+                if not isinstance(value, str) or not value.strip():
+                    return _error(f'{field.replace("_", " ").title()} is required.')
+                if len(value.strip()) > 150:
+                    return _error(f'{field.replace("_", " ").title()} must be 150 characters or less.')
+                setattr(user, field, value.strip())
+                updated.append(field)
+        if updated:
+            user.save(update_fields=updated)
+        return _success(data={'user': UserSerializer(user).data}, message='Profile updated.')
+
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
@@ -178,16 +194,28 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
-    @method_decorator(ratelimit(key='user', rate='3/h', method='POST', block=True))
+    @method_decorator(ratelimit(key='ip', rate='3/h', method='POST', block=True))
     def post(self, request):
-        if request.user.is_email_verified:
-            return _error('Email is already verified.')
-        send_verification_email.delay(
-            request.user.id, request.user.email, request.user.first_name
+        User = get_user_model()
+        user = request.user if request.user.is_authenticated else None
+
+        if user is None:
+            email = request.data.get('email', '').lower().strip()
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                user = None
+
+        if user is not None and not user.is_email_verified:
+            send_verification_email.delay(user.id, user.email, user.first_name)
+
+        # Keep the response generic so this public endpoint cannot be used to
+        # discover whether an email address has an account.
+        return _success(
+            message='If an unverified account exists, a verification email has been sent.'
         )
-        return _success(message='Verification email sent.')
 
 
 class PasswordResetView(APIView):
@@ -234,6 +262,32 @@ class PasswordResetConfirmView(APIView):
             target_id=user.id, request=request,
         )
         return _success(message='Password reset successfully.')
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password', '')
+        new_password = request.data.get('new_password', '')
+        user = request.user
+
+        if not user.check_password(current_password):
+            return _error('Current password is incorrect.')
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            return _error(e.messages[0] if e.messages else 'Invalid password.')
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        log_action(
+            actor=user, action='password_changed_self', target_type='user',
+            target_id=user.id, request=request,
+        )
+        return _success(message='Password updated.')
 
 
 class InviteStaffView(APIView):

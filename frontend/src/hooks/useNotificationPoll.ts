@@ -6,7 +6,7 @@ import { useNotificationStore } from '../store/notificationStore'
 import { useAuthStore } from '../store/authStore'
 
 export function useNotificationPoll() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, isEmailVerified } = useAuthStore()
   const { setUnreadCount } = useNotificationStore()
   const prevCountRef = useRef<number | undefined>(undefined)
 
@@ -14,8 +14,8 @@ export function useNotificationPoll() {
     queryKey: ['notification-unread-count'],
     queryFn: () =>
       notificationsApi.getUnreadCount().then((r) => r.data.data.count),
-    refetchInterval: isAuthenticated ? 60_000 : false,
-    enabled: isAuthenticated,
+    refetchInterval: isAuthenticated && isEmailVerified ? 60_000 : false,
+    enabled: isAuthenticated && isEmailVerified,
   })
 
   useEffect(() => {

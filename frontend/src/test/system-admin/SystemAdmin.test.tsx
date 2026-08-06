@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../../store/authStore'
 import { server } from '../msw/server'
 import SystemAdminDashboard from '../../components/system-admin/SystemAdminDashboard'
@@ -329,6 +330,14 @@ describe('SystemAdminSchoolsPage', () => {
     })
   })
 
+  it('requires an email to submit the create-school form', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Create school' }))
+    const emailInput = await screen.findByLabelText('Email') as HTMLInputElement
+    expect(emailInput).toBeRequired()
+  })
+
   it('coordinates school records with view, overflow, details, and confirmed status actions', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -345,6 +354,25 @@ describe('SystemAdminSchoolsPage', () => {
     expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
     expect(screen.getByRole('dialog', { name: 'Deactivate Starehe Boys Centre?' })).toBeInTheDocument()
+  })
+
+  it('transfers the school admin to a new user', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'View Starehe Boys Centre' }))
+    await user.click(screen.getByRole('button', { name: 'Transfer admin' }))
+    await user.type(screen.getByLabelText('New admin email'), 'bob@test.com')
+    await user.click(screen.getByRole('button', { name: 'Transfer' }))
+
+    expect(await screen.findByRole('dialog', {
+      name: 'Transfer admin for Starehe Boys Centre to bob@test.com?',
+    })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Transfer admin' }))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
+      'Starehe Boys Centre admin transferred to bob@test.com.',
+    ))
   })
 })
 
@@ -428,6 +456,20 @@ describe('SystemAdminUsersPage', () => {
     expect(screen.getByRole('menuitem', { name: 'Download PDF' })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Deactivate' }))
     expect(screen.getByRole('dialog', { name: 'Deactivate Jane Doe?' })).toBeInTheDocument()
+  })
+
+  it('resets a user password after confirmation', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'More actions for Jane Doe' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Reset password' }))
+    expect(screen.getByRole('dialog', { name: 'Reset password for Jane Doe?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reset password' }))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
+      'Password reset. New credentials sent to jane@test.com.',
+    ))
   })
 })
 

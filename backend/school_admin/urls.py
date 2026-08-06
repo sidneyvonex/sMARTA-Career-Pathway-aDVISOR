@@ -1,7 +1,18 @@
 from django.urls import path
 from . import views
+from .marks import SchoolAcademicPeriodListView, SchoolMarksImportView
 
 urlpatterns = [
+    path(
+        'academic-periods/',
+        SchoolAcademicPeriodListView.as_view(),
+        name='school-admin-academic-periods',
+    ),
+    path(
+        'marks/import/',
+        SchoolMarksImportView.as_view(),
+        name='school-admin-marks-import',
+    ),
     path('offerings/', views.SchoolOfferingsView.as_view(), name='school-admin-offerings'),
     path(
         'students/<int:student_id>/grades/<int:grade_id>/verification/',
@@ -14,7 +25,14 @@ urlpatterns = [
     path('counselors/', views.SchoolCounselorsView.as_view(), name='school-admin-counselors'),
     path('counselors/add/', views.SchoolCounselorAddView.as_view(), name='school-admin-counselor-add'),
     path('counselors/<int:counselor_id>/remove/', views.SchoolCounselorRemoveView.as_view(), name='school-admin-counselor-remove'),
+    path('counselors/<int:counselor_id>/reset-password/', views.CounselorPasswordResetView.as_view(), name='school-admin-counselor-reset-password'),
+    path('students/<int:student_id>/reset-password/', views.StudentPasswordResetView.as_view(), name='school-admin-student-reset-password'),
     path('students/', views.SchoolStudentsView.as_view(), name='school-admin-students'),
+    path(
+        'students/import/',
+        views.SchoolStudentImportView.as_view(),
+        name='school-admin-student-import',
+    ),
     path(
         'membership-requests/',
         views.SchoolMembershipRequestsView.as_view(),

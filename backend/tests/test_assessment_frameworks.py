@@ -10,6 +10,7 @@ from students.models import AssessmentFramework, CBCGrade, PerformanceLevelDefin
 from system_admin.models import AuditLog
 
 from tests.factories import (
+    AcademicPeriodFactory,
     AssessmentFrameworkFactory,
     CBCGradeFactory,
     PerformanceLevelDefinitionFactory,
@@ -802,6 +803,7 @@ def test_grade_api_rejects_negative_raw_score_with_standard_envelope():
 @pytest.mark.django_db
 def test_grade_api_snapshots_active_framework_and_subject_academic_grade():
     """Catches trusting forged provenance instead of the active framework and subject."""
+    AcademicPeriodFactory(year=2026, term=1)
     active_framework = apps.get_model('students', 'AssessmentFramework').objects.get(
         code='CBC-SENIOR-SCHOOL',
         version='pilot-2026',

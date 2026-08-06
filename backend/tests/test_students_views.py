@@ -3,6 +3,7 @@ import pytest
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from tests.factories import (
+    AcademicPeriodFactory,
     CBCGradeFactory,
     CounselorFactory,
     StudentProfileFactory,
@@ -356,6 +357,12 @@ def enrolled_subject(verified_profile):
 
 @pytest.mark.django_db
 class TestCBCGradeViews:
+    def setup_method(self):
+        AcademicPeriodFactory(year=2026, term=1)
+        AcademicPeriodFactory(year=2026, term=2)
+        AcademicPeriodFactory(year=2026, term=3)
+        AcademicPeriodFactory(year=2025, term=1)
+
     def test_add_grade_returns_201(self, verified_profile, enrolled_subject):
         c = make_auth_client(verified_profile.user)
         response = c.post(

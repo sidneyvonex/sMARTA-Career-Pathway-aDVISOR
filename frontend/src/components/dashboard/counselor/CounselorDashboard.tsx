@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { counselorApi } from '../../../api/counselor'
 import { dashboardApi } from '../../../api/dashboard'
+import { reportsApi } from '../../../api/reports'
+import { useDownloadReport } from '../../../hooks/useDownloadReport'
 import { greeting } from '../../../lib/greeting'
 import { useAuthStore } from '../../../store/authStore'
 import Avatar from '../../common/Avatar'
@@ -32,6 +35,8 @@ export function attentionSummary(count: number) {
 }
 
 export default function CounselorDashboard() {
+  const [reportGrade, setReportGrade] = useState('')
+  const { downloadReport, downloadingKey } = useDownloadReport()
   const { user } = useAuthStore()
   const studentsQ = useQuery({
     queryKey: ['counselor', 'students'],
@@ -240,6 +245,52 @@ export default function CounselorDashboard() {
           <SectionHeader eyebrow="Coverage" title="Assessment progress" titleAs="h3" />
           <AssessmentRing done={stats.assessments_done} total={stats.total_students} />
         </aside>
+      </section>
+
+      <section aria-labelledby="counselor-reports-title">
+        <SectionHeader
+          eyebrow="Exports"
+          title="Caseload reports"
+          titleId="counselor-reports-title"
+          description="Download current caseload coverage or a grade-filtered roster."
+        />
+        <div className="report-download-controls">
+          <label className="report-grade-field" htmlFor="counselor-report-grade">
+            Roster grade
+            <select
+              id="counselor-report-grade"
+              value={reportGrade}
+              onChange={(event) => setReportGrade(event.target.value)}
+            >
+              <option value="">All grades</option>
+              {[9, 10, 11, 12].map((grade) => (
+                <option value={grade} key={grade}>Grade {grade}</option>
+              ))}
+            </select>
+          </label>
+          <ActionCard
+            title={downloadingKey === 'counselor-overview' ? 'Generating overview…' : 'Download caseload overview'}
+            description="Assessment, evidence and plan coverage."
+            onClick={() => downloadReport(
+              reportsApi.downloadCounselorOverviewPdf,
+              'smarta-shauri-caseload-overview.pdf',
+              'counselor-overview',
+            )}
+            disabled={downloadingKey !== null}
+            tone="info"
+          />
+          <ActionCard
+            title={downloadingKey === 'counselor-roster' ? 'Generating roster…' : 'Download caseload roster'}
+            description={reportGrade ? `Assigned Grade ${reportGrade} learners.` : 'All assigned learners.'}
+            onClick={() => downloadReport(
+              () => reportsApi.downloadCounselorRosterPdf(reportGrade ? Number(reportGrade) : undefined),
+              'smarta-shauri-caseload-roster.pdf',
+              'counselor-roster',
+            )}
+            disabled={downloadingKey !== null}
+            tone="positive"
+          />
+        </div>
       </section>
     </div>
   )

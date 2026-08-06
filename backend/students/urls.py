@@ -22,8 +22,14 @@ from parents.views import (
     StudentParentAccessListView,
     StudentParentAccessRevokeView,
 )
+from .period_views import AcademicPeriodListView
 
 urlpatterns = [
+    path(
+        'academic-periods/',
+        AcademicPeriodListView.as_view(),
+        name='student-academic-period-list',
+    ),
     path(
         'education-goals/',
         EducationGoalListCreateView.as_view(),

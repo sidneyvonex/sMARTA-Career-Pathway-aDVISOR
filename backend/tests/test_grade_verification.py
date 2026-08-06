@@ -6,6 +6,7 @@ from students.models import CBCGrade
 from notifications.models import Notification
 from system_admin.models import AuditLog
 from tests.factories import (
+    AcademicPeriodFactory,
     CBCGradeFactory,
     CounselorFactory,
     SchoolAdminFactory,
@@ -43,6 +44,7 @@ class TestGradeProvenanceModel:
 
 class TestLearnerGradeProvenanceProtection:
     def setup_method(self):
+        AcademicPeriodFactory(year=2026, term=1)
         self.profile = StudentProfileFactory(
             user=VerifiedUserFactory(role='student')
         )

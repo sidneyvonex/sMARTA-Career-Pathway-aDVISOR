@@ -1,0 +1,208 @@
+/* ===================================================================
+   Dev Mailbox — /letters (dev-only)
+   Split-pane layout: letter list on left, detail on right.
+   Amber DEV chip signals this is a dev-only tool.
+   =================================================================== */
+
+.letters-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-background);
+  font-family: var(--font-family-sans);
+  color: var(--color-text);
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.letters-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.letters-header h1 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+/* Amber DEV chip — unmistakable dev-only badge */
+.letters-dev-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-accent);
+  color: var(--color-text);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.letters-header .btn-ghost {
+  margin-left: auto;
+  min-height: var(--min-touch-target);
+}
+
+/* ── Split layout ────────────────────────────────────────────────── */
+.letters-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Letter list ─────────────────────────────────────────────────── */
+.letters-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.letters-list li {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.letters-list li button {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: var(--min-touch-target);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  color: var(--color-text);
+}
+
+.letters-list li button:hover,
+.letters-list li button:focus-visible {
+  background: var(--color-primary-surface);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.letters-list li button.letters-list-item--active {
+  background: var(--color-primary-surface);
+  border-left: 3px solid var(--color-primary);
+}
+
+.letters-subject {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.letters-to {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.letters-list time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-disabled, var(--color-text-secondary));
+}
+
+/* Empty state */
+.letters-empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ── Detail pane ─────────────────────────────────────────────────── */
+.letters-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  overflow-y: auto;
+  background: var(--color-background);
+}
+
+.letters-detail h2 {
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.letters-detail p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.letters-detail-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Email body — preformatted with line-wrapping and clickable links */
+.letters-body {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  color: var(--color-text);
+  margin-top: var(--space-2);
+}
+
+.letters-body a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.letters-body a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ── Mobile: single column ───────────────────────────────────────── */
+@media (max-width: 640px) {
+  .letters-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .letters-list {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    max-height: 40vh;
+  }
+
+  .letters-detail {
+    padding: var(--space-4);
+  }
+}

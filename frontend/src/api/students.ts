@@ -115,6 +115,18 @@ export interface CBCGrade {
   updated_at: string
 }
 
+export interface AcademicPeriod {
+  id: number
+  year: number
+  term: 1 | 2 | 3
+  term_ends_at: string
+  entry_opens_at: string
+  entry_closes_at: string
+  published_at: string | null
+  state: 'upcoming' | 'entry_open' | 'closed' | 'published'
+  can_submit: boolean
+}
+
 export type ProgressStatus =
   | 'support'
   | 'insufficient_evidence'
@@ -433,6 +445,9 @@ export const studentsApi = {
 
   getGrades: (studentSubjectId: number) =>
     api.get<{ data: CBCGrade[] }>(`/students/my-subjects/${studentSubjectId}/grades/`),
+
+  getAcademicPeriods: () =>
+    api.get<{ data: AcademicPeriod[] }>('/students/academic-periods/'),
 
   addGrade: (studentSubjectId: number, data: { term: number; year: number; level: GradeLevel }) =>
     api.post<{ data: CBCGrade }>(`/students/my-subjects/${studentSubjectId}/grades/`, data),

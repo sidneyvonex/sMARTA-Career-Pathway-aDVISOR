@@ -1,5 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.test import override_settings
 from rest_framework.test import APIClient
 from accounts.models import School
 from accounts.tokens import (
@@ -206,6 +208,21 @@ class TestLogin:
         }, format='json')
         assert response.status_code == 401
 
+    @override_settings(RATELIMIT_ENABLE=True)
+    def test_login_sixth_attempt_within_window_is_rate_limited(self, client):
+        cache.clear()
+        payload = {'email': 'nobody@test.com', 'password': 'WrongPass!'}
+
+        for _ in range(5):
+            response = client.post('/api/v1/auth/login/', payload, format='json')
+            assert response.status_code == 401
+
+        response = client.post('/api/v1/auth/login/', payload, format='json')
+
+        assert response.status_code == 429
+        assert response.data['message'] == 'Rate limit exceeded. Please try again later.'
+        cache.clear()
+
 
 @pytest.mark.django_db
 class TestLogout:
@@ -258,6 +275,60 @@ class TestMeView:
 
 
 @pytest.mark.django_db
+class TestMeViewPatch:
+    def test_updates_first_and_last_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old', last_name='Name')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'New', 'last_name': 'Person',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.first_name == 'New'
+        assert user.last_name == 'Person'
+
+    def test_ignores_email_in_body(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(email='original@test.com')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'New', 'email': 'hijacked@test.com',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.email == 'original@test.com'
+
+    def test_rejects_blank_first_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {'first_name': '  '}, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.first_name == 'Old'
+
+    def test_rejects_oversized_first_name(self, client):
+        from tests.factories import VerifiedUserFactory
+        from rest_framework_simplejwt.tokens import RefreshToken
+        user = VerifiedUserFactory(first_name='Old')
+        refresh = RefreshToken.for_user(user)
+        client.cookies['access_token'] = str(refresh.access_token)
+        response = client.patch('/api/v1/auth/me/', {
+            'first_name': 'A' * 151,
+        }, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.first_name == 'Old'
+
+
+@pytest.mark.django_db
 class TestEmailVerification:
     def test_valid_token_verifies_email(self, client):
         from tests.factories import UserFactory
@@ -281,6 +352,32 @@ class TestEmailVerification:
         response = client.post('/api/v1/auth/resend-verification/')
         assert response.status_code == 200
         assert len(mailoutbox) == 1
+
+    def test_logged_out_user_can_resend_verification_by_email(self, client, mailoutbox):
+        from tests.factories import UserFactory
+        UserFactory(email='loggedout@test.com', is_email_verified=False)
+
+        response = client.post(
+            '/api/v1/auth/resend-verification/',
+            {'email': 'loggedout@test.com'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert len(mailoutbox) == 1
+
+    def test_resend_does_not_reveal_unknown_email(self, client, mailoutbox):
+        response = client.post(
+            '/api/v1/auth/resend-verification/',
+            {'email': 'nobody@test.com'},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert len(mailoutbox) == 0
+        assert response.data['message'] == (
+            'If an unverified account exists, a verification email has been sent.'
+        )
 
 
 @pytest.mark.django_db
@@ -431,3 +528,50 @@ class TestParentInvite:
         link = ParentStudentLink.objects.get(parent=parent, student=profile.user)
         assert link.status == ParentStudentLink.STATUS_PENDING
         assert link.claimed_relationship == ParentStudentLink.RELATIONSHIP_MOTHER
+
+
+@pytest.mark.django_db
+class TestChangePasswordView:
+    def test_rejects_wrong_current_password(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'WrongPass123!', 'new_password': 'NewPass456!',
+        }, format='json')
+        assert response.status_code == 400
+        user.refresh_from_db()
+        assert user.check_password('CorrectPass123!')
+
+    def test_rejects_weak_new_password(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'CorrectPass123!', 'new_password': '123',
+        }, format='json')
+        assert response.status_code == 400
+
+    def test_changes_password_on_success(self, client):
+        from tests.factories import VerifiedUserFactory
+        user = VerifiedUserFactory()
+        user.set_password('CorrectPass123!')
+        user.save()
+        client.force_authenticate(user)
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'CorrectPass123!', 'new_password': 'BrandNewPass789!',
+        }, format='json')
+        assert response.status_code == 200
+        user.refresh_from_db()
+        assert user.check_password('BrandNewPass789!')
+        assert not user.check_password('CorrectPass123!')
+
+    def test_requires_authentication(self, client):
+        response = client.post('/api/v1/auth/me/password/', {
+            'current_password': 'a', 'new_password': 'b',
+        }, format='json')
+        assert response.status_code == 401

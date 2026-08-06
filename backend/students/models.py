@@ -576,6 +576,74 @@ class StudentSubject(models.Model):
         self.save(update_fields=['is_active', 'ended_at', 'active_identity'])
 
 
+class AcademicPeriod(models.Model):
+    """Platform-controlled window for recording one completed school term."""
+
+    TERM_CHOICES = [(1, 'Term 1'), (2, 'Term 2'), (3, 'Term 3')]
+
+    year = models.PositiveSmallIntegerField()
+    term = models.PositiveSmallIntegerField(choices=TERM_CHOICES)
+    term_ends_at = models.DateTimeField()
+    entry_opens_at = models.DateTimeField()
+    entry_closes_at = models.DateTimeField()
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-year', '-term']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['year', 'term'],
+                name='students_academic_period_uniq',
+            ),
+            models.CheckConstraint(
+                check=models.Q(entry_opens_at__gte=models.F('term_ends_at')),
+                name='students_period_opens_after_term_ck',
+            ),
+            models.CheckConstraint(
+                check=models.Q(entry_closes_at__gt=models.F('entry_opens_at')),
+                name='students_period_closes_after_open_ck',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Term {self.term} {self.year}'
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.entry_opens_at and self.term_ends_at:
+            if self.entry_opens_at < self.term_ends_at:
+                errors['entry_opens_at'] = 'Entry cannot open before the term ends.'
+        if self.entry_closes_at and self.entry_opens_at:
+            if self.entry_closes_at <= self.entry_opens_at:
+                errors['entry_closes_at'] = 'Entry must close after it opens.'
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def state_at(self, at=None):
+        at = at or timezone.now()
+        if self.published_at is not None:
+            return 'published'
+        if at < self.entry_opens_at:
+            return 'upcoming'
+        if at >= self.entry_closes_at:
+            return 'closed'
+        return 'entry_open'
+
+    @property
+    def state(self):
+        return self.state_at()
+
+    def accepts_entries(self, at=None):
+        return self.state_at(at) == 'entry_open'
+
+
 class CBCGradeQuerySet(models.QuerySet):
     PROTECTED_EVIDENCE_FIELDS = frozenset({
         'student_subject',

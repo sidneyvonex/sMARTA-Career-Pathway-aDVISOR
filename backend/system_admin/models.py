@@ -11,14 +11,17 @@ ACTION_CHOICES = [
     ('invite_sent', 'Invite sent'),
     ('invite_accepted', 'Invite accepted'),
     ('school_created', 'School created'),
+    ('school_admin_provisioned', 'School admin provisioned'),
     ('school_edited', 'School edited'),
     ('school_deactivated', 'School deactivated'),
     ('school_activated', 'School activated'),
     ('counselor_added', 'Counselor added to school'),
     ('counselor_removed', 'Counselor removed from school'),
     ('counselor_assigned', 'Counselor assigned to student'),
+    ('students_bulk_imported', 'Students bulk imported'),
     ('grade_verified', 'Grade verified'),
     ('grade_verification_removed', 'Grade verification removed'),
+    ('school_marks_imported', 'School marks imported'),
     ('grade_definition_snapshot_rewritten', 'Grade definition snapshot rewritten'),
     ('school_membership_approved', 'School membership approved'),
     ('school_membership_rejected', 'School membership rejected'),
@@ -35,6 +38,9 @@ ACTION_CHOICES = [
     ('plan_review_status_changed', 'Plan review status changed'),
     ('report_downloaded', 'Report downloaded'),
     ('school_offerings_changed', 'School offerings changed'),
+    ('password_changed_self', 'Password changed (self-service)'),
+    ('password_reset_by_admin', 'Password reset by admin'),
+    ('school_admin_transferred', 'School admin transferred'),
 ]
 
 TARGET_TYPE_CHOICES = [
@@ -48,6 +54,7 @@ TARGET_TYPE_CHOICES = [
     ('plan', 'Plan'),
     ('report', 'Report'),
     ('offering', 'Offering'),
+    ('period', 'Academic period'),
 ]
 
 

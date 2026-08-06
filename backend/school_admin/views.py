@@ -1,15 +1,21 @@
+import csv
+import io
 from io import BytesIO
 from PIL import Image
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q
+from django.db.models.functions import Lower
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsSchoolAdmin, IsEmailVerified
+from accounts.utils import _temporary_password
 from accounts.models import (
     School,
     User,
@@ -17,6 +23,7 @@ from accounts.models import (
     StudentSchoolMembership,
 )
 from accounts.response import _success, _error
+from accounts.emails import send_password_reset_temp_email
 from counselors.models import CounselorAssignment
 from riasec.models import RIASECAssessment
 from system_admin.utils import log_action
@@ -32,9 +39,13 @@ from students.models import CBCGrade, StudentSubject
 from students.serializers import CBCGradeSerializer
 from system_admin.models import AuditLog
 from notifications.models import Notification
+from .reporting import get_school_stats
 
 
 SCHOOL_EDITABLE_FIELDS = {'name', 'phone', 'email'}
+STUDENT_IMPORT_HEADERS = {'first_name', 'last_name', 'email', 'grade'}
+STUDENT_IMPORT_MAX_ROWS = 500
+STUDENT_IMPORT_MAX_BYTES = 1024 * 1024
 
 
 class SchoolOfferingsView(APIView):
@@ -532,6 +543,63 @@ class SchoolCounselorRemoveView(APIView):
         return _success(message=f'{counselor.first_name} {counselor.last_name} removed from {school.name}.')
 
 
+class CounselorPasswordResetView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request, counselor_id):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+        try:
+            counselor = User.objects.get(pk=counselor_id, role='counselor', school=school)
+        except User.DoesNotExist:
+            return _error('Counselor not found at your school.', status.HTTP_404_NOT_FOUND)
+
+        temp_password = _temporary_password()
+        counselor.set_password(temp_password)
+        counselor.save(update_fields=['password'])
+
+        send_password_reset_temp_email.delay(
+            user_id=counselor.id, email=counselor.email, first_name=counselor.first_name,
+            temp_password=temp_password,
+        )
+        log_action(
+            actor=request.user, action='password_reset_by_admin', target_type='user',
+            target_id=counselor.id, details={'reset_by': request.user.id}, request=request,
+        )
+        return _success(message=f'Password reset. New credentials sent to {counselor.email}.')
+
+
+class StudentPasswordResetView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request, student_id):
+        school = request.user.school
+        if not school:
+            return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
+        try:
+            profile = StudentProfile.objects.select_related('user').get(
+                user_id=student_id, school=school, school_membership_status='active',
+            )
+        except StudentProfile.DoesNotExist:
+            return _error('Learner not found at your school.', status.HTTP_404_NOT_FOUND)
+        student = profile.user
+
+        temp_password = _temporary_password()
+        student.set_password(temp_password)
+        student.save(update_fields=['password'])
+
+        send_password_reset_temp_email.delay(
+            user_id=student.id, email=student.email, first_name=student.first_name,
+            temp_password=temp_password,
+        )
+        log_action(
+            actor=request.user, action='password_reset_by_admin', target_type='user',
+            target_id=student.id, details={'reset_by': request.user.id}, request=request,
+        )
+        return _success(message=f'Password reset. New credentials sent to {student.email}.')
+
+
 class SchoolStudentsView(APIView):
     permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
 
@@ -724,6 +792,330 @@ class SchoolStudentsView(APIView):
                 'academic_evidence': academic_evidence,
             })
         return _success(data=data)
+
+
+class SchoolStudentImportView(APIView):
+    permission_classes = [IsAuthenticated, IsEmailVerified, IsSchoolAdmin]
+
+    def post(self, request):
+        school = request.user.school
+        if not school:
+            return _error(
+                'No school assigned to your account.',
+                status.HTTP_404_NOT_FOUND,
+            )
+        if not school.is_active:
+            return _error('Your school is inactive.', status.HTTP_403_FORBIDDEN)
+
+        upload = request.FILES.get('file')
+        if upload is None:
+            return _error('Choose a CSV file to import.')
+        if upload.size > STUDENT_IMPORT_MAX_BYTES:
+            return _error('The CSV file must be 1 MB or smaller.')
+        if not upload.name.lower().endswith('.csv'):
+            return _error('The uploaded file must use the .csv extension.')
+
+        try:
+            content = upload.read().decode('utf-8-sig')
+        except UnicodeDecodeError:
+            return _error('The CSV file must be UTF-8 encoded.')
+
+        try:
+            reader = csv.DictReader(io.StringIO(content))
+            headers = {
+                (header or '').strip().lower()
+                for header in (reader.fieldnames or [])
+            }
+            if not STUDENT_IMPORT_HEADERS.issubset(headers):
+                missing = sorted(STUDENT_IMPORT_HEADERS - headers)
+                return _error(
+                    'Missing required CSV column(s): ' + ', '.join(missing) + '.'
+                )
+            rows = list(reader)
+        except csv.Error:
+            return _error('The CSV file could not be read.')
+
+        if not rows:
+            return _error('The CSV file has no learner rows.')
+        if len(rows) > STUDENT_IMPORT_MAX_ROWS:
+            return _error(
+                f'A CSV file can contain at most {STUDENT_IMPORT_MAX_ROWS} learners.'
+            )
+
+        normalized_rows = []
+        errors = []
+        seen_emails = set()
+        for row_number, raw_row in enumerate(rows, start=2):
+            row = {
+                str(key).strip().lower(): (value or '').strip()
+                for key, value in raw_row.items()
+                if key is not None
+            }
+            first_name = row.get('first_name', '')
+            last_name = row.get('last_name', '')
+            email = row.get('email', '').lower()
+            grade_value = row.get('grade', '')
+            row_errors = []
+            if not first_name:
+                row_errors.append('first_name is required')
+            if not last_name:
+                row_errors.append('last_name is required')
+            try:
+                validate_email(email)
+            except ValidationError:
+                row_errors.append('email is invalid')
+            try:
+                grade = int(grade_value)
+                if grade not in dict(StudentProfile.GRADE_CHOICES):
+                    raise ValueError
+            except (TypeError, ValueError):
+                grade = None
+                row_errors.append('grade must be 9, 10, 11, or 12')
+            if email in seen_emails:
+                row_errors.append('email is repeated in this file')
+            seen_emails.add(email)
+
+            if row_errors:
+                errors.append({
+                    'row': row_number,
+                    'email': email,
+                    'message': '; '.join(row_errors),
+                })
+            else:
+                normalized_rows.append({
+                    'row': row_number,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'email': email,
+                    'grade': grade,
+                })
+
+        existing_users = {
+            user.normalized_email: user.id
+            for user in User.objects.annotate(normalized_email=Lower('email'))
+            .filter(
+                normalized_email__in=[row['email'] for row in normalized_rows]
+            )
+        }
+
+        created = []
+        linked = []
+        already_linked = []
+        for row in normalized_rows:
+            existing_user_id = existing_users.get(row['email'])
+            if existing_user_id is not None:
+                outcome, detail = self._link_existing_student(
+                    request=request,
+                    school=school,
+                    row=row,
+                    user_id=existing_user_id,
+                )
+                if outcome == 'linked':
+                    linked.append(detail)
+                elif outcome == 'already_linked':
+                    already_linked.append(detail)
+                else:
+                    errors.append({
+                        'row': row['row'],
+                        'email': row['email'],
+                        'message': detail,
+                    })
+                continue
+
+            password = _temporary_password()
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_user(
+                        email=row['email'],
+                        password=password,
+                        first_name=row['first_name'],
+                        last_name=row['last_name'],
+                        role='student',
+                        county=school.county,
+                        is_email_verified=True,
+                    )
+                    profile = StudentProfile.objects.create(
+                        user=user,
+                        mode='school_linked',
+                        school=school,
+                        school_membership_status='active',
+                        grade=row['grade'],
+                    )
+                    StudentSchoolMembership.objects.create(
+                        student_profile=profile,
+                        school=school,
+                        status=StudentSchoolMembership.STATUS_ACTIVE,
+                        record_source=StudentSchoolMembership.SOURCE_ADMIN_IMPORT,
+                        decided_by=request.user,
+                        decided_at=timezone.now(),
+                        started_at=timezone.now(),
+                    )
+            except IntegrityError:
+                errors.append({
+                    'row': row['row'],
+                    'email': row['email'],
+                    'message': 'an account with this email already exists',
+                })
+                continue
+
+            created.append({
+                'id': user.id,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'email': user.email,
+                'grade': profile.grade,
+                'temporary_password': password,
+            })
+
+        if created or linked:
+            log_action(
+                actor=request.user,
+                action='students_bulk_imported',
+                target_type='school',
+                target_id=school.id,
+                details={
+                    'school_id': school.id,
+                    'created_count': len(created),
+                    'linked_count': len(linked),
+                    'already_linked_count': len(already_linked),
+                    'error_count': len(errors),
+                },
+                request=request,
+            )
+
+        response = _success(
+            data={
+                'created_count': len(created),
+                'linked_count': len(linked),
+                'already_linked_count': len(already_linked),
+                'error_count': len(errors),
+                'created': created,
+                'linked': linked,
+                'already_linked': already_linked,
+                'errors': sorted(errors, key=lambda error: error['row']),
+            },
+            message=(
+                f'{len(created) + len(linked)} learner'
+                f'{"s" if len(created) + len(linked) != 1 else ""} added '
+                f'to {school.name}.'
+            ),
+            status_code=(
+                status.HTTP_201_CREATED
+                if created or linked
+                else status.HTTP_200_OK
+            ),
+        )
+        response['Cache-Control'] = 'no-store'
+        return response
+
+    def _link_existing_student(self, *, request, school, row, user_id):
+        """Link a safe existing learner account without changing its password."""
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=user_id)
+            if user.role != 'student':
+                return (
+                    'error',
+                    f'this email belongs to a {user.get_role_display()} account',
+                )
+            if not user.is_active:
+                return (
+                    'error',
+                    'this learner account is deactivated; contact a system administrator',
+                )
+            if not user.is_email_verified:
+                user.is_email_verified = True
+                user.save(update_fields=['is_email_verified'])
+
+            try:
+                profile = (
+                    StudentProfile.objects.select_for_update()
+                    .get(user=user)
+                )
+            except StudentProfile.DoesNotExist:
+                profile = StudentProfile.objects.create(
+                    user=user,
+                    mode='school_linked',
+                    school=school,
+                    school_membership_status='active',
+                    grade=row['grade'],
+                )
+                StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=school,
+                    status=StudentSchoolMembership.STATUS_ACTIVE,
+                    record_source=StudentSchoolMembership.SOURCE_ADMIN_IMPORT,
+                    decided_by=request.user,
+                    decided_at=timezone.now(),
+                    started_at=timezone.now(),
+                )
+                return 'linked', self._existing_student_result(user, profile)
+
+            memberships = StudentSchoolMembership.objects.select_for_update().filter(
+                student_profile=profile,
+            )
+            active_membership = memberships.filter(
+                status=StudentSchoolMembership.STATUS_ACTIVE,
+            ).select_related('school').first()
+            if active_membership is not None:
+                if active_membership.school_id != school.id:
+                    return (
+                        'error',
+                        f'learner is actively linked to {active_membership.school.name}; '
+                        'use the school-transfer approval workflow',
+                    )
+                return (
+                    'already_linked',
+                    self._existing_student_result(user, profile),
+                )
+
+            pending_elsewhere = memberships.filter(
+                status=StudentSchoolMembership.STATUS_PENDING,
+            ).exclude(school=school).select_related('school').first()
+            if pending_elsewhere is not None:
+                return (
+                    'error',
+                    f'learner has a pending link request with '
+                    f'{pending_elsewhere.school.name}',
+                )
+
+            same_school_pending = memberships.filter(
+                school=school,
+                status=StudentSchoolMembership.STATUS_PENDING,
+            ).first()
+            if same_school_pending is not None:
+                same_school_pending.activate(decided_by=request.user)
+            else:
+                StudentSchoolMembership.objects.create(
+                    student_profile=profile,
+                    school=school,
+                    status=StudentSchoolMembership.STATUS_ACTIVE,
+                    record_source=StudentSchoolMembership.SOURCE_ADMIN_IMPORT,
+                    decided_by=request.user,
+                    decided_at=timezone.now(),
+                    started_at=timezone.now(),
+                )
+
+            profile.mode = 'school_linked'
+            profile.school = school
+            profile.school_membership_status = 'active'
+            profile.grade = row['grade']
+            profile.save(update_fields=[
+                'mode',
+                'school',
+                'school_membership_status',
+                'grade',
+            ])
+            return 'linked', self._existing_student_result(user, profile)
+
+    @staticmethod
+    def _existing_student_result(user, profile):
+        return {
+            'id': user.id,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'grade': profile.grade,
+        }
 
 
 class SchoolMembershipRequestsView(APIView):
@@ -970,109 +1362,7 @@ class SchoolStatsView(APIView):
         if not school:
             return _error('No school assigned to your account.', status.HTTP_404_NOT_FOUND)
 
-        has_assessment = RIASECAssessment.objects.filter(student_profile=OuterRef('pk'))
-
-        profiles = (
-            StudentProfile.objects.filter(
-                school=school,
-                mode='school_linked',
-                school_membership_status='active',
-            )
-            .annotate(
-                has_assessment=Exists(has_assessment),
-                enrolled_subject_count=Count(
-                    'enrolled_subjects',
-                    distinct=True,
-                ),
-                subjects_with_evidence=Count(
-                    'enrolled_subjects',
-                    filter=Q(enrolled_subjects__grades__isnull=False),
-                    distinct=True,
-                ),
-            )
-        )
-        total_students = profiles.count()
-        assessed = profiles.filter(has_assessment=True).count()
-        evidence_complete = profiles.filter(
-            enrolled_subject_count__gte=3,
-            subjects_with_evidence=F('enrolled_subject_count'),
-        ).count()
-        choices_saved = profiles.filter(
-            combination_choices__isnull=False,
-        ).distinct().count()
-        plans_created = profiles.filter(
-            learner_plan__isnull=False,
-        ).count()
-        reviews_completed = profiles.filter(
-            learner_plan__review_status='reviewed',
-        ).count()
-        pending_memberships = StudentSchoolMembership.objects.filter(
-            school=school,
-            status=StudentSchoolMembership.STATUS_PENDING,
-        ).count()
-        pending_memberships += StudentProfile.objects.filter(
-            school=school,
-            mode='school_linked',
-            school_membership_status='pending',
-            school_memberships__isnull=True,
-        ).count()
-        assigned_ids = set(
-            CounselorAssignment.objects.filter(school=school, is_active=True)
-            .values_list('student_profile_id', flat=True)
-        )
-        unassigned = profiles.exclude(pk__in=assigned_ids).count()
-        counselors = list(
-            User.objects.filter(school=school, role='counselor')
-            .annotate(
-                active_student_count=Count(
-                    'student_assignments',
-                    filter=Q(
-                        student_assignments__is_active=True,
-                        student_assignments__school=school,
-                        student_assignments__student_profile__school_membership_status='active',
-                    ),
-                    distinct=True,
-                ),
-            )
-            .order_by('first_name', 'last_name', 'pk')
-        )
-        total_counselors = len(counselors)
-        framework = FrameworkVersion.objects.current()
-        offerings_count = (
-            SchoolOffering.objects.filter(
-                school=school,
-                is_active=True,
-                combination__framework_version=framework,
-                combination__is_active=True,
-                combination__track__is_active=True,
-            ).count()
-            if framework is not None
-            else 0
-        )
-
-        return _success(data={
-            'total_students': total_students,
-            'total_counselors': total_counselors,
-            'assessed': assessed,
-            'unassigned': unassigned,
-            'pending_memberships': pending_memberships,
-            'evidence_complete': evidence_complete,
-            'choices_saved': choices_saved,
-            'plans_created': plans_created,
-            'reviews_completed': reviews_completed,
-            'offerings_count': offerings_count,
-            'offerings_configured': offerings_count > 0,
-            'counselor_workload': [
-                {
-                    'counselor_id': counselor.id,
-                    'counselor_name': (
-                        f'{counselor.first_name} {counselor.last_name}'
-                    ),
-                    'student_count': counselor.active_student_count,
-                }
-                for counselor in counselors
-            ],
-        })
+        return _success(data=get_school_stats(school))
 
 
 class SchoolAssignmentView(APIView):

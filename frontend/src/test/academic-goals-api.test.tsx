@@ -124,6 +124,7 @@ describe('academic goal API', () => {
     let mutation: Promise<unknown>
     act(() => {
       mutation = result.current.close.mutateAsync(7)
+      void mutation.catch(() => {})
     })
     expect(await screen.findByText('Closing academic goal…')).toBeInTheDocument()
     await act(async () => {

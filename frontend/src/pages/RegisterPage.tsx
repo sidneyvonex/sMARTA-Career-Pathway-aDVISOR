@@ -18,6 +18,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.county) {
+      toast.error('Please select your county.')
+      return
+    }
     setLoading(true)
     try {
       await authApi.register({
@@ -30,10 +34,18 @@ export default function RegisterPage() {
         role: 'student',
         ...(form.school_code ? { school_code: form.school_code } : {}),
       })
-      navigate('/verify-email')
+      navigate('/verify-email', { state: { email: form.email } })
     } catch (err: any) {
       const msg = err.response?.data?.message
-      toast.error(typeof msg === 'string' ? msg : 'Registration failed. Please check your details.')
+      if (typeof msg === 'string') {
+        toast.error(msg)
+      } else if (msg && typeof msg === 'object') {
+        const firstField = Object.keys(msg)[0]
+        const firstError = Array.isArray(msg[firstField]) ? msg[firstField][0] : String(msg[firstField])
+        toast.error(`${firstField.replace(/_/g, ' ')}: ${firstError}`)
+      } else {
+        toast.error('Registration failed. Please check your details.')
+      }
     } finally {
       setLoading(false)
     }

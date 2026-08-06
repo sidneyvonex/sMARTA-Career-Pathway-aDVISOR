@@ -20,7 +20,7 @@ const TRAIT_NAMES: Record<RIASECDimension, string> = {
 export default function StudentDashboard() {
   const { user } = useAuthStore()
   const { setDrawerOpen } = useNotificationStore()
-  const { downloadReport, downloadingId } = useDownloadReport()
+  const { downloadStudentReport, downloadingId } = useDownloadReport()
 
   const dashboardQ = useQuery({
     queryKey: ['student', 'dashboard'],
@@ -134,7 +134,7 @@ export default function StudentDashboard() {
     interventions: dashboardQ.data?.interventions ?? [],
     onOpenActivity: () => setDrawerOpen(true),
     onDownloadReport: (quizDone || gradeSummary.total_subjects > 0) && user
-      ? () => downloadReport(user.id)
+      ? () => downloadStudentReport(user.id)
       : undefined,
     reportDownloading: downloadingId !== null,
   }

@@ -1,15 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { reportsApi } from '../../../api/reports'
 import { schoolAdminApi } from '../../../api/schoolAdmin'
+import { useDownloadReport } from '../../../hooks/useDownloadReport'
 import ActionCard from '../../common/dashboard/ActionCard'
 import DashboardHero from '../../common/dashboard/DashboardHero'
 import ErrorState from '../../common/dashboard/ErrorState'
 import MetricCard from '../../common/dashboard/MetricCard'
 import SectionHeader from '../../common/dashboard/SectionHeader'
 import StatusBadge from '../../common/dashboard/StatusBadge'
+import CohortProgressExplorer from './CohortProgressExplorer'
 import '../../../styles/dashboard.css'
 import '../../../styles/school-admin.css'
 
 export default function SchoolAdminDashboard() {
+  const [reportGrade, setReportGrade] = useState('')
+  const { downloadReport, downloadingKey } = useDownloadReport()
   const schoolQ = useQuery({
     queryKey: ['school-admin', 'school'],
     queryFn: () => schoolAdminApi.getSchool().then(r => r.data.data),
@@ -108,6 +114,8 @@ export default function SchoolAdminDashboard() {
         </div>
       </section>
 
+      <CohortProgressExplorer records={stats?.academic_progress ?? []} />
+
       <div className="school-operations__workspace">
         <section className="db-panel db-panel--compact" aria-labelledby="school-workload-title">
           <SectionHeader
@@ -171,6 +179,52 @@ export default function SchoolAdminDashboard() {
             description="Approve pending school links and assign approved learners."
             to="/admin/students"
             tone="warning"
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="school-reports-title">
+        <SectionHeader
+          eyebrow="Exports"
+          title="School reports"
+          titleId="school-reports-title"
+          description="Download a current summary or a grade-filtered learner roster."
+        />
+        <div className="report-download-controls">
+          <label className="report-grade-field" htmlFor="school-report-grade">
+            Roster grade
+            <select
+              id="school-report-grade"
+              value={reportGrade}
+              onChange={(event) => setReportGrade(event.target.value)}
+            >
+              <option value="">All grades</option>
+              {[9, 10, 11, 12].map((grade) => (
+                <option value={grade} key={grade}>Grade {grade}</option>
+              ))}
+            </select>
+          </label>
+          <ActionCard
+            title={downloadingKey === 'school-overview' ? 'Generating overview…' : 'Download school overview'}
+            description="Summary metrics and counsellor workload."
+            onClick={() => downloadReport(
+              reportsApi.downloadSchoolOverviewPdf,
+              'smarta-shauri-school-overview.pdf',
+              'school-overview',
+            )}
+            disabled={downloadingKey !== null}
+            tone="info"
+          />
+          <ActionCard
+            title={downloadingKey === 'school-roster' ? 'Generating roster…' : 'Download learner roster'}
+            description={reportGrade ? `Active Grade ${reportGrade} learners.` : 'All active learners.'}
+            onClick={() => downloadReport(
+              () => reportsApi.downloadSchoolRosterPdf(reportGrade ? Number(reportGrade) : undefined),
+              'smarta-shauri-school-roster.pdf',
+              'school-roster',
+            )}
+            disabled={downloadingKey !== null}
+            tone="positive"
           />
         </div>
       </section>

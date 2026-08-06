@@ -8,6 +8,7 @@ from students.models import AcademicGoal, CBCGrade, Subject
 from system_admin.models import AuditLog
 from tertiary.models import LearnerEducationGoal
 from tests.factories import (
+    AcademicPeriodFactory,
     CounselorAssignmentFactory,
     CounselorFactory,
     InstitutionFactory,
@@ -25,6 +26,8 @@ pytestmark = pytest.mark.django_db
 
 def test_seeded_grade_10_support_journey_survives_school_transfer():
     """Catches transfer approval dropping support history or former-school access."""
+    AcademicPeriodFactory(year=2026, term=1)
+    AcademicPeriodFactory(year=2026, term=2)
     old_school = SchoolFactory(name='Mwangaza Senior School')
     new_school = SchoolFactory(name='Tumaini Senior School')
     learner = StudentProfileFactory(

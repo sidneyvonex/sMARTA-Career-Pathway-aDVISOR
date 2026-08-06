@@ -28,6 +28,7 @@ const ACTION_LABELS: Record<string, string> = {
   school_membership_approved: 'School link approved',
   school_membership_rejected: 'School link rejected',
   grade_verified: 'Grade verified',
+  school_marks_imported: 'School marks imported',
   grade_verification_removed: 'Grade verification removed',
   parent_link_approved: 'Parent link approved',
   parent_link_revoked: 'Parent link revoked',
@@ -36,6 +37,10 @@ const ACTION_LABELS: Record<string, string> = {
   report_downloaded: 'Report downloaded',
   framework_combination_status_changed: 'Framework combination changed',
   school_offerings_changed: 'School offerings changed',
+  school_admin_provisioned: 'School admin provisioned',
+  password_changed_self: 'Password changed (self-service)',
+  password_reset_by_admin: 'Password reset by admin',
+  school_admin_transferred: 'School admin transferred',
 }
 
 const ACTION_OPTIONS = [

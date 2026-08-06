@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
@@ -22,6 +23,8 @@ from students.models import AssessmentFramework
 from system_admin.models import AuditLog
 from accounts.models import School, StudentProfile
 from guidance.models import LearnerCombinationChoice, LearnerPlan
+
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
@@ -492,6 +495,7 @@ class TestSchoolListView:
             'name': 'New School',
             'county': 'kiambu',
             'school_code': 'KIA999',
+            'email': 'admin@newschool.ac.ke',
         })
         assert response.status_code == 201
         data = response.data['data']
@@ -507,6 +511,7 @@ class TestSchoolListView:
             'name': 'Another School',
             'county': 'kiambu',
             'school_code': 'DUP001',
+            'email': 'admin@another.ac.ke',
         })
         assert response.status_code == 400
 
@@ -897,13 +902,13 @@ class TestInputValidation:
         }, format='json')
         assert response.status_code == 400
 
-    def test_create_school_empty_email_accepted(self):
+    def test_create_school_empty_email_rejected(self):
         response = self.client.post('/api/v1/system-admin/schools/', {
             'name': 'No Email School',
             'county': 'kiambu',
             'school_code': 'NOEML01',
         }, format='json')
-        assert response.status_code == 201
+        assert response.status_code == 400
 
     def test_create_school_valid_email_accepted(self):
         response = self.client.post('/api/v1/system-admin/schools/', {
@@ -913,3 +918,218 @@ class TestInputValidation:
             'email': 'school@example.com',
         }, format='json')
         assert response.status_code == 201
+
+
+@pytest.fixture
+def client():
+    return APIClient()
+
+
+class TestSchoolCreationProvisionsAdmin:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+
+    def test_create_school_without_email_fails(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-001',
+        }, format='json')
+        assert response.status_code == 400
+
+    def test_create_school_with_taken_email_fails(self, client):
+        client.force_authenticate(self.admin)
+        User.objects.create_user(
+            email='taken@kilimani.ac.ke', password='TestPass123!', role='counselor', county='kiambu',
+        )
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-002',
+            'email': 'taken@kilimani.ac.ke',
+        }, format='json')
+        assert response.status_code == 400
+        assert 'already exists' in str(response.data['message'])
+
+    def test_create_school_provisions_admin_account(self, client, mailoutbox):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/schools/', {
+            'name': 'Kilimani Girls', 'county': 'kiambu', 'school_code': 'KIL-003',
+            'email': 'admin@kilimani.ac.ke',
+        }, format='json')
+        assert response.status_code == 201
+        school = School.objects.get(school_code='KIL-003')
+        user = User.objects.get(email='admin@kilimani.ac.ke')
+        assert user.role == 'school_admin'
+        assert user.school == school
+        assert user.is_email_verified is True
+        assert user.first_name == 'Kilimani Girls'
+        assert user.last_name == 'Administrator'
+        assert len(mailoutbox) == 1
+        assert 'admin@kilimani.ac.ke' in mailoutbox[0].to
+        assert user.check_password(_extract_temp_password(mailoutbox[0].body))
+
+
+def _extract_temp_password(email_body):
+    for line in email_body.splitlines():
+        if line.strip() and not line.startswith(('Hi', 'A new', 'This', 'You can')):
+            candidate = line.strip()
+            if len(candidate) >= 8:
+                return candidate
+    raise AssertionError('Could not find temp password in email body')
+
+
+@pytest.mark.django_db
+class TestSystemAdminUserPasswordReset:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+
+    def test_resets_any_users_password(self, client, mailoutbox):
+        client.force_authenticate(self.admin)
+        target = VerifiedUserFactory(role='counselor', email='counselor@test.com')
+        old_hash = target.password
+        response = client.post(f'/api/v1/system-admin/users/{target.id}/reset-password/')
+        assert response.status_code == 200
+        target.refresh_from_db()
+        assert target.password != old_hash
+        assert len(mailoutbox) == 1
+        assert 'counselor@test.com' in mailoutbox[0].to
+
+    def test_returns_404_for_missing_user(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post('/api/v1/system-admin/users/999999/reset-password/')
+        assert response.status_code == 404
+
+    def test_non_system_admin_cannot_reset(self, client):
+        target = VerifiedUserFactory(role='counselor')
+        counselor = CounselorFactory()
+        client.force_authenticate(counselor)
+        response = client.post(f'/api/v1/system-admin/users/{target.id}/reset-password/')
+        assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestSchoolAdminTransfer:
+    def setup_method(self):
+        self.admin = SystemAdminFactory()
+        self.school = SchoolFactory()
+        self.old_admin = SchoolAdminFactory(school=self.school)
+
+    def test_transfers_admin_role(self, client, mailoutbox):
+        new_admin = CounselorFactory(school=None)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school is None
+        assert self.old_admin.role == 'school_admin'
+
+        new_admin.refresh_from_db()
+        assert new_admin.school == self.school
+        assert new_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 2
+        recipients = {email for message in mailoutbox for email in message.to}
+        assert self.old_admin.email in recipients
+        assert new_admin.email in recipients
+
+    def test_rejects_nonexistent_target_user(self, client):
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': 999999}, format='json',
+        )
+        assert response.status_code == 400
+
+    def test_rejects_nonexistent_school(self, client):
+        client.force_authenticate(self.admin)
+        new_admin = CounselorFactory(school=None)
+        response = client.post(
+            '/api/v1/system-admin/schools/999999/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 404
+
+    def test_rejects_student_target(self, client, mailoutbox):
+        student = VerifiedUserFactory(role='student')
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': student.id}, format='json',
+        )
+        assert response.status_code == 400
+        assert response.data['error'] is True
+
+        student.refresh_from_db()
+        assert student.role == 'student'
+        assert student.school is None
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school == self.school
+        assert self.old_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 0
+
+    def test_rejects_inactive_target(self, client, mailoutbox):
+        inactive_admin = CounselorFactory(school=None, is_active=False)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': inactive_admin.id}, format='json',
+        )
+        assert response.status_code == 400
+        assert response.data['error'] is True
+
+        inactive_admin.refresh_from_db()
+        assert inactive_admin.school is None
+        assert inactive_admin.role == 'counselor'
+
+        self.old_admin.refresh_from_db()
+        assert self.old_admin.school == self.school
+        assert self.old_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 0
+
+    def test_transfer_to_already_current_admin_is_idempotent(self, client, mailoutbox):
+        existing_admin = self.old_admin
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': existing_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        existing_admin.refresh_from_db()
+        assert existing_admin.school == self.school
+        assert existing_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 1
+        assert existing_admin.email in mailoutbox[0].to
+        assert 'now the school admin' in mailoutbox[0].subject
+
+        log = AuditLog.objects.filter(action='school_admin_transferred').latest('created_at')
+        assert existing_admin.id not in log.details['old_admin_ids']
+
+    def test_transfers_multiple_old_admins(self, client, mailoutbox):
+        second_old_admin = SchoolAdminFactory(school=self.school)
+        new_admin = CounselorFactory(school=None)
+        client.force_authenticate(self.admin)
+        response = client.post(
+            f'/api/v1/system-admin/schools/{self.school.id}/transfer-admin/',
+            {'new_admin_user_id': new_admin.id}, format='json',
+        )
+        assert response.status_code == 200
+
+        self.old_admin.refresh_from_db()
+        second_old_admin.refresh_from_db()
+        assert self.old_admin.school is None
+        assert self.old_admin.role == 'school_admin'
+        assert second_old_admin.school is None
+        assert second_old_admin.role == 'school_admin'
+
+        new_admin.refresh_from_db()
+        assert new_admin.school == self.school
+        assert new_admin.role == 'school_admin'
+
+        assert len(mailoutbox) == 3
